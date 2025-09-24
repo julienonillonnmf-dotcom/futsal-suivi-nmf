@@ -1315,8 +1315,10 @@ const FutsalApp = () => {
                   onClick={() => {
                     const pwd = prompt('Mot de passe entraîneur :');
                     if (pwd === 'coachNmf_2026') {
+                      console.log('Activation du mode admin...');
                       setIsAdmin(true);
                       alert('Mode entraîneur activé');
+                      console.log('isAdmin devrait être true maintenant');
                     } else if (pwd) {
                       alert('Mot de passe incorrect');
                     }
@@ -1326,13 +1328,37 @@ const FutsalApp = () => {
                   Mode Entraîneur
                 </button>
               ) : (
-                <button
-                  onClick={() => setIsAdmin(false)}
-                  className="px-4 py-2 rounded-lg font-medium text-white shadow-md transition-all"
-                  style={{backgroundColor: '#1D2945'}}
-                >
-                  Mode Entraîneur ✓
-                </button>
+                <div className="flex space-x-2">
+                  <button
+                    onClick={() => setIsAdmin(false)}
+                    className="px-4 py-2 rounded-lg font-medium text-white shadow-md transition-all"
+                    style={{backgroundColor: '#1D2945'}}
+                  >
+                    Mode Entraîneur ✓
+                  </button>
+                  
+                  <button
+                    onClick={() => {
+                      console.log('Clic sur Administration, isAdmin:', isAdmin);
+                      setCurrentView('admin');
+                    }}
+                    className="text-white px-4 py-2 rounded-lg font-medium flex items-center space-x-2 shadow-md hover:shadow-lg transition-all"
+                    style={{backgroundColor: '#1D2945'}}
+                  >
+                    <Settings size={16} />
+                    <span>Administration</span>
+                  </button>
+                  
+                  <button
+                    onClick={addNewPlayer}
+                    disabled={loading}
+                    className="text-white px-4 py-2 rounded-lg font-medium flex items-center space-x-2 shadow-md hover:shadow-lg transition-all disabled:opacity-50"
+                    style={{backgroundColor: '#C09D5A'}}
+                  >
+                    <UserPlus size={16} />
+                    <span>Ajouter</span>
+                  </button>
+                </div>
               )}
               <button
                 onClick={logout}
@@ -1341,27 +1367,6 @@ const FutsalApp = () => {
                 Déconnexion
               </button>
             </div>
-            {isAdmin && (
-              <div className="flex space-x-2">
-                <button
-                  onClick={() => setCurrentView('admin')}
-                  className="text-white px-4 py-2 rounded-lg font-medium flex items-center space-x-2 shadow-md hover:shadow-lg transition-all"
-                  style={{backgroundColor: '#1D2945'}}
-                >
-                  <Settings size={16} />
-                  <span>Administration</span>
-                </button>
-                <button
-                  onClick={addNewPlayer}
-                  disabled={loading}
-                  className="text-white px-4 py-2 rounded-lg font-medium flex items-center space-x-2 shadow-md hover:shadow-lg transition-all disabled:opacity-50"
-                  style={{backgroundColor: '#C09D5A'}}
-                >
-                  <UserPlus size={16} />
-                  <span>Ajouter</span>
-                </button>
-              </div>
-            )}
           </div>
 
           {loading && (
