@@ -1310,32 +1310,31 @@ const FutsalApp = () => {
         <div className="max-w-4xl mx-auto">
           <div className="flex justify-between items-center mb-6">
             <div className="flex space-x-2">
-              {!isAdmin ? (
-                <button
-                  onClick={() => {
+              <button
+                onClick={() => {
+                  if (!isAdmin) {
                     const pwd = prompt('Mot de passe entraîneur :');
                     if (pwd === 'coachNmf_2026') {
-                      console.log('Activation du mode admin...');
                       setIsAdmin(true);
                       alert('Mode entraîneur activé');
-                      console.log('isAdmin devrait être true maintenant');
+                      // Force un re-render en modifiant aussi une autre state
+                      setLoading(false);
                     } else if (pwd) {
                       alert('Mot de passe incorrect');
                     }
-                  }}
-                  className="px-4 py-2 rounded-lg font-medium bg-gray-200 text-gray-700 hover:bg-gray-300 transition-all"
-                >
-                  Mode Entraîneur
-                </button>
-              ) : (
-                <button
-                  onClick={() => setIsAdmin(false)}
-                  className="px-4 py-2 rounded-lg font-medium text-white shadow-md transition-all"
-                  style={{backgroundColor: '#1D2945'}}
-                >
-                  Mode Entraîneur ✓
-                </button>
-              )}
+                  } else {
+                    setIsAdmin(false);
+                  }
+                }}
+                className={`px-4 py-2 rounded-lg font-medium transition-all ${
+                  !isAdmin 
+                    ? 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                    : 'text-white shadow-md'
+                }`}
+                style={isAdmin ? {backgroundColor: '#1D2945'} : {}}
+              >
+                {!isAdmin ? 'Mode Entraîneur' : 'Mode Entraîneur ✓'}
+              </button>
               
               <button
                 onClick={logout}
@@ -1343,22 +1342,15 @@ const FutsalApp = () => {
               >
                 Déconnexion
               </button>
-              
-              {/* DEBUG - Affichage temporaire de l'état */}
-              <div className="px-2 py-1 bg-yellow-200 text-black text-xs rounded">
-                DEBUG: isAdmin = {isAdmin.toString()}
-              </div>
             </div>
             
-            {/* Boutons d'administration */}
+            {/* Boutons d'administration - Affichage conditionnel simplifié */}
             <div className="flex space-x-2">
-              {/* Toujours afficher pour test - on retirera cette condition après */}
               <button
-                onClick={() => {
-                  console.log('Clic sur Administration, isAdmin:', isAdmin);
-                  setCurrentView('admin');
-                }}
-                className="text-white px-4 py-2 rounded-lg font-medium flex items-center space-x-2 shadow-md hover:shadow-lg transition-all"
+                onClick={() => setCurrentView('admin')}
+                className={`text-white px-4 py-2 rounded-lg font-medium flex items-center space-x-2 shadow-md hover:shadow-lg transition-all ${
+                  !isAdmin ? 'hidden' : ''
+                }`}
                 style={{backgroundColor: '#1D2945'}}
               >
                 <Settings size={16} />
@@ -1368,7 +1360,9 @@ const FutsalApp = () => {
               <button
                 onClick={addNewPlayer}
                 disabled={loading}
-                className="text-white px-4 py-2 rounded-lg font-medium flex items-center space-x-2 shadow-md hover:shadow-lg transition-all disabled:opacity-50"
+                className={`text-white px-4 py-2 rounded-lg font-medium flex items-center space-x-2 shadow-md hover:shadow-lg transition-all disabled:opacity-50 ${
+                  !isAdmin ? 'hidden' : ''
+                }`}
                 style={{backgroundColor: '#C09D5A'}}
               >
                 <UserPlus size={16} />
