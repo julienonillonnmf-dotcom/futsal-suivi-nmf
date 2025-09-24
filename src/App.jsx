@@ -33,11 +33,6 @@ const FutsalApp = () => {
     commentaires_libres: ''
   });
 
-  // États pour la gestion des objectifs
-  const [objectifsCollectifs, setObjectifsCollectifs] = useState('');
-  const [objectifsIndividuels, setObjectifsIndividuels] = useState({});
-  const [editingObjectives, setEditingObjectives] = useState(false);
-
   // Fonction pour activer/désactiver le mode admin
   const toggleAdminMode = () => {
     if (!isAdmin) {
@@ -85,98 +80,9 @@ const FutsalApp = () => {
       
       setPlayers(playersWithResponses);
       loadPlayerStatistics(playersWithResponses);
-      
-      // Charger les objectifs
-      await loadObjectifs();
     } catch (error) {
       console.error('Erreur lors du chargement des joueurs:', error);
       alert('Erreur lors du chargement des données');
-    }
-    setLoading(false);
-  };
-
-  // Charger les objectifs depuis Supabase
-  const loadObjectifs = async () => {
-    try {
-      // Charger les objectifs collectifs
-      const { data: collectifs, error: errorCollectifs } = await supabase
-        .from('team_settings')
-        .select('value')
-        .eq('key', 'objectifs_collectifs')
-        .maybeSingle();
-      
-      if (errorCollectifs && errorCollectifs.code !== 'PGRST116') {
-        console.error('Erreur chargement objectifs collectifs:', errorCollectifs);
-      } else {
-        setObjectifsCollectifs(collectifs?.value || '');
-      }
-
-      // Charger les objectifs individuels pour chaque joueur
-      const { data: individuels, error: errorIndividuels } = await supabase
-        .from('players')
-        .select('id, objectifs_individuels')
-        .eq('is_active', true);
-
-      if (errorIndividuels) {
-        console.error('Erreur chargement objectifs individuels:', errorIndividuels);
-      } else {
-        const objIndiv = {};
-        individuels?.forEach(player => {
-          objIndiv[player.id] = player.objectifs_individuels || '';
-        });
-        setObjectifsIndividuels(objIndiv);
-      }
-
-    } catch (error) {
-      console.error('Erreur chargement objectifs:', error);
-    }
-  };
-
-  // Sauvegarder les objectifs collectifs
-  const saveObjectifsCollectifs = async () => {
-    setLoading(true);
-    try {
-      const { error } = await supabase
-        .from('team_settings')
-        .upsert({
-          key: 'objectifs_collectifs',
-          value: objectifsCollectifs,
-          updated_at: new Date().toISOString()
-        }, {
-          onConflict: 'key'
-        });
-      
-      if (error) throw error;
-      alert('Objectifs collectifs sauvegardés !');
-      
-    } catch (error) {
-      console.error('Erreur sauvegarde objectifs collectifs:', error);
-      alert('Erreur lors de la sauvegarde: ' + error.message);
-    }
-    setLoading(false);
-  };
-
-  // Sauvegarder les objectifs individuels
-  const saveObjectifsIndividuels = async (playerId, objectifs) => {
-    setLoading(true);
-    try {
-      const { error } = await supabase
-        .from('players')
-        .update({ objectifs_individuels: objectifs })
-        .eq('id', playerId);
-      
-      if (error) throw error;
-      
-      setObjectifsIndividuels(prev => ({
-        ...prev,
-        [playerId]: objectifs
-      }));
-      
-      alert('Objectifs individuels sauvegardés !');
-      
-    } catch (error) {
-      console.error('Erreur sauvegarde objectifs individuels:', error);
-      alert('Erreur lors de la sauvegarde: ' + error.message);
     }
     setLoading(false);
   };
@@ -699,118 +605,11 @@ const FutsalApp = () => {
               </div>
             </div>
 
-            {/* Section Gestion des Objectifs */}
+            {/* Section Statistiques globales */}
             <div className="bg-white rounded-xl shadow-lg p-6">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-bold" style={{color: '#1D2945'}}>
-                  Gestion des Objectifs
-                </h2>
-                <button
-                  onClick={() => setEditingObjectives(!editingObjectives)}
-                  className={`flex items-center space-x-2 px-4 py-2 rounded-lg font-medium transition-colors ${
-                    editingObjectives 
-                      ? 'bg-green-500 hover:bg-green-600 text-white' 
-                      : 'bg-blue-500 hover:bg-blue-600 text-white'
-                  }`}
-                >
-                  <Edit3 size={16} />
-                  <span>{editingObjectives ? 'Terminer' : 'Modifier'}</span>
-                </button>
-              </div>
-
-              {/* Objectifs Collectifs */}
-              <div className="mb-8">
-                <h3 className="text-lg font-semibold mb-3" style={{color: '#1D2945'}}>
-                  Objectifs Collectifs de l'Équipe
-                </h3>
-                {editingObjectives ? (
-                  <div className="space-y-3">
-                    <textarea
-                      value={objectifsCollectifs}
-                      onChange={(e) => setObjectifsCollectifs(e.target.value)}
-                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:border-blue-500"
-                      rows="4"
-                      placeholder="Définissez les objectifs collectifs de l'équipe pour cette période..."
-                    />
-                    <button
-                      onClick={saveObjectifsCollectifs}
-                      disabled={loading}
-                      className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors disabled:opacity-50"
-                    >
-                      {loading ? 'Sauvegarde...' : 'Sauvegarder Objectifs Collectifs'}
-                    </button>
-                  </div>
-                ) : (
-                  <div className="p-4 bg-blue-50 rounded-lg">
-                    <p className="text-gray-700">
-                      {objectifsCollectifs || 'Aucun objectif collectif défini pour le moment.'}
-                    </p>
-                  </div>
-                )}
-              </div>
-
-              {/* Objectifs Individuels */}
-              <div>
-                <h3 className="text-lg font-semibold mb-3" style={{color: '#1D2945'}}>
-                  Objectifs Individuels
-                </h3>
-                <div className="space-y-4 max-h-96 overflow-y-auto">
-                  {players.map(player => (
-                    <div key={player.id} className="border rounded-lg p-4">
-                      <div className="flex items-center space-x-3 mb-3">
-                        <div className="w-8 h-8 rounded-full overflow-hidden border border-gray-200">
-                          {player.photo_url ? (
-                            <img 
-                              src={player.photo_url} 
-                              alt={player.name}
-                              className="w-full h-full object-cover"
-                            />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center text-white text-xs font-bold" style={{background: 'linear-gradient(135deg, #1D2945 0%, #C09D5A 100%)'}}>
-                              {player.name.split(' ').map(n => n[0]).join('')}
-                            </div>
-                          )}
-                        </div>
-                        <h4 className="font-medium">{player.name}</h4>
-                      </div>
-                      
-                      {editingObjectives ? (
-                        <div className="space-y-2">
-                          <textarea
-                            value={objectifsIndividuels[player.id] || ''}
-                            onChange={(e) => setObjectifsIndividuels(prev => ({
-                              ...prev,
-                              [player.id]: e.target.value
-                            }))}
-                            className="w-full p-2 text-sm border border-gray-300 rounded focus:ring-2 focus:border-blue-500"
-                            rows="2"
-                            placeholder="Objectifs personnels pour cette joueuse..."
-                          />
-                          <button
-                            onClick={() => saveObjectifsIndividuels(player.id, objectifsIndividuels[player.id] || '')}
-                            disabled={loading}
-                            className="text-sm px-3 py-1 bg-green-500 text-white rounded hover:bg-green-600 transition-colors disabled:opacity-50"
-                          >
-                            Sauvegarder
-                          </button>
-                        </div>
-                      ) : (
-                        <div className="text-sm text-gray-600 bg-gray-50 p-2 rounded">
-                          {objectifsIndividuels[player.id] || 'Aucun objectif individuel défini.'}
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Section Statistiques déplacée en bas */}
-          <div className="bg-white rounded-xl shadow-lg p-6 mt-8">
-            <h2 className="text-2xl font-bold mb-6" style={{color: '#1D2945'}}>
-              Statistiques Globales
-            </h2>
+              <h2 className="text-2xl font-bold mb-6" style={{color: '#1D2945'}}>
+                Statistiques Globales
+              </h2>
               
               <div className="space-y-6">
                 <div className="grid grid-cols-2 gap-4">
@@ -877,6 +676,8 @@ const FutsalApp = () => {
                       );
                     })()}
                   </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -898,9 +699,9 @@ const FutsalApp = () => {
 
         <div className="max-w-4xl mx-auto">
           {/* Boutons de navigation */}
-          <div className="flex flex-col items-center space-y-4 mb-8">
-            {/* Ligne du haut : Mode Entraîneur + Déconnexion */}
-            <div className="flex space-x-4">
+          <div className="flex justify-center items-center space-x-4 mb-8">
+            {/* Boutons gauche */}
+            <div className="flex space-x-2">
               <button
                 onClick={toggleAdminMode}
                 className={`px-6 py-3 rounded-lg font-medium transition-all transform hover:scale-105 ${
@@ -921,9 +722,9 @@ const FutsalApp = () => {
               </button>
             </div>
             
-            {/* Ligne du bas : Boutons admin (affichés seulement si isAdmin est true) */}
+            {/* Boutons admin - Affichés seulement si isAdmin est true */}
             {isAdmin && (
-              <div className="flex space-x-4">
+              <div className="flex space-x-2">
                 <button
                   onClick={() => setCurrentView('admin')}
                   className="px-6 py-3 rounded-lg font-medium text-white shadow-lg hover:shadow-xl transition-all transform hover:scale-105"
@@ -1142,37 +943,6 @@ const FutsalApp = () => {
             </div>
 
             <div className="space-y-6">
-              {/* Affichage des objectifs */}
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-                <h3 className="text-lg font-semibold mb-3" style={{color: '#1D2945'}}>
-                  🎯 Objectifs pour cette séance
-                </h3>
-                
-                {/* Objectifs Collectifs */}
-                {objectifsCollectifs && (
-                  <div className="mb-4">
-                    <h4 className="font-medium text-blue-800 mb-2">Objectifs de l'équipe :</h4>
-                    <div className="bg-white p-3 rounded border-l-4 border-blue-400">
-                      <p className="text-gray-700 whitespace-pre-wrap">{objectifsCollectifs}</p>
-                    </div>
-                  </div>
-                )}
-                
-                {/* Objectifs Individuels */}
-                {selectedPlayer && objectifsIndividuels[selectedPlayer.id] && (
-                  <div>
-                    <h4 className="font-medium text-blue-800 mb-2">Vos objectifs personnels :</h4>
-                    <div className="bg-white p-3 rounded border-l-4 border-green-400">
-                      <p className="text-gray-700 whitespace-pre-wrap">{objectifsIndividuels[selectedPlayer.id]}</p>
-                    </div>
-                  </div>
-                )}
-                
-                {!objectifsCollectifs && (!selectedPlayer || !objectifsIndividuels[selectedPlayer.id]) && (
-                  <p className="text-gray-600 italic">Aucun objectif défini pour cette séance.</p>
-                )}
-              </div>
-
               <ScaleQuestion
                 question="Comment évaluez-vous votre motivation pour cette séance ?"
                 value={preSessionForm.motivation}
