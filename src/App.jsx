@@ -12,6 +12,7 @@ const FutsalApp = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [playerStats, setPlayerStats] = useState({});
+  const [forceUpdate, setForceUpdate] = useState(0); // Force re-render
   
   const [players, setPlayers] = useState([]);
   
@@ -1316,14 +1317,14 @@ const FutsalApp = () => {
                     const pwd = prompt('Mot de passe entraîneur :');
                     if (pwd === 'coachNmf_2026') {
                       setIsAdmin(true);
+                      setForceUpdate(prev => prev + 1); // Force re-render
                       alert('Mode entraîneur activé');
-                      // Force un re-render en modifiant aussi une autre state
-                      setLoading(false);
                     } else if (pwd) {
                       alert('Mot de passe incorrect');
                     }
                   } else {
                     setIsAdmin(false);
+                    setForceUpdate(prev => prev + 1); // Force re-render
                   }
                 }}
                 className={`px-4 py-2 rounded-lg font-medium transition-all ${
@@ -1342,32 +1343,41 @@ const FutsalApp = () => {
               >
                 Déconnexion
               </button>
+              
+              {/* Indicateur de debug temporaire */}
+              <span className="px-2 py-1 bg-yellow-200 text-black text-xs rounded">
+                Admin: {isAdmin ? 'ON' : 'OFF'} | Update: {forceUpdate}
+              </span>
             </div>
             
-            {/* Boutons d'administration - Affichage conditionnel simplifié */}
+            {/* Version encore plus simple - toujours affichés quand isAdmin est true */}
             <div className="flex space-x-2">
-              <button
-                onClick={() => setCurrentView('admin')}
-                className={`text-white px-4 py-2 rounded-lg font-medium flex items-center space-x-2 shadow-md hover:shadow-lg transition-all ${
-                  !isAdmin ? 'hidden' : ''
-                }`}
-                style={{backgroundColor: '#1D2945'}}
-              >
-                <Settings size={16} />
-                <span>Administration</span>
-              </button>
-              
-              <button
-                onClick={addNewPlayer}
-                disabled={loading}
-                className={`text-white px-4 py-2 rounded-lg font-medium flex items-center space-x-2 shadow-md hover:shadow-lg transition-all disabled:opacity-50 ${
-                  !isAdmin ? 'hidden' : ''
-                }`}
-                style={{backgroundColor: '#C09D5A'}}
-              >
-                <UserPlus size={16} />
-                <span>Ajouter</span>
-              </button>
+              {isAdmin ? (
+                <>
+                  <button
+                    onClick={() => setCurrentView('admin')}
+                    className="text-white px-4 py-2 rounded-lg font-medium flex items-center space-x-2 shadow-md hover:shadow-lg transition-all"
+                    style={{backgroundColor: '#1D2945'}}
+                  >
+                    <Settings size={16} />
+                    <span>Administration</span>
+                  </button>
+                  
+                  <button
+                    onClick={addNewPlayer}
+                    disabled={loading}
+                    className="text-white px-4 py-2 rounded-lg font-medium flex items-center space-x-2 shadow-md hover:shadow-lg transition-all disabled:opacity-50"
+                    style={{backgroundColor: '#C09D5A'}}
+                  >
+                    <UserPlus size={16} />
+                    <span>Ajouter</span>
+                  </button>
+                </>
+              ) : (
+                <div className="px-4 py-2 text-gray-400 text-sm">
+                  Mode utilisateur
+                </div>
+              )}
             </div>
           </div>
           </div>
