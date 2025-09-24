@@ -1328,15 +1328,27 @@ const FutsalApp = () => {
                   Mode Entraîneur
                 </button>
               ) : (
-                <div className="flex space-x-2">
-                  <button
-                    onClick={() => setIsAdmin(false)}
-                    className="px-4 py-2 rounded-lg font-medium text-white shadow-md transition-all"
-                    style={{backgroundColor: '#1D2945'}}
-                  >
-                    Mode Entraîneur ✓
-                  </button>
-                  
+                <button
+                  onClick={() => setIsAdmin(false)}
+                  className="px-4 py-2 rounded-lg font-medium text-white shadow-md transition-all"
+                  style={{backgroundColor: '#1D2945'}}
+                >
+                  Mode Entraîneur ✓
+                </button>
+              )}
+              
+              <button
+                onClick={logout}
+                className="px-4 py-2 rounded-lg font-medium bg-red-500 text-white hover:bg-red-600 transition-all"
+              >
+                Déconnexion
+              </button>
+            </div>
+            
+            {/* Boutons d'administration - toujours visibles quand isAdmin est true */}
+            <div className="flex space-x-2">
+              {isAdmin && (
+                <>
                   <button
                     onClick={() => {
                       console.log('Clic sur Administration, isAdmin:', isAdmin);
@@ -1358,15 +1370,10 @@ const FutsalApp = () => {
                     <UserPlus size={16} />
                     <span>Ajouter</span>
                   </button>
-                </div>
+                </>
               )}
-              <button
-                onClick={logout}
-                className="px-4 py-2 rounded-lg font-medium bg-red-500 text-white hover:bg-red-600 transition-all"
-              >
-                Déconnexion
-              </button>
             </div>
+          </div>
           </div>
 
           {loading && (
