@@ -234,6 +234,7 @@ const FutsalApp = () => {
         />
         <div className="flex justify-between text-xs text-gray-600 mt-2 font-medium">
           <span>{leftLabel}</span>
+          <span className="text-center font-bold">{value}/20</span>
           <span>{rightLabel}</span>
         </div>
       </div>
@@ -711,6 +712,583 @@ const FutsalApp = () => {
     );
   }
 
+  // Vue détail du joueur
+  if (currentView === 'player-detail' && selectedPlayer) {
+    const stats = playerStats[selectedPlayer.id] || {};
+    
+    return (
+      <div className="min-h-screen p-4 bg-gradient-main">
+        <div className="max-w-4xl mx-auto">
+          {/* Header avec retour */}
+          <div className="flex items-center justify-between mb-6">
+            <button
+              onClick={() => setCurrentView('players')}
+              className="flex items-center space-x-2 px-4 py-2 bg-white rounded-lg shadow hover:shadow-md transition-all"
+            >
+              <ChevronLeft size={20} />
+              <span>Retour</span>
+            </button>
+            
+            <div className="text-center">
+              <h1 className="text-2xl font-bold" style={{color: '#1D2945'}}>
+                {selectedPlayer.name}
+              </h1>
+              <p className="text-gray-600">Profil joueur</p>
+            </div>
+            
+            <div className="w-20"></div>
+          </div>
+
+          {/* Photo et infos principales */}
+          <div className="bg-white rounded-xl shadow-lg p-8 mb-6">
+            <div className="flex flex-col md:flex-row items-center md:items-start space-y-6 md:space-y-0 md:space-x-8">
+              <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-gray-200">
+                {selectedPlayer.photo_url ? (
+                  <img 
+                    src={selectedPlayer.photo_url} 
+                    alt={selectedPlayer.name}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-white text-3xl font-bold" style={{background: 'linear-gradient(135deg, #1D2945 0%, #C09D5A 100%)'}}>
+                    {selectedPlayer.name.split(' ').map(n => n[0]).join('')}
+                  </div>
+                )}
+              </div>
+              
+              <div className="flex-1 text-center md:text-left">
+                <h2 className="text-3xl font-bold mb-4" style={{color: '#1D2945'}}>
+                  {selectedPlayer.name}
+                </h2>
+                
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="bg-gray-50 rounded-lg p-4">
+                    <p className="text-sm text-gray-600">Total réponses</p>
+                    <p className="text-xl font-bold" style={{color: '#1D2945'}}>
+                      {stats.total_responses || 0}
+                    </p>
+                  </div>
+                  
+                  <div className="bg-gray-50 rounded-lg p-4">
+                    <p className="text-sm text-gray-600">Motivation moy.</p>
+                    <p className="text-xl font-bold" style={{color: '#22c55e'}}>
+                      {stats.avg_motivation || 0}/20
+                    </p>
+                  </div>
+                  
+                  <div className="bg-gray-50 rounded-lg p-4">
+                    <p className="text-sm text-gray-600">RPE moyen</p>
+                    <p className="text-xl font-bold" style={{color: '#ef4444'}}>
+                      {stats.avg_rpe || 0}/20
+                    </p>
+                  </div>
+                  
+                  <div className="bg-gray-50 rounded-lg p-4">
+                    <p className="text-sm text-gray-600">Dernière réponse</p>
+                    <p className="text-sm font-bold" style={{color: '#1D2945'}}>
+                      {stats.last_response_date || 'Jamais'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Actions rapides */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+            <button
+              onClick={() => setCurrentView('pre-session')}
+              className="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl transition-all text-left"
+            >
+              <div className="flex items-center space-x-4">
+                <div className="w-12 h-12 rounded-full flex items-center justify-center" style={{backgroundColor: '#22c55e', opacity: 0.1}}>
+                  <Target className="text-green-600" size={24} />
+                </div>
+                <div>
+                  <h3 className="font-semibold" style={{color: '#1D2945'}}>Questionnaire Pré-Séance</h3>
+                  <p className="text-sm text-gray-600">Motivation, fatigue, objectifs</p>
+                </div>
+              </div>
+            </button>
+            
+            <button
+              onClick={() => setCurrentView('post-session')}
+              className="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl transition-all text-left"
+            >
+              <div className="flex items-center space-x-4">
+                <div className="w-12 h-12 rounded-full flex items-center justify-center" style={{backgroundColor: '#ef4444', opacity: 0.1}}>
+                  <Heart className="text-red-500" size={24} />
+                </div>
+                <div>
+                  <h3 className="font-semibold" style={{color: '#1D2945'}}>Questionnaire Post-Séance</h3>
+                  <p className="text-sm text-gray-600">RPE, technique, tactique</p>
+                </div>
+              </div>
+            </button>
+            
+            <button
+              onClick={() => setCurrentView('stats')}
+              className="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl transition-all text-left"
+            >
+              <div className="flex items-center space-x-4">
+                <div className="w-12 h-12 rounded-full flex items-center justify-center" style={{backgroundColor: '#1D2945', opacity: 0.1}}>
+                  <BarChart3 style={{color: '#1D2945'}} size={24} />
+                </div>
+                <div>
+                  <h3 className="font-semibold" style={{color: '#1D2945'}}>Statistiques</h3>
+                  <p className="text-sm text-gray-600">Évolution et analyse</p>
+                </div>
+              </div>
+            </button>
+          </div>
+
+          {/* Objectifs personnels */}
+          <div className="bg-white rounded-xl shadow-lg p-6">
+            <h3 className="text-lg font-semibold mb-4" style={{color: '#1D2945'}}>Objectifs personnels</h3>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Objectifs de la saison
+                </label>
+                <textarea
+                  value={questionnaireSelf.objectives || selectedPlayer.objectives || ''}
+                  onChange={(e) => setQuestionnaireSelf(prev => ({ ...prev, objectives: e.target.value }))}
+                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:border-blue-500"
+                  rows="3"
+                  placeholder="Décrivez vos objectifs pour cette saison..."
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Points d'amélioration
+                </label>
+                <textarea
+                  value={questionnaireSelf.objectifs_individuels || selectedPlayer.objectifs_individuels || ''}
+                  onChange={(e) => setQuestionnaireSelf(prev => ({ ...prev, objectifs_individuels: e.target.value }))}
+                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:border-blue-500"
+                  rows="3"
+                  placeholder="Quels aspects souhaitez-vous améliorer ?"
+                />
+              </div>
+              
+              <button
+                onClick={updateObjectives}
+                disabled={loading}
+                className="flex items-center space-x-2 px-6 py-3 text-white rounded-lg hover:shadow-lg transition-all disabled:opacity-50"
+                style={{backgroundColor: '#1D2945'}}
+              >
+                <Save size={16} />
+                <span>{loading ? 'Sauvegarde...' : 'Sauvegarder les objectifs'}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Vue questionnaire pré-séance
+  if (currentView === 'pre-session' && selectedPlayer) {
+    return (
+      <div className="min-h-screen p-4 bg-gradient-main">
+        <div className="max-w-2xl mx-auto">
+          {/* Header */}
+          <div className="flex items-center justify-between mb-6">
+            <button
+              onClick={() => setCurrentView('player-detail')}
+              className="flex items-center space-x-2 px-4 py-2 bg-white rounded-lg shadow hover:shadow-md transition-all"
+            >
+              <ChevronLeft size={20} />
+              <span>Retour</span>
+            </button>
+            
+            <div className="text-center">
+              <h1 className="text-2xl font-bold" style={{color: '#1D2945'}}>Pré-Séance</h1>
+              <p className="text-gray-600">{selectedPlayer.name}</p>
+            </div>
+            
+            <div className="w-20"></div>
+          </div>
+
+          {/* Formulaire */}
+          <div className="bg-white rounded-xl shadow-lg p-8">
+            <div className="mb-8">
+              <h2 className="text-xl font-semibold mb-4" style={{color: '#1D2945'}}>
+                Comment vous sentez-vous avant la séance ?
+              </h2>
+              <p className="text-gray-600">
+                Évaluez votre état sur une échelle de 1 à 20
+              </p>
+            </div>
+
+            <div className="space-y-8">
+              <ScaleQuestion
+                question="Quel est votre niveau de motivation aujourd'hui ?"
+                value={preSessionForm.motivation}
+                onChange={(value) => setPreSessionForm(prev => ({ ...prev, motivation: value }))}
+                leftLabel="Très faible motivation"
+                rightLabel="Motivation maximale"
+              />
+
+              <ScaleQuestion
+                question="Comment évaluez-vous votre niveau de fatigue ?"
+                value={preSessionForm.fatigue}
+                onChange={(value) => setPreSessionForm(prev => ({ ...prev, fatigue: value }))}
+                leftLabel="Très fatigué(e)"
+                rightLabel="Pleine forme"
+              />
+
+              <ScaleQuestion
+                question="À quel point avez-vous hâte de jouer ?"
+                value={preSessionForm.plaisir}
+                onChange={(value) => setPreSessionForm(prev => ({ ...prev, plaisir: value }))}
+                leftLabel="Pas du tout hâte"
+                rightLabel="Très hâte"
+              />
+
+              <ScaleQuestion
+                question="Comment évaluez-vous la difficulté de vos objectifs pour cette séance ?"
+                value={preSessionForm.objectif_difficulte}
+                onChange={(value) => setPreSessionForm(prev => ({ ...prev, objectif_difficulte: value }))}
+                leftLabel="Objectifs très faciles"
+                rightLabel="Objectifs très difficiles"
+              />
+            </div>
+
+            <div className="mt-8 pt-6 border-t">
+              <button
+                onClick={() => saveQuestionnaire('pre')}
+                disabled={loading}
+                className="w-full flex items-center justify-center space-x-2 py-4 text-white rounded-lg text-lg font-semibold hover:shadow-lg transform hover:scale-105 transition-all disabled:opacity-50"
+                style={{background: 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)'}}
+              >
+                <Save size={20} />
+                <span>{loading ? 'Sauvegarde en cours...' : 'Enregistrer mes réponses'}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Vue questionnaire post-séance
+  if (currentView === 'post-session' && selectedPlayer) {
+    return (
+      <div className="min-h-screen p-4 bg-gradient-main">
+        <div className="max-w-2xl mx-auto">
+          {/* Header */}
+          <div className="flex items-center justify-between mb-6">
+            <button
+              onClick={() => setCurrentView('player-detail')}
+              className="flex items-center space-x-2 px-4 py-2 bg-white rounded-lg shadow hover:shadow-md transition-all"
+            >
+              <ChevronLeft size={20} />
+              <span>Retour</span>
+            </button>
+            
+            <div className="text-center">
+              <h1 className="text-2xl font-bold" style={{color: '#1D2945'}}>Post-Séance</h1>
+              <p className="text-gray-600">{selectedPlayer.name}</p>
+            </div>
+            
+            <div className="w-20"></div>
+          </div>
+
+          {/* Formulaire */}
+          <div className="bg-white rounded-xl shadow-lg p-8">
+            <div className="mb-8">
+              <h2 className="text-xl font-semibold mb-4" style={{color: '#1D2945'}}>
+                Comment s'est passée la séance ?
+              </h2>
+              <p className="text-gray-600">
+                Évaluez la séance sur une échelle de 1 à 20
+              </p>
+            </div>
+
+            <div className="space-y-8">
+              <ScaleQuestion
+                question="Dans quelle mesure vos objectifs ont-ils été atteints ?"
+                value={postSessionForm.objectifs_repondu}
+                onChange={(value) => setPostSessionForm(prev => ({ ...prev, objectifs_repondu: value }))}
+                leftLabel="Pas du tout atteints"
+                rightLabel="Complètement atteints"
+              />
+
+              <ScaleQuestion
+                question="Comment évaluez-vous l'intensité de la séance (RPE) ?"
+                value={postSessionForm.intensite_rpe}
+                onChange={(value) => setPostSessionForm(prev => ({ ...prev, intensite_rpe: value }))}
+                leftLabel="Très facile"
+                rightLabel="Maximale"
+              />
+
+              <ScaleQuestion
+                question="Quel plaisir avez-vous pris pendant cette séance ?"
+                value={postSessionForm.plaisir_seance}
+                onChange={(value) => setPostSessionForm(prev => ({ ...prev, plaisir_seance: value }))}
+                leftLabel="Aucun plaisir"
+                rightLabel="Plaisir maximal"
+              />
+
+              <ScaleQuestion
+                question="Comment évaluez-vous le travail tactique ?"
+                value={postSessionForm.tactique}
+                onChange={(value) => setPostSessionForm(prev => ({ ...prev, tactique: value }))}
+                leftLabel="Très insuffisant"
+                rightLabel="Excellent"
+              />
+
+              <ScaleQuestion
+                question="Comment évaluez-vous le travail technique ?"
+                value={postSessionForm.technique}
+                onChange={(value) => setPostSessionForm(prev => ({ ...prev, technique: value }))}
+                leftLabel="Très insuffisant"
+                rightLabel="Excellent"
+              />
+
+              <ScaleQuestion
+                question="Dans quelle mesure avez-vous eu une influence positive sur l'équipe ?"
+                value={postSessionForm.influence_positive}
+                onChange={(value) => setPostSessionForm(prev => ({ ...prev, influence_positive: value }))}
+                leftLabel="Aucune influence"
+                rightLabel="Influence maximale"
+              />
+
+              <ScaleQuestion
+                question="Comment vous sentez-vous par rapport au groupe ?"
+                value={postSessionForm.sentiment_groupe}
+                onChange={(value) => setPostSessionForm(prev => ({ ...prev, sentiment_groupe: value }))}
+                leftLabel="Déconnecté(e)"
+                rightLabel="Très connecté(e)"
+              />
+
+              {/* Commentaires libres */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-3">
+                  Commentaires libres (optionnel)
+                </label>
+                <textarea
+                  value={postSessionForm.commentaires_libres}
+                  onChange={(e) => setPostSessionForm(prev => ({ ...prev, commentaires_libres: e.target.value }))}
+                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:border-blue-500"
+                  rows="4"
+                  placeholder="Partagez vos impressions, suggestions ou remarques..."
+                />
+              </div>
+            </div>
+
+            <div className="mt-8 pt-6 border-t">
+              <button
+                onClick={() => saveQuestionnaire('post')}
+                disabled={loading}
+                className="w-full flex items-center justify-center space-x-2 py-4 text-white rounded-lg text-lg font-semibold hover:shadow-lg transform hover:scale-105 transition-all disabled:opacity-50"
+                style={{background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)'}}
+              >
+                <Save size={20} />
+                <span>{loading ? 'Sauvegarde en cours...' : 'Enregistrer mes réponses'}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Vue statistiques
+  if (currentView === 'stats' && selectedPlayer) {
+    const preResponses = selectedPlayer.responses?.filter(r => r.type === 'pre') || [];
+    const postResponses = selectedPlayer.responses?.filter(r => r.type === 'post') || [];
+    
+    return (
+      <div className="min-h-screen p-4 bg-gradient-main">
+        <div className="max-w-6xl mx-auto">
+          {/* Header */}
+          <div className="flex items-center justify-between mb-6">
+            <button
+              onClick={() => setCurrentView('player-detail')}
+              className="flex items-center space-x-2 px-4 py-2 bg-white rounded-lg shadow hover:shadow-md transition-all"
+            >
+              <ChevronLeft size={20} />
+              <span>Retour</span>
+            </button>
+            
+            <div className="text-center">
+              <h1 className="text-2xl font-bold" style={{color: '#1D2945'}}>Statistiques</h1>
+              <p className="text-gray-600">{selectedPlayer.name}</p>
+            </div>
+            
+            <div className="w-20"></div>
+          </div>
+
+          {/* Cartes de statistiques globales */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+            <div className="bg-white rounded-xl shadow-lg p-6">
+              <div className="text-center">
+                <h3 className="text-sm text-gray-600 mb-2">Total séances</h3>
+                <p className="text-3xl font-bold" style={{color: '#1D2945'}}>
+                  {Math.max(preResponses.length, postResponses.length)}
+                </p>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-xl shadow-lg p-6">
+              <div className="text-center">
+                <h3 className="text-sm text-gray-600 mb-2">Motivation moyenne</h3>
+                <p className="text-3xl font-bold" style={{color: '#22c55e'}}>
+                  {preResponses.length > 0 
+                    ? (preResponses.reduce((sum, r) => sum + (r.data?.motivation || 0), 0) / preResponses.length).toFixed(1)
+                    : '0'}/20
+                </p>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-xl shadow-lg p-6">
+              <div className="text-center">
+                <h3 className="text-sm text-gray-600 mb-2">RPE moyen</h3>
+                <p className="text-3xl font-bold" style={{color: '#ef4444'}}>
+                  {postResponses.length > 0 
+                    ? (postResponses.reduce((sum, r) => sum + (r.data?.intensite_rpe || 0), 0) / postResponses.length).toFixed(1)
+                    : '0'}/20
+                </p>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-xl shadow-lg p-6">
+              <div className="text-center">
+                <h3 className="text-sm text-gray-600 mb-2">Plaisir moyen</h3>
+                <p className="text-3xl font-bold" style={{color: '#8b5cf6'}}>
+                  {postResponses.length > 0 
+                    ? (postResponses.reduce((sum, r) => sum + (r.data?.plaisir_seance || 0), 0) / postResponses.length).toFixed(1)
+                    : '0'}/20
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Graphiques détaillés */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {preResponses.length > 0 && (
+              <SimpleChart
+                title="Évolution Pré-Séance"
+                data={[
+                  {
+                    label: 'Motivation',
+                    value: parseFloat((preResponses.reduce((sum, r) => sum + (r.data?.motivation || 0), 0) / preResponses.length).toFixed(1))
+                  },
+                  {
+                    label: 'Énergie',
+                    value: parseFloat((preResponses.reduce((sum, r) => sum + (r.data?.fatigue || 0), 0) / preResponses.length).toFixed(1))
+                  },
+                  {
+                    label: 'Anticipation',
+                    value: parseFloat((preResponses.reduce((sum, r) => sum + (r.data?.plaisir || 0), 0) / preResponses.length).toFixed(1))
+                  }
+                ]}
+                color="#22c55e"
+              />
+            )}
+
+            {postResponses.length > 0 && (
+              <SimpleChart
+                title="Évolution Post-Séance"
+                data={[
+                  {
+                    label: 'RPE (Intensité)',
+                    value: parseFloat((postResponses.reduce((sum, r) => sum + (r.data?.intensite_rpe || 0), 0) / postResponses.length).toFixed(1))
+                  },
+                  {
+                    label: 'Plaisir',
+                    value: parseFloat((postResponses.reduce((sum, r) => sum + (r.data?.plaisir_seance || 0), 0) / postResponses.length).toFixed(1))
+                  },
+                  {
+                    label: 'Tactique',
+                    value: parseFloat((postResponses.reduce((sum, r) => sum + (r.data?.tactique || 0), 0) / postResponses.length).toFixed(1))
+                  },
+                  {
+                    label: 'Technique',
+                    value: parseFloat((postResponses.reduce((sum, r) => sum + (r.data?.technique || 0), 0) / postResponses.length).toFixed(1))
+                  }
+                ]}
+                color="#ef4444"
+              />
+            )}
+          </div>
+
+          {/* Historique des réponses récentes */}
+          {selectedPlayer.responses && selectedPlayer.responses.length > 0 && (
+            <div className="mt-8 bg-white rounded-xl shadow-lg p-6">
+              <h3 className="text-lg font-semibold mb-4" style={{color: '#1D2945'}}>
+                Historique récent
+              </h3>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b">
+                      <th className="text-left py-2">Date</th>
+                      <th className="text-left py-2">Type</th>
+                      <th className="text-left py-2">Motivation</th>
+                      <th className="text-left py-2">RPE</th>
+                      <th className="text-left py-2">Plaisir</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {selectedPlayer.responses.slice(0, 10).map((response, index) => (
+                      <tr key={index} className="border-b hover:bg-gray-50">
+                        <td className="py-2">
+                          {new Date(response.created_at).toLocaleDateString('fr-FR')}
+                        </td>
+                        <td className="py-2">
+                          <span className={`px-2 py-1 rounded text-xs font-medium ${
+                            response.type === 'pre' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                          }`}>
+                            {response.type === 'pre' ? 'Pré' : 'Post'}
+                          </span>
+                        </td>
+                        <td className="py-2">
+                          {response.data?.motivation || '-'}/20
+                        </td>
+                        <td className="py-2">
+                          {response.data?.intensite_rpe || '-'}/20
+                        </td>
+                        <td className="py-2">
+                          {response.data?.plaisir || response.data?.plaisir_seance || '-'}/20
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* Message si pas de données */}
+          {(!selectedPlayer.responses || selectedPlayer.responses.length === 0) && (
+            <div className="bg-white rounded-xl shadow-lg p-12 text-center">
+              <BarChart3 className="mx-auto mb-4" style={{color: '#1D2945'}} size={48} />
+              <h3 className="text-xl font-semibold mb-2" style={{color: '#1D2945'}}>
+                Aucune donnée disponible
+              </h3>
+              <p className="text-gray-600 mb-6">
+                {selectedPlayer.name} n'a pas encore rempli de questionnaire.
+              </p>
+              <div className="flex justify-center space-x-4">
+                <button
+                  onClick={() => setCurrentView('pre-session')}
+                  className="px-6 py-3 text-white rounded-lg hover:shadow-lg transition-all"
+                  style={{backgroundColor: '#22c55e'}}
+                >
+                  Premier questionnaire pré-séance
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   // Interface principale
   if (currentView === 'players') {
     return (
@@ -834,10 +1412,23 @@ const FutsalApp = () => {
     );
   }
 
-  // Reste des vues (player-detail, pre-session, post-session, stats)
-  // ... Le reste du code reste identique à la version précédente
-  
-  return null;
+  // Retour par défaut si aucune vue n'est trouvée
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gradient-main">
+      <div className="text-center">
+        <h2 className="text-2xl font-bold mb-4" style={{color: '#1D2945'}}>
+          Vue non trouvée
+        </h2>
+        <button
+          onClick={() => setCurrentView('players')}
+          className="px-6 py-3 text-white rounded-lg"
+          style={{backgroundColor: '#1D2945'}}
+        >
+          Retour à l'accueil
+        </button>
+      </div>
+    </div>
+  );
 };
 
 export default FutsalApp;
