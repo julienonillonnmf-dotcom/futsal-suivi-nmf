@@ -887,9 +887,9 @@ const FutsalApp = () => {
 
         <div className="max-w-4xl mx-auto">
           {/* Boutons de navigation */}
-          <div className="flex justify-center items-center space-x-4 mb-8">
-            {/* Boutons gauche */}
-            <div className="flex space-x-2">
+          <div className="flex flex-col items-center space-y-4 mb-8">
+            {/* Ligne du haut : Mode Entraîneur + Déconnexion */}
+            <div className="flex space-x-4">
               <button
                 onClick={toggleAdminMode}
                 className={`px-6 py-3 rounded-lg font-medium transition-all transform hover:scale-105 ${
@@ -910,9 +910,9 @@ const FutsalApp = () => {
               </button>
             </div>
             
-            {/* Boutons admin - Affichés seulement si isAdmin est true */}
+            {/* Ligne du bas : Boutons admin (affichés seulement si isAdmin est true) */}
             {isAdmin && (
-              <div className="flex space-x-2">
+              <div className="flex space-x-4">
                 <button
                   onClick={() => setCurrentView('admin')}
                   className="px-6 py-3 rounded-lg font-medium text-white shadow-lg hover:shadow-xl transition-all transform hover:scale-105"
