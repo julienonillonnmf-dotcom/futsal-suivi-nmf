@@ -1343,35 +1343,37 @@ const FutsalApp = () => {
               >
                 Déconnexion
               </button>
+              
+              {/* DEBUG - Affichage temporaire de l'état */}
+              <div className="px-2 py-1 bg-yellow-200 text-black text-xs rounded">
+                DEBUG: isAdmin = {isAdmin.toString()}
+              </div>
             </div>
             
-            {/* Boutons d'administration - toujours visibles quand isAdmin est true */}
+            {/* Boutons d'administration */}
             <div className="flex space-x-2">
-              {isAdmin && (
-                <>
-                  <button
-                    onClick={() => {
-                      console.log('Clic sur Administration, isAdmin:', isAdmin);
-                      setCurrentView('admin');
-                    }}
-                    className="text-white px-4 py-2 rounded-lg font-medium flex items-center space-x-2 shadow-md hover:shadow-lg transition-all"
-                    style={{backgroundColor: '#1D2945'}}
-                  >
-                    <Settings size={16} />
-                    <span>Administration</span>
-                  </button>
-                  
-                  <button
-                    onClick={addNewPlayer}
-                    disabled={loading}
-                    className="text-white px-4 py-2 rounded-lg font-medium flex items-center space-x-2 shadow-md hover:shadow-lg transition-all disabled:opacity-50"
-                    style={{backgroundColor: '#C09D5A'}}
-                  >
-                    <UserPlus size={16} />
-                    <span>Ajouter</span>
-                  </button>
-                </>
-              )}
+              {/* Toujours afficher pour test - on retirera cette condition après */}
+              <button
+                onClick={() => {
+                  console.log('Clic sur Administration, isAdmin:', isAdmin);
+                  setCurrentView('admin');
+                }}
+                className="text-white px-4 py-2 rounded-lg font-medium flex items-center space-x-2 shadow-md hover:shadow-lg transition-all"
+                style={{backgroundColor: '#1D2945'}}
+              >
+                <Settings size={16} />
+                <span>Administration</span>
+              </button>
+              
+              <button
+                onClick={addNewPlayer}
+                disabled={loading}
+                className="text-white px-4 py-2 rounded-lg font-medium flex items-center space-x-2 shadow-md hover:shadow-lg transition-all disabled:opacity-50"
+                style={{backgroundColor: '#C09D5A'}}
+              >
+                <UserPlus size={16} />
+                <span>Ajouter</span>
+              </button>
             </div>
           </div>
           </div>
