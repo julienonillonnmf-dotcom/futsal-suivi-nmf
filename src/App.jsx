@@ -99,25 +99,33 @@ const FutsalApp = () => {
   const loadObjectifs = async () => {
     try {
       // Charger les objectifs collectifs
-      const { data: collectifs } = await supabase
+      const { data: collectifs, error: errorCollectifs } = await supabase
         .from('team_settings')
         .select('value')
         .eq('key', 'objectifs_collectifs')
-        .single();
+        .maybeSingle();
       
-      setObjectifsCollectifs(collectifs?.value || '');
+      if (errorCollectifs && errorCollectifs.code !== 'PGRST116') {
+        console.error('Erreur chargement objectifs collectifs:', errorCollectifs);
+      } else {
+        setObjectifsCollectifs(collectifs?.value || '');
+      }
 
       // Charger les objectifs individuels pour chaque joueur
-      const { data: individuels } = await supabase
+      const { data: individuels, error: errorIndividuels } = await supabase
         .from('players')
         .select('id, objectifs_individuels')
         .eq('is_active', true);
 
-      const objIndiv = {};
-      individuels?.forEach(player => {
-        objIndiv[player.id] = player.objectifs_individuels || '';
-      });
-      setObjectifsIndividuels(objIndiv);
+      if (errorIndividuels) {
+        console.error('Erreur chargement objectifs individuels:', errorIndividuels);
+      } else {
+        const objIndiv = {};
+        individuels?.forEach(player => {
+          objIndiv[player.id] = player.objectifs_individuels || '';
+        });
+        setObjectifsIndividuels(objIndiv);
+      }
 
     } catch (error) {
       console.error('Erreur chargement objectifs:', error);
@@ -132,7 +140,10 @@ const FutsalApp = () => {
         .from('team_settings')
         .upsert({
           key: 'objectifs_collectifs',
-          value: objectifsCollectifs
+          value: objectifsCollectifs,
+          updated_at: new Date().toISOString()
+        }, {
+          onConflict: 'key'
         });
       
       if (error) throw error;
@@ -140,7 +151,7 @@ const FutsalApp = () => {
       
     } catch (error) {
       console.error('Erreur sauvegarde objectifs collectifs:', error);
-      alert('Erreur lors de la sauvegarde');
+      alert('Erreur lors de la sauvegarde: ' + error.message);
     }
     setLoading(false);
   };
@@ -165,7 +176,7 @@ const FutsalApp = () => {
       
     } catch (error) {
       console.error('Erreur sauvegarde objectifs individuels:', error);
-      alert('Erreur lors de la sauvegarde');
+      alert('Erreur lors de la sauvegarde: ' + error.message);
     }
     setLoading(false);
   };
