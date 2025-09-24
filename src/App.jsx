@@ -1,5 +1,514 @@
-import React, { useState, useEffect } from 'react';
-import { User, Plus, Edit3, BarChart3, Calendar, Target, Heart, Users, ChevronLeft, ChevronRight, Save, UserPlus, Lock, Eye, EyeOff } from 'lucide-react';
+// Panneau d'administration
+  if (currentView === 'admin') {
+    const [adminSection, setAdminSection] = useState('overview');
+    
+    // Vue d'ensemble
+    if (adminSection === 'overview') {
+      const totalResponses = players.reduce((sum, p) => sum + (p.responses?.length || 0), 0);
+      const activePlayersCount = players.filter(p => p.responses && p.responses.length > 0).length;
+      const thisWeekResponses = players.reduce((sum, p) => {
+        const thisWeek = p.responses?.filter(r => {
+          const responseDate = new Date(r.created_at);
+          const weekAgo = new Date();
+          weekAgo.setDate(weekAgo.getDate() - 7);
+          return responseDate > weekAgo;
+        }).length || 0;
+        return sum + thisWeek;
+      }, 0);
+      
+      return (
+        <div className="flex h-screen bg-gradient-main">
+          <AdminSidebar currentSection={adminSection} setCurrentSection={setAdminSection} />
+          <div className="flex-1 p-8 overflow-auto">
+            <header className="mb-8">
+              <h1 className="text-3xl font-bold" style={{color: '#1D2945'}}>Vue d'ensemble</h1>
+              <p className="text-gray-600">Dashboard administrateur - Équipe futsal féminine</p>
+            </header>
+
+            {/* Cartes de statistiques */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+              <div className="bg-white rounded-xl shadow-lg p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-gray-600">Joueuses actives</p>
+                    <p className="text-3xl font-bold" style={{color: '#1D2945'}}>{activePlayersCount}</p>
+                  </div>
+                  <Users className="text-4xl" style={{color: '#C09D5A'}} />
+                </div>
+              </div>
+
+              <div className="bg-white rounded-xl shadow-lg p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-gray-600">Total réponses</p>
+                    <p className="text-3xl font-bold" style={{color: '#1D2945'}}>{totalResponses}</p>
+                  </div>
+                  <BarChart3 className="text-4xl" style={{color: '#C09D5A'}} />
+                </div>
+              </div>
+
+              <div className="bg-white rounded-xl shadow-lg p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-gray-600">Cette semaine</p>
+                    <p className="text-3xl font-bold" style={{color: '#1D2945'}}>{thisWeekResponses}</p>
+                  </div>
+                  <Calendar className="text-4xl" style={{color: '#C09D5A'}} />
+                </div>
+              </div>
+
+              <div className="bg-white rounded-xl shadow-lg p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-gray-600">Taux participation</p>
+                    <p className="text-3xl font-bold" style={{color: '#1D2945'}}>
+                      {Math.round((activePlayersCount / Math.max(1, players.length)) * 100)}%
+                    </p>
+                  </div>
+                  <TrendingUp className="text-4xl" style={{color: '#C09D5A'}} />
+                </div>
+              </div>
+            </div>
+
+            {/* Graphiques */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <SimpleChart
+                title="Motivation moyenne par joueuse"
+                data={players.map(p => ({
+                  label: p.name,
+                  value: parseFloat(playerStats[p.id]?.avg_motivation || 0)
+                })).filter(d => d.value > 0).slice(0, 6)}
+                color="#22c55e"
+              />
+              
+              <SimpleChart
+                title="RPE moyen par joueuse"
+                data={players.map(p => ({
+                  label: p.name,
+                  value: parseFloat(playerStats[p.id]?.avg_rpe || 0)
+                })).filter(d => d.value > 0).slice(0, 6)}
+                color="#ef4444"
+              />
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // Gestion des joueuses
+    if (adminSection === 'players-admin') {
+      return (
+        <div className="flex h-screen bg-gradient-main">
+          <AdminSidebar currentSection={adminSection} setCurrentSection={setAdminSection} />
+          <div className="flex-1 p-8 overflow-auto">
+            <header className="mb-8">
+              <div className="flex justify-between items-center">
+                <div>
+                  <h1 className="text-3xl font-bold" style={{color: '#1D2945'}}>Gestion des joueuses</h1>
+                  <p className="text-gray-600">Administration et statistiques des joueuses</p>
+                </div>
+                <button
+                  onClick={addNewPlayer}
+                  disabled={loading}
+                  className="flex items-center space-x-2 px-4 py-2 text-white rounded-lg shadow-md hover:shadow-lg transition-all disabled:opacity-50"
+                  style={{backgroundColor: '#C09D5A'}}
+                >
+                  <UserPlus size={16} />
+                  <span>Ajouter une joueuse</span>
+                </button>
+              </div>
+            </header>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {players.map(player => {
+                const stats = playerStats[player.id] || {};
+                return (
+                  <div key={player.id} className="bg-white rounded-xl shadow-lg p-6">
+                    <div className="flex items-start space-x-4">
+                      <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-gray-200 flex-shrink-0">
+                        {player.photo_url ? (
+                          <img 
+                            src={player.photo_url} 
+                            alt={player.name}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-white text-lg font-bold" style={{background: 'linear-gradient(135deg, #1D2945 0%, #C09D5A 100%)'}}>
+                            {player.name.split(' ').map(n => n[0]).join('')}
+                          </div>
+                        )}
+                      </div>
+                      
+                      <div className="flex-1">
+                        <h3 className="font-semibold" style={{color: '#1D2945'}}>{player.name}</h3>
+                        <p className="text-sm text-gray-600">
+                          {stats.total_responses || 0} réponses
+                        </p>
+                        {stats.last_response_date && (
+                          <p className="text-xs text-gray-500">
+                            Dernière: {stats.last_response_date}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                    
+                    <div className="mt-4 space-y-2">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-600">Motivation moy.</span>
+                        <span className="font-medium">{stats.avg_motivation || 0}/20</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-600">Fatigue moy.</span>
+                        <span className="font-medium">{stats.avg_fatigue || 0}/20</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-600">RPE moy.</span>
+                        <span className="font-medium">{stats.avg_rpe || 0}/20</span>
+                      </div>
+                    </div>
+                    
+                    <div className="mt-4 flex space-x-2">
+                      <button
+                        onClick={() => {
+                          setSelectedPlayer(player);
+                          setCurrentView('player-detail');
+                        }}
+                        className="flex-1 flex items-center justify-center space-x-1 p-2 border border-gray-300 rounded-lg text-sm hover:bg-gray-50 transition-all"
+                      >
+                        <Eye size={14} />
+                        <span>Voir</span>
+                      </button>
+                      <button
+                        onClick={() => {
+                          setSelectedPlayer(player);
+                          setQuestionnaireSelf({ 
+                            objectives: player.objectives,
+                            objectifs_individuels: player.objectifs_individuels 
+                          });
+                          setCurrentView('player-detail');
+                        }}
+                        className="flex-1 flex items-center justify-center space-x-1 p-2 text-white rounded-lg text-sm hover:shadow-lg transition-all"
+                        style={{backgroundColor: '#1D2945'}}
+                      >
+                        <Edit3 size={14} />
+                        <span>Modifier</span>
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // Analytiques avancées
+    if (adminSection === 'analytics') {
+      const motivationData = players.map(p => ({
+        name: p.name,
+        data: p.responses?.filter(r => r.type === 'pre')
+          .slice(-10)
+          .map(r => ({
+            date: new Date(r.created_at).toLocaleDateString('fr-FR'),
+            value: r.data?.motivation || 0
+          })) || []
+      })).filter(p => p.data.length > 0);
+
+      return (
+        <div className="flex h-screen bg-gradient-main">
+          <AdminSidebar currentSection={adminSection} setCurrentSection={setAdminSection} />
+          <div className="flex-1 p-8 overflow-auto">
+            <header className="mb-8">
+              <h1 className="text-3xl font-bold" style={{color: '#1D2945'}}>Analytiques avancées</h1>
+              <p className="text-gray-600">Évolution et tendances détaillées</p>
+            </header>
+
+            {/* Moyennes d'équipe */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+              <div className="bg-white rounded-xl shadow-lg p-6">
+                <h3 className="text-lg font-semibold mb-2" style={{color: '#1D2945'}}>Motivation équipe</h3>
+                <p className="text-3xl font-bold" style={{color: '#22c55e'}}>
+                  {(players.reduce((sum, p) => sum + parseFloat(playerStats[p.id]?.avg_motivation || 0), 0) / Math.max(1, players.filter(p => playerStats[p.id]?.avg_motivation > 0).length)).toFixed(1)}/20
+                </p>
+                <p className="text-sm text-gray-600">Moyenne générale</p>
+              </div>
+
+              <div className="bg-white rounded-xl shadow-lg p-6">
+                <h3 className="text-lg font-semibold mb-2" style={{color: '#1D2945'}}>Fatigue équipe</h3>
+                <p className="text-3xl font-bold" style={{color: '#f59e0b'}}>
+                  {(players.reduce((sum, p) => sum + parseFloat(playerStats[p.id]?.avg_fatigue || 0), 0) / Math.max(1, players.filter(p => playerStats[p.id]?.avg_fatigue > 0).length)).toFixed(1)}/20
+                </p>
+                <p className="text-sm text-gray-600">Moyenne générale</p>
+              </div>
+
+              <div className="bg-white rounded-xl shadow-lg p-6">
+                <h3 className="text-lg font-semibold mb-2" style={{color: '#1D2945'}}>RPE équipe</h3>
+                <p className="text-3xl font-bold" style={{color: '#ef4444'}}>
+                  {(players.reduce((sum, p) => sum + parseFloat(playerStats[p.id]?.avg_rpe || 0), 0) / Math.max(1, players.filter(p => playerStats[p.id]?.avg_rpe > 0).length)).toFixed(1)}/20
+                </p>
+                <p className="text-sm text-gray-600">Moyenne générale</p>
+              </div>
+            </div>
+
+            {/* Graphiques détaillés */}
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+              <SimpleChart
+                title="Top 5 - Motivation"
+                data={players
+                  .map(p => ({
+                    label: p.name,
+                    value: parseFloat(playerStats[p.id]?.avg_motivation || 0)
+                  }))
+                  .filter(d => d.value > 0)
+                  .sort((a, b) => b.value - a.value)
+                  .slice(0, 5)}
+                color="#22c55e"
+              />
+
+              <SimpleChart
+                title="Top 5 - Activité (réponses)"
+                data={players
+                  .map(p => ({
+                    label: p.name,
+                    value: playerStats[p.id]?.total_responses || 0
+                  }))
+                  .filter(d => d.value > 0)
+                  .sort((a, b) => b.value - a.value)
+                  .slice(0, 5)}
+                color="#1D2945"
+              />
+
+              <SimpleChart
+                title="Fatigue moyenne"
+                data={players
+                  .map(p => ({
+                    label: p.name,
+                    value: parseFloat(playerStats[p.id]?.avg_fatigue || 0)
+                  }))
+                  .filter(d => d.value > 0)
+                  .slice(0, 6)}
+                color="#f59e0b"
+              />
+
+              <SimpleChart
+                title="RPE moyen"
+                data={players
+                  .map(p => ({
+                    label: p.name,
+                    value: parseFloat(playerStats[p.id]?.avg_rpe || 0)
+                  }))
+                  .filter(d => d.value > 0)
+                  .slice(0, 6)}
+                color="#ef4444"
+              />
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // Gestion des photos
+    if (adminSection === 'photos') {
+      return (
+        <div className="flex h-screen bg-gradient-main">
+          <AdminSidebar currentSection={adminSection} setCurrentSection={setAdminSection} />
+          <div className="flex-1 p-8 overflow-auto">
+            <header className="mb-8">
+              <h1 className="text-3xl font-bold" style={{color: '#1D2945'}}>Gestion des photos</h1>
+              <p className="text-gray-600">Upload et gestion des photos des joueuses</p>
+            </header>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {players.map(player => (
+                <div key={player.id} className="bg-white rounded-xl shadow-lg p-6">
+                  <div className="flex flex-col items-center space-y-4">
+                    <div className="w-24 h-24 rounded-full overflow-hidden border-4 border-gray-200">
+                      {player.photo_url ? (
+                        <img 
+                          src={player.photo_url} 
+                          alt={player.name}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-white text-xl font-bold" style={{background: 'linear-gradient(135deg, #1D2945 0%, #C09D5A 100%)'}}>
+                          {player.name.split(' ').map(n => n[0]).join('')}
+                        </div>
+                      )}
+                    </div>
+                    
+                    <h3 className="font-semibold" style={{color: '#1D2945'}}>{player.name}</h3>
+                    
+                    <div className="w-full">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => {
+                          if (e.target.files[0]) {
+                            handlePhotoUpload(player.id, e.target.files[0]);
+                          }
+                        }}
+                        className="hidden"
+                        id={`photo-${player.id}`}
+                        disabled={loading}
+                      />
+                      <label
+                        htmlFor={`photo-${player.id}`}
+                        className={`w-full flex items-center justify-center space-x-2 p-3 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-gray-400 transition-all ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                      >
+                        <Camera size={16} />
+                        <span className="text-sm">
+                          {loading ? 'Upload...' : player.photo_url ? 'Changer photo' : 'Ajouter photo'}
+                        </span>
+                      </label>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // Export des données
+    if (adminSection === 'export') {
+      return (
+        <div className="flex h-screen bg-gradient-main">
+          <AdminSidebar currentSection={adminSection} setCurrentSection={setAdminSection} />
+          <div className="flex-1 p-8 overflow-auto">
+            <header className="mb-8">
+              <h1 className="text-3xl font-bold" style={{color: '#1D2945'}}>Export des données</h1>
+              <p className="text-gray-600">Téléchargez les données de l'application</p>
+            </header>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="bg-white rounded-xl shadow-lg p-6">
+                <h3 className="text-lg font-semibold mb-4" style={{color: '#1D2945'}}>Export complet CSV</h3>
+                <p className="text-gray-600 mb-4">Téléchargez toutes les réponses des questionnaires en format CSV pour analyse dans Excel</p>
+                <div className="space-y-2 mb-4 text-sm text-gray-600">
+                  <p>• Toutes les réponses avec dates</p>
+                  <p>• Données par joueuse</p>
+                  <p>• Questionnaires pré et post séance</p>
+                  <p>• Commentaires libres inclus</p>
+                </div>
+                <button
+                  onClick={exportData}
+                  disabled={loading}
+                  className="w-full flex items-center justify-center space-x-2 p-3 text-white rounded-lg hover:shadow-lg transition-all disabled:opacity-50"
+                  style={{backgroundColor: '#1D2945'}}
+                >
+                  <Download size={16} />
+                  <span>{loading ? 'Export en cours...' : 'Télécharger CSV'}</span>
+                </button>
+              </div>
+
+              <div className="bg-white rounded-xl shadow-lg p-6">
+                <h3 className="text-lg font-semibold mb-4" style={{color: '#1D2945'}}>Statistiques résumées</h3>
+                <p className="text-gray-600 mb-4">Export des moyennes et statistiques par joueuse</p>
+                <div className="space-y-2 mb-4 text-sm text-gray-600">
+                  <p>• Moyennes par joueuse</p>
+                  <p>• Nombre de réponses</p>
+                  <p>• Évolution temporelle</p>
+                  <p>• Indicateurs de performance</p>
+                </div>
+                <button
+                  onClick={() => {
+                    // Export des statistiques
+                    const statsData = players.map(p => ({
+                      nom: p.name,
+                      total_reponses: playerStats[p.id]?.total_responses || 0,
+                      avg_motivation: playerStats[p.id]?.avg_motivation || 0,
+                      avg_fatigue: playerStats[p.id]?.avg_fatigue || 0,
+                      avg_rpe: playerStats[p.id]?.avg_rpe || 0,
+                      derniere_reponse: playerStats[p.id]?.last_response_date || 'Aucune'
+                    }));
+
+                    const csvContent = [
+                      ['Nom', 'Total réponses', 'Motivation moy.', 'Fatigue moy.', 'RPE moy.', 'Dernière réponse'].join(','),
+                      ...statsData.map(row => [
+                        `"${row.nom}"`,
+                        row.total_reponses,
+                        row.avg_motivation,
+                        row.avg_fatigue,
+                        row.avg_rpe,
+                        `"${row.derniere_reponse}"`
+                      ].join(','))
+                    ].join('\n');
+
+                    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `stats-futsal-${new Date().toISOString().split('T')[0]}.csv`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    window.URL.revokeObjectURL(url);
+                  }}
+                  className="w-full flex items-center justify-center space-x-2 p-3 text-white rounded-lg hover:shadow-lg transition-all"
+                  style={{backgroundColor: '#C09D5A'}}
+                >
+                  <BarChart3 size={16} />
+                  <span>Télécharger stats</span>
+                </button>
+              </div>
+
+              <div className="bg-white rounded-xl shadow-lg p-6 md:col-span-2">
+                <h3 className="text-lg font-semibold mb-4" style={{color: '#1D2945'}}>Informations export</h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                  <div>
+                    <p className="font-medium mb-2">Données disponibles:</p>
+                    <ul className="text-gray-600 space-y-1">
+                      <li>• {players.length} joueuses</li>
+                      <li>• {players.reduce((sum, p) => sum + (p.responses?.length || 0), 0)} réponses totales</li>
+                      <li>• Période: {new Date().getFullYear()}</li>
+                    </ul>
+                  </div>
+                  <div>
+                    <p className="font-medium mb-2">Format CSV compatible:</p>
+                    <ul className="text-gray-600 space-y-1">
+                      <li>• Microsoft Excel</li>
+                      <li>• Google Sheets</li>
+                      <li>• LibreOffice Calc</li>
+                    </ul>
+                  </div>
+                  <div>
+                    <p className="font-medium mb-2">Encodage:</p>
+                    <ul className="text-gray-600 space-y-1">
+                      <li>• UTF-8 avec BOM</li>
+                      <li>• Caractères français</li>
+                      <li>• Séparateur: virgule</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // Vue par défaut admin - retour à overview
+    return (
+      <div className="flex h-screen bg-gradient-main">
+        <AdminSidebar currentSection="overview" setCurrentSection={setAdminSection} />
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center">
+            <h2 className="text-2xl font-bold mb-4" style={{color: '#1D2945'}}>Section en développement</h2>
+            <button
+              onClick={() => setAdminSection('overview')}
+              className="px-6 py-3 text-white rounded-lg"
+              style={{backgroundColor: '#1D2945'}}
+            >
+              Retour à la vue d'ensemble
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }import React, { useState, useEffect } from 'react';
+import { User, Plus, Edit3, BarChart3, Calendar, Target, Heart, Users, ChevronLeft, ChevronRight, Save, UserPlus, Lock, Eye, EyeOff, Settings, Camera, Download, TrendingUp, Upload, Trash2 } from 'lucide-react';
 import { supabase } from './supabaseClient';
 
 const FutsalApp = () => {
@@ -11,6 +520,7 @@ const FutsalApp = () => {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [playerStats, setPlayerStats] = useState({});
   
   const [players, setPlayers] = useState([]);
   
@@ -39,6 +549,7 @@ const FutsalApp = () => {
       const { data, error } = await supabase
         .from('players')
         .select('*')
+        .eq('is_active', true)
         .order('name');
       
       if (error) throw error;
@@ -62,11 +573,40 @@ const FutsalApp = () => {
       );
       
       setPlayers(playersWithResponses);
+      loadPlayerStatistics(playersWithResponses);
     } catch (error) {
       console.error('Erreur lors du chargement des joueurs:', error);
       alert('Erreur lors du chargement des données');
     }
     setLoading(false);
+  };
+
+  // Charger les statistiques
+  const loadPlayerStatistics = async (playersData = players) => {
+    const stats = {};
+    playersData.forEach(player => {
+      const preResponses = player.responses?.filter(r => r.type === 'pre') || [];
+      const postResponses = player.responses?.filter(r => r.type === 'post') || [];
+      
+      stats[player.id] = {
+        total_responses: player.responses?.length || 0,
+        pre_session_responses: preResponses.length,
+        post_session_responses: postResponses.length,
+        avg_motivation: preResponses.length > 0 
+          ? (preResponses.reduce((sum, r) => sum + (r.data?.motivation || 0), 0) / preResponses.length).toFixed(1)
+          : 0,
+        avg_fatigue: preResponses.length > 0
+          ? (preResponses.reduce((sum, r) => sum + (r.data?.fatigue || 0), 0) / preResponses.length).toFixed(1)
+          : 0,
+        avg_rpe: postResponses.length > 0
+          ? (postResponses.reduce((sum, r) => sum + (r.data?.intensite_rpe || 0), 0) / postResponses.length).toFixed(1)
+          : 0,
+        last_response_date: player.responses?.length > 0 
+          ? new Date(Math.max(...player.responses.map(r => new Date(r.created_at)))).toLocaleDateString('fr-FR')
+          : null
+      };
+    });
+    setPlayerStats(stats);
   };
 
   // Charger les joueurs quand l'utilisateur est authentifié
@@ -94,6 +634,95 @@ const FutsalApp = () => {
     setSelectedPlayer(null);
   };
 
+  // Upload de photo
+  const handlePhotoUpload = async (playerId, file) => {
+    if (!file) return;
+    
+    setLoading(true);
+    try {
+      // Upload vers Supabase Storage
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${playerId}-${Date.now()}.${fileExt}`;
+      const filePath = `player-photos/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('photos')
+        .upload(filePath, file, { upsert: true });
+
+      if (uploadError) throw uploadError;
+
+      // Obtenir l'URL publique
+      const { data: publicUrl } = supabase.storage
+        .from('photos')
+        .getPublicUrl(filePath);
+
+      // Mettre à jour le player
+      const { error: updateError } = await supabase
+        .from('players')
+        .update({ photo_url: publicUrl.publicUrl })
+        .eq('id', playerId);
+
+      if (updateError) throw updateError;
+
+      // Mettre à jour l'état local
+      setPlayers(prev => prev.map(p => 
+        p.id === playerId 
+          ? { ...p, photo_url: publicUrl.publicUrl }
+          : p
+      ));
+
+      alert('Photo mise à jour avec succès !');
+    } catch (error) {
+      console.error('Erreur upload photo:', error);
+      alert('Erreur lors de l\'upload de la photo');
+    }
+    setLoading(false);
+  };
+
+  // Export des données
+  const exportData = async () => {
+    try {
+      const { data: responses } = await supabase
+        .from('responses')
+        .select(`
+          *,
+          players (name)
+        `)
+        .order('created_at', { ascending: false });
+
+      // Convertir en CSV
+      const csvContent = [
+        ['Date', 'Joueuse', 'Type', 'Motivation', 'Fatigue', 'Plaisir', 'RPE', 'Tactique', 'Technique', 'Commentaires'].join(','),
+        ...responses.map(r => [
+          new Date(r.created_at).toLocaleDateString('fr-FR'),
+          `"${r.players?.name || ''}"`,
+          r.type,
+          r.data?.motivation || '',
+          r.data?.fatigue || '',
+          r.data?.plaisir || r.data?.plaisir_seance || '',
+          r.data?.intensite_rpe || '',
+          r.data?.tactique || '',
+          r.data?.technique || '',
+          `"${r.data?.commentaires_libres || ''}"`
+        ].join(','))
+      ].join('\n');
+
+      // Télécharger
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `export-futsal-${new Date().toISOString().split('T')[0]}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Erreur export:', error);
+      alert('Erreur lors de l\'export');
+    }
+  };
+
   // Composant curseur
   const ScaleQuestion = ({ question, value, onChange, leftLabel, rightLabel }) => (
     <div className="mb-6">
@@ -107,7 +736,7 @@ const FutsalApp = () => {
           max="20"
           value={value}
           onChange={(e) => onChange(parseInt(e.target.value))}
-          className="w-full h-3 rounded-lg appearance-none cursor-pointer slider"
+          className="w-full h-3 rounded-lg appearance-none cursor-pointer"
           style={{
             background: `linear-gradient(to right, #fecaca 0%, #fef3c7 50%, #bbf7d0 100%)`,
           }}
@@ -128,8 +757,18 @@ const FutsalApp = () => {
       style={{borderLeftColor: '#C09D5A'}}
     >
       <div className="flex flex-col items-center space-y-3">
-        <div className="w-20 h-20 rounded-full flex items-center justify-center text-white text-xl font-bold" style={{background: 'linear-gradient(135deg, #1D2945 0%, #C09D5A 100%)'}}>
-          {player.name.split(' ').map(n => n[0]).join('')}
+        <div className="w-20 h-20 rounded-full overflow-hidden border-2 border-gray-200">
+          {player.photo_url ? (
+            <img 
+              src={player.photo_url} 
+              alt={player.name}
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center text-white text-xl font-bold" style={{background: 'linear-gradient(135deg, #1D2945 0%, #C09D5A 100%)'}}>
+              {player.name.split(' ').map(n => n[0]).join('')}
+            </div>
+          )}
         </div>
         <h3 className="font-semibold text-center" style={{color: '#1D2945'}}>{player.name}</h3>
         <div className="flex space-x-2">
@@ -138,6 +777,73 @@ const FutsalApp = () => {
           <div className={`w-3 h-3 rounded-full ${player.responses?.length > 0 ? 'bg-green-400' : 'bg-gray-300'}`}></div>
         </div>
       </div>
+    </div>
+  );
+
+  // Composant graphique simple
+  const SimpleChart = ({ data, title, color = '#1D2945' }) => (
+    <div className="bg-white rounded-xl shadow-lg p-6">
+      <h3 className="text-lg font-semibold mb-4" style={{color: '#1D2945'}}>{title}</h3>
+      <div className="space-y-3">
+        {data.map((item, index) => (
+          <div key={index} className="flex items-center justify-between">
+            <span className="text-sm text-gray-600">{item.label}</span>
+            <div className="flex items-center space-x-2">
+              <div 
+                className="h-2 rounded-full"
+                style={{
+                  width: `${Math.max(5, (item.value / 20) * 100)}px`,
+                  backgroundColor: color,
+                  opacity: 0.7
+                }}
+              ></div>
+              <span className="text-sm font-medium" style={{color}}>{item.value}/20</span>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+
+  // Sidebar admin
+  const AdminSidebar = ({ currentSection, setCurrentSection }) => (
+    <div className="w-64 bg-white shadow-lg h-full">
+      <div className="p-6 border-b" style={{borderColor: '#C09D5A'}}>
+        <h2 className="text-xl font-bold" style={{color: '#1D2945'}}>Administration</h2>
+        <p className="text-sm text-gray-600">Nantes Métropole Futsal</p>
+      </div>
+      
+      <nav className="p-4">
+        {[
+          { id: 'overview', icon: BarChart3, label: 'Vue d\'ensemble' },
+          { id: 'players-admin', icon: Users, label: 'Gestion joueuses' },
+          { id: 'analytics', icon: TrendingUp, label: 'Analytiques' },
+          { id: 'photos', icon: Camera, label: 'Photos' },
+          { id: 'export', icon: Download, label: 'Export données' }
+        ].map(item => (
+          <button
+            key={item.id}
+            onClick={() => setCurrentSection(item.id)}
+            className={`w-full flex items-center space-x-3 p-3 rounded-lg transition-all mb-2 ${
+              currentSection === item.id
+                ? 'text-white shadow-md'
+                : 'text-gray-600 hover:bg-gray-50'
+            }`}
+            style={currentSection === item.id ? {backgroundColor: '#1D2945'} : {}}
+          >
+            <item.icon size={20} />
+            <span>{item.label}</span>
+          </button>
+        ))}
+        <button
+          onClick={() => setCurrentView('players')}
+          className="w-full flex items-center space-x-3 p-3 rounded-lg transition-all mb-2 text-gray-600 hover:bg-gray-50 border-t mt-4 pt-4"
+          style={{borderColor: '#C09D5A'}}
+        >
+          <ChevronLeft size={20} />
+          <span>Retour à l'app</span>
+        </button>
+      </nav>
     </div>
   );
 
