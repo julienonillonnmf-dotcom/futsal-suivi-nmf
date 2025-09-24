@@ -651,7 +651,13 @@ const FutsalApp = () => {
               <div className="space-y-4">
                 {players.map(player => (
                   <div key={player.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50">
-                    <div className="flex items-center space-x-4">
+                    <div 
+                      onClick={() => {
+                        setSelectedPlayer(player);
+                        setCurrentView('admin-player-detail');
+                      }}
+                      className="flex items-center space-x-4 flex-1 cursor-pointer"
+                    >
                       <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-gray-200">
                         {player.photo_url ? (
                           <img 
@@ -668,13 +674,14 @@ const FutsalApp = () => {
                       <div>
                         <h3 className="font-semibold" style={{color: '#1D2945'}}>{player.name}</h3>
                         <p className="text-sm text-gray-600">
-                          {playerStats[player.id]?.total_responses || 0} réponses
+                          {playerStats[player.id]?.total_responses || 0} réponses • Cliquez pour voir le détail
                         </p>
                       </div>
                     </div>
                     <div className="flex space-x-2">
                       <button
-                        onClick={() => {
+                        onClick={(e) => {
+                          e.stopPropagation();
                           const input = document.createElement('input');
                           input.type = 'file';
                           input.accept = 'image/*';
@@ -687,7 +694,10 @@ const FutsalApp = () => {
                         <Camera size={16} />
                       </button>
                       <button
-                        onClick={() => deletePlayer(player.id)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          deletePlayer(player.id);
+                        }}
                         className="p-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
                         title="Désactiver joueuse"
                       >
@@ -877,6 +887,237 @@ const FutsalApp = () => {
                     );
                   })()}
                 </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Vue détail joueuse pour l'admin
+  if (currentView === 'admin-player-detail' && selectedPlayer && isAdmin) {
+    return (
+      <div className="min-h-screen p-4" style={{background: 'linear-gradient(135deg, #f0f4f8 0%, #fef9e7 100%)'}}>
+        <div className="max-w-6xl mx-auto">
+          {/* En-tête */}
+          <div className="bg-white rounded-xl shadow-lg p-6 mb-8">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-4">
+                <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-gray-200">
+                  {selectedPlayer.photo_url ? (
+                    <img 
+                      src={selectedPlayer.photo_url} 
+                      alt={selectedPlayer.name}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-white text-lg font-bold" style={{background: 'linear-gradient(135deg, #1D2945 0%, #C09D5A 100%)'}}>
+                      {selectedPlayer.name.split(' ').map(n => n[0]).join('')}
+                    </div>
+                  )}
+                </div>
+                <div>
+                  <h1 className="text-3xl font-bold" style={{color: '#1D2945'}}>
+                    {selectedPlayer.name} - Vue Entraîneur
+                  </h1>
+                  <p className="text-gray-600">
+                    {playerStats[selectedPlayer.id]?.total_responses || 0} réponses totales
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setCurrentView('admin')}
+                className="flex items-center space-x-2 px-6 py-3 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors"
+              >
+                <ChevronLeft size={20} />
+                <span>Retour Admin</span>
+              </button>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            {/* Statistiques détaillées */}
+            <div className="lg:col-span-1">
+              <div className="bg-white rounded-xl shadow-lg p-6 mb-6">
+                <h2 className="text-xl font-bold mb-4" style={{color: '#1D2945'}}>Statistiques</h2>
+                {playerStats[selectedPlayer.id] && (
+                  <div className="space-y-4">
+                    <div className="p-3 bg-blue-50 rounded-lg">
+                      <div className="text-2xl font-bold text-blue-600">
+                        {playerStats[selectedPlayer.id].pre_session_responses}
+                      </div>
+                      <div className="text-sm text-gray-600">Questionnaires pré-séance</div>
+                    </div>
+                    <div className="p-3 bg-green-50 rounded-lg">
+                      <div className="text-2xl font-bold text-green-600">
+                        {playerStats[selectedPlayer.id].post_session_responses}
+                      </div>
+                      <div className="text-sm text-gray-600">Questionnaires post-séance</div>
+                    </div>
+                    <div className="p-3 bg-yellow-50 rounded-lg">
+                      <div className="text-lg font-bold text-yellow-600">
+                        {playerStats[selectedPlayer.id].avg_motivation}/20
+                      </div>
+                      <div className="text-sm text-gray-600">Motivation moyenne</div>
+                    </div>
+                    <div className="p-3 bg-red-50 rounded-lg">
+                      <div className="text-lg font-bold text-red-600">
+                        {playerStats[selectedPlayer.id].avg_fatigue}/20
+                      </div>
+                      <div className="text-sm text-gray-600">Fatigue moyenne</div>
+                    </div>
+                    <div className="p-3 bg-purple-50 rounded-lg">
+                      <div className="text-lg font-bold text-purple-600">
+                        {playerStats[selectedPlayer.id].avg_rpe}/20
+                      </div>
+                      <div className="text-sm text-gray-600">RPE moyen</div>
+                    </div>
+                    {playerStats[selectedPlayer.id].last_response_date && (
+                      <div className="p-3 bg-gray-50 rounded-lg">
+                        <div className="text-sm font-semibold text-gray-700">
+                          Dernière réponse
+                        </div>
+                        <div className="text-xs text-gray-600">
+                          {playerStats[selectedPlayer.id].last_response_date}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Objectifs personnels */}
+              <div className="bg-white rounded-xl shadow-lg p-6">
+                <h2 className="text-xl font-bold mb-4" style={{color: '#1D2945'}}>Objectifs Personnels</h2>
+                <div className="p-3 bg-green-50 rounded-lg">
+                  <p className="text-gray-700 text-sm">
+                    {objectifsIndividuels[selectedPlayer.id] || 'Aucun objectif personnel défini.'}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Historique des réponses détaillé */}
+            <div className="lg:col-span-2">
+              <div className="bg-white rounded-xl shadow-lg p-6">
+                <h2 className="text-xl font-bold mb-6" style={{color: '#1D2945'}}>
+                  Historique Complet des Réponses
+                </h2>
+                
+                {selectedPlayer.responses && selectedPlayer.responses.length > 0 ? (
+                  <div className="space-y-6">
+                    {selectedPlayer.responses.map(response => (
+                      <div key={response.id} className="border rounded-lg p-4 hover:bg-gray-50">
+                        <div className="flex justify-between items-start mb-3">
+                          <div>
+                            <h3 className="font-semibold text-lg" style={{color: '#1D2945'}}>
+                              {response.type === 'pre' ? '📋 Pré-séance' : '📊 Post-séance'}
+                            </h3>
+                            <p className="text-sm text-gray-600">
+                              {new Date(response.created_at).toLocaleDateString('fr-FR')} à {new Date(response.created_at).toLocaleTimeString('fr-FR', {hour: '2-digit', minute: '2-digit'})}
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Détail des réponses */}
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                          {response.type === 'pre' && (
+                            <>
+                              {response.data.motivation && (
+                                <div className="bg-blue-50 p-2 rounded">
+                                  <div className="text-xs text-gray-600">Motivation</div>
+                                  <div className="font-semibold text-blue-700">{response.data.motivation}/20</div>
+                                </div>
+                              )}
+                              {response.data.fatigue && (
+                                <div className="bg-red-50 p-2 rounded">
+                                  <div className="text-xs text-gray-600">Fatigue</div>
+                                  <div className="font-semibold text-red-700">{response.data.fatigue}/20</div>
+                                </div>
+                              )}
+                              {response.data.plaisir && (
+                                <div className="bg-yellow-50 p-2 rounded">
+                                  <div className="text-xs text-gray-600">Plaisir anticipé</div>
+                                  <div className="font-semibold text-yellow-700">{response.data.plaisir}/20</div>
+                                </div>
+                              )}
+                              {response.data.objectif_difficulte && (
+                                <div className="bg-purple-50 p-2 rounded">
+                                  <div className="text-xs text-gray-600">Difficulté objectifs</div>
+                                  <div className="font-semibold text-purple-700">{response.data.objectif_difficulte}/20</div>
+                                </div>
+                              )}
+                            </>
+                          )}
+
+                          {response.type === 'post' && (
+                            <>
+                              {response.data.objectifs_repondu && (
+                                <div className="bg-green-50 p-2 rounded">
+                                  <div className="text-xs text-gray-600">Objectifs atteints</div>
+                                  <div className="font-semibold text-green-700">{response.data.objectifs_repondu}/20</div>
+                                </div>
+                              )}
+                              {response.data.intensite_rpe && (
+                                <div className="bg-red-50 p-2 rounded">
+                                  <div className="text-xs text-gray-600">RPE</div>
+                                  <div className="font-semibold text-red-700">{response.data.intensite_rpe}/20</div>
+                                </div>
+                              )}
+                              {response.data.plaisir_seance && (
+                                <div className="bg-yellow-50 p-2 rounded">
+                                  <div className="text-xs text-gray-600">Plaisir</div>
+                                  <div className="font-semibold text-yellow-700">{response.data.plaisir_seance}/20</div>
+                                </div>
+                              )}
+                              {response.data.tactique && (
+                                <div className="bg-blue-50 p-2 rounded">
+                                  <div className="text-xs text-gray-600">Progrès tactique</div>
+                                  <div className="font-semibold text-blue-700">{response.data.tactique}/20</div>
+                                </div>
+                              )}
+                              {response.data.technique && (
+                                <div className="bg-indigo-50 p-2 rounded">
+                                  <div className="text-xs text-gray-600">Progrès technique</div>
+                                  <div className="font-semibold text-indigo-700">{response.data.technique}/20</div>
+                                </div>
+                              )}
+                              {response.data.influence_positive && (
+                                <div className="bg-teal-50 p-2 rounded">
+                                  <div className="text-xs text-gray-600">Influence positive</div>
+                                  <div className="font-semibold text-teal-700">{response.data.influence_positive}/20</div>
+                                </div>
+                              )}
+                              {response.data.sentiment_groupe && (
+                                <div className="bg-pink-50 p-2 rounded">
+                                  <div className="text-xs text-gray-600">Sentiment groupe</div>
+                                  <div className="font-semibold text-pink-700">{response.data.sentiment_groupe}/20</div>
+                                </div>
+                              )}
+                            </>
+                          )}
+                        </div>
+
+                        {/* Commentaires */}
+                        {response.data.commentaires_libres && (
+                          <div className="mt-3 p-3 bg-gray-50 rounded-lg">
+                            <div className="text-xs font-semibold text-gray-600 mb-1">Commentaires :</div>
+                            <p className="text-sm text-gray-700 italic">"{response.data.commentaires_libres}"</p>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-12">
+                    <div className="text-gray-400 mb-4">
+                      <BarChart3 size={48} className="mx-auto" />
+                    </div>
+                    <h3 className="text-lg font-semibold text-gray-600 mb-2">Aucune réponse enregistrée</h3>
+                    <p className="text-gray-500">Cette joueuse n'a pas encore rempli de questionnaire.</p>
+                  </div>
+                )}
               </div>
             </div>
           </div>
