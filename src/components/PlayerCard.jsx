@@ -1,4 +1,5 @@
-// components/PlayerCard.jsx
+// src/components/PlayerCard.jsx
+
 import React from 'react';
 import { Camera, Trash2 } from 'lucide-react';
 
@@ -8,7 +9,7 @@ const PlayerCard = ({
   showAdminActions = false, 
   onPhotoUpload, 
   onDeletePlayer,
-  shouldShowGreen = false 
+  shouldShowGreen = false  // AMÉLIORATION: Point vert conditionnel
 }) => {
   
   const handlePhotoClick = (e) => {
@@ -53,6 +54,7 @@ const PlayerCard = ({
         onClick={() => onClick(player)}
         className="flex flex-col items-center space-y-3 cursor-pointer"
       >
+        {/* AMÉLIORATION: Photos redimensionnées automatiquement */}
         <div className="w-20 h-20 rounded-full overflow-hidden border-2 border-gray-200">
           {player.photo_url ? (
             <img 
@@ -77,6 +79,7 @@ const PlayerCard = ({
         <div className="flex space-x-2">
           <div className="w-3 h-3 rounded-full" style={{backgroundColor: '#1D2945'}}></div>
           <div className="w-3 h-3 rounded-full" style={{backgroundColor: '#C09D5A'}}></div>
+          {/* AMÉLIORATION: Point vert seulement si jour d'entraînement ET réponse aujourd'hui */}
           <div className={`w-3 h-3 rounded-full ${shouldShowGreen ? 'bg-green-400' : 'bg-gray-300'}`}></div>
         </div>
       </div>
