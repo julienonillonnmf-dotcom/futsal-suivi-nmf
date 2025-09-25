@@ -3,54 +3,30 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Lock, EyeOff, Eye, Settings, LogOut } from 'lucide-react';
 import { supabase } from './supabaseClient';
 
-// Import des composants avec gestion d'erreur
-const importComponent = (componentName) => {
-  try {
-    switch(componentName) {
-      case 'PlayerGrid':
-        return React.lazy(() => import('./components/PlayerGrid'));
-      case 'AdminPanel':
-        return React.lazy(() => import('./views/AdminPanel'));
-      case 'PlayerDetail':
-        return React.lazy(() => import('./views/PlayerDetail'));
-      case 'AdminPlayerDetail':
-        return React.lazy(() => import('./views/AdminPlayerDetail'));
-      case 'PreSessionQuestionnaire':
-        return React.lazy(() => import('./views/PreSessionQuestionnaire'));
-      case 'PostSessionQuestionnaire':
-        return React.lazy(() => import('./views/PostSessionQuestionnaire'));
-      case 'MatchQuestionnaire':
-        return React.lazy(() => import('./views/MatchQuestionnaire'));
-      case 'InjuryFollowupQuestionnaire':
-        return React.lazy(() => import('./views/InjuryFollowupQuestionnaire'));
-      default:
-        return null;
-    }
-  } catch (error) {
-    console.error(`Erreur import composant ${componentName}:`, error);
-    return null;
-  }
-};
+// Imports directs pour les composants critiques (pas de lazy loading)
+import PlayerGrid from './components/PlayerGrid';
+import PreSessionQuestionnaire from './views/PreSessionQuestionnaire';
+import PostSessionQuestionnaire from './views/PostSessionQuestionnaire';
 
-// Composants lazy
-const PlayerGrid = importComponent('PlayerGrid');
-const AdminPanel = importComponent('AdminPanel');
-const PlayerDetail = importComponent('PlayerDetail');
-const AdminPlayerDetail = importComponent('AdminPlayerDetail');
-const PreSessionQuestionnaire = importComponent('PreSessionQuestionnaire');
-const PostSessionQuestionnaire = importComponent('PostSessionQuestionnaire');
-const MatchQuestionnaire = importComponent('MatchQuestionnaire');
-const InjuryFollowupQuestionnaire = importComponent('InjuryFollowupQuestionnaire');
+// Lazy loading pour les composants moins critiques
+const AdminPanel = React.lazy(() => import('./views/AdminPanel'));
+const PlayerDetail = React.lazy(() => import('./views/PlayerDetail'));
+const AdminPlayerDetail = React.lazy(() => import('./views/AdminPlayerDetail'));
+const MatchQuestionnaire = React.lazy(() => import('./views/MatchQuestionnaire'));
+const InjuryFollowupQuestionnaire = React.lazy(() => import('./views/InjuryFollowupQuestionnaire'));
 
-// Composant de fallback pour le loading
-const LoadingFallback = ({ text = "Chargement..." }) => (
-  <div className="min-h-screen flex items-center justify-center" style={{background: 'linear-gradient(135deg, #f0f4f8 0%, #fef9e7 100%)'}}>
-    <div className="bg-white rounded-xl shadow-lg p-8 text-center">
-      <div className="animate-spin rounded-full h-12 w-12 border-b-2 mx-auto mb-4" style={{borderColor: '#1D2945'}}></div>
-      <p className="text-gray-600">{text}</p>
+  // Composant de fallback amélioré avec animation plus fluide
+  const LoadingFallback = ({ text = "Chargement..." }) => (
+    <div className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-95">
+      <div className="text-center">
+        <div 
+          className="w-8 h-8 border-2 border-b-transparent rounded-full animate-spin mx-auto mb-2" 
+          style={{borderColor: '#1D2945'}}
+        ></div>
+        <p className="text-sm text-gray-500">{text}</p>
+      </div>
     </div>
-  </div>
-);
+  );
 
 // Composant d'erreur
 const ErrorFallback = ({ error, onRetry }) => (
@@ -411,51 +387,47 @@ const App = () => {
     </div>
   );
 
-  // Router vers les différentes vues avec Suspense
+  // Router vers les différentes vues avec Suspense optimisé
   const renderCurrentView = () => {
     const views = {
       'players': () => (
-        <React.Suspense fallback={<LoadingFallback text="Chargement de la grille des joueurs..." />}>
-          <PlayerGrid 
-            {...commonProps}
-            toggleAdminMode={toggleAdminMode}
-            logout={logout}
-          />
-        </React.Suspense>
+        <PlayerGrid 
+          {...commonProps}
+          toggleAdminMode={toggleAdminMode}
+          logout={logout}
+        />
+      ),
+      'pre-session': () => (
+        <PreSessionQuestionnaire {...commonProps} />
+      ),
+      'post-session': () => (
+        <PostSessionQuestionnaire {...commonProps} />
       ),
       'admin': () => (
-        <React.Suspense fallback={<LoadingFallback text="Chargement du panel administrateur..." />}>
-          <AppHeader title="Panel Administrateur" />
-          <AdminPanel {...commonProps} />
+        <React.Suspense fallback={<LoadingFallback text="Chargement du panel..." />}>
+          <div>
+            <AppHeader title="Panel Administrateur" />
+            <AdminPanel {...commonProps} />
+          </div>
         </React.Suspense>
       ),
       'admin-player-detail': () => (
-        <React.Suspense fallback={<LoadingFallback text="Chargement des détails du joueur..." />}>
+        <React.Suspense fallback={<LoadingFallback text="Chargement des détails..." />}>
           <AdminPlayerDetail {...commonProps} />
         </React.Suspense>
       ),
       'player-detail': () => (
-        <React.Suspense fallback={<LoadingFallback text="Chargement des détails..." />}>
+        <React.Suspense fallback={<LoadingFallback text="Chargement du profil..." />}>
           <PlayerDetail {...commonProps} />
         </React.Suspense>
       ),
-      'pre-session': () => (
-        <React.Suspense fallback={<LoadingFallback text="Chargement du questionnaire..." />}>
-          <PreSessionQuestionnaire {...commonProps} />
-        </React.Suspense>
-      ),
-      'post-session': () => (
-        <React.Suspense fallback={<LoadingFallback text="Chargement du questionnaire..." />}>
-          <PostSessionQuestionnaire {...commonProps} />
-        </React.Suspense>
-      ),
       'match': () => (
-        <React.Suspense fallback={<LoadingFallback text="Chargement du questionnaire match..." />}>
+        <React.Suspense fallback={<LoadingFallback text="Chargement du questionnaire..." />}>
           <MatchQuestionnaire {...commonProps} />
         </React.Suspense>
       ),
       'injury-followup': () => (
-        <React.Suspense fallback={<LoadingFallback text="Chargement du suivi blessure..." />}>
+        <React.Suspense fallback={<LoadingFallback text="Chargement du suivi..." />}>
           <InjuryFollowupQuestionnaire {...commonProps} />
         </React.Suspense>
       )
@@ -495,10 +467,8 @@ const App = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <React.Suspense fallback={<LoadingFallback />}>
-        {renderCurrentView()}
-      </React.Suspense>
+    <div className="min-h-screen bg-gray-50 relative">
+      {renderCurrentView()}
     </div>
   );
 };
