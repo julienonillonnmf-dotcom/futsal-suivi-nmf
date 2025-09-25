@@ -282,4 +282,4 @@ const AdminPlayerDetail = ({
                             )}
                             {response.data.confiance && (
                               <div className="bg-green-50 p-2 rounded">
-                                <div className="text-xs text-gray
+                                <div className="text-xs text-gray-600">
