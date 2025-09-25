@@ -1,4 +1,4 @@
-// utils/imageUtils.js
+// src/utils/imageUtils.js
 
 /**
  * Redimensionne une image en gardant les proportions
