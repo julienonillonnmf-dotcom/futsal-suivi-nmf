@@ -13,19 +13,6 @@ import PostSessionQuestionnaire from './views/PostSessionQuestionnaire';
 import MatchQuestionnaire from './views/MatchQuestionnaire';
 import InjuryFollowupQuestionnaire from './views/InjuryFollowupQuestionnaire';
 
-  // Composant de fallback amélioré avec animation plus fluide
-  const LoadingFallback = ({ text = "Chargement..." }) => (
-    <div className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-95">
-      <div className="text-center">
-        <div 
-          className="w-8 h-8 border-2 border-b-transparent rounded-full animate-spin mx-auto mb-2" 
-          style={{borderColor: '#1D2945'}}
-        ></div>
-        <p className="text-sm text-gray-500">{text}</p>
-      </div>
-    </div>
-  );
-
 // Composant d'erreur
 const ErrorFallback = ({ error, onRetry }) => (
   <div className="min-h-screen flex items-center justify-center" style={{background: 'linear-gradient(135deg, #f0f4f8 0%, #fef9e7 100%)'}}>
@@ -148,7 +135,7 @@ const App = () => {
     }
   }, [players]);
 
-  // Charger les objectifs depuis Supabase
+  // Charger les objectifs depuis Supabase avec gestion d'erreur renforcée
   const loadObjectifs = useCallback(async () => {
     try {
       // Charger les objectifs collectifs
@@ -160,35 +147,51 @@ const App = () => {
       
       if (errorCollectifs && errorCollectifs.code !== 'PGRST116') {
         console.error('Erreur chargement objectifs collectifs:', errorCollectifs);
+        // Ne pas faire planter l'app pour les objectifs collectifs
       } else {
         setObjectifsCollectifs(collectifs?.value || '');
       }
 
-      // Charger les objectifs individuels et mentaux
-      const { data: individuels, error: errorIndividuels } = await supabase
-        .from('players')
-        .select('id, objectifs_individuels, objectifs_mentaux')
-        .eq('is_active', true);
+      // Charger les objectifs individuels et mentaux avec meilleure gestion d'erreur
+      try {
+        const { data: individuels, error: errorIndividuels } = await supabase
+          .from('players')
+          .select('id, objectifs_individuels, objectifs_mentaux')
+          .eq('is_active', true);
 
-      if (errorIndividuels) {
-        console.error('Erreur chargement objectifs individuels:', errorIndividuels);
-      } else {
-        const objIndiv = {};
-        const objMentaux = {};
-        individuels?.forEach(player => {
-          objIndiv[player.id] = player.objectifs_individuels || '';
-          objMentaux[player.id] = player.objectifs_mentaux || '';
-        });
-        setObjectifsIndividuels(objIndiv);
-        setObjectifsMentaux(objMentaux);
+        if (errorIndividuels) {
+          console.error('Erreur chargement objectifs individuels:', errorIndividuels);
+          // Initialiser avec des objets vides pour éviter les erreurs
+          setObjectifsIndividuels({});
+          setObjectifsMentaux({});
+        } else {
+          const objIndiv = {};
+          const objMentaux = {};
+          individuels?.forEach(player => {
+            // Gérer les cas EMPTY, NULL et undefined
+            objIndiv[player.id] = (player.objectifs_individuels && player.objectifs_individuels !== 'EMPTY') ? player.objectifs_individuels : '';
+            objMentaux[player.id] = (player.objectifs_mentaux && player.objectifs_mentaux !== 'EMPTY') ? player.objectifs_mentaux : '';
+          });
+          setObjectifsIndividuels(objIndiv);
+          setObjectifsMentaux(objMentaux);
+        }
+      } catch (individualError) {
+        console.error('Erreur critique objectifs individuels:', individualError);
+        // Valeurs par défaut pour éviter le crash
+        setObjectifsIndividuels({});
+        setObjectifsMentaux({});
       }
 
     } catch (error) {
-      console.error('Erreur chargement objectifs:', error);
+      console.error('Erreur générale chargement objectifs:', error);
+      // Valeurs par défaut pour éviter le crash complet
+      setObjectifsCollectifs('');
+      setObjectifsIndividuels({});
+      setObjectifsMentaux({});
     }
   }, []);
 
-  // Charger les joueurs depuis Supabase
+  // Charger les joueurs depuis Supabase avec gestion d'erreur renforcée
   const loadPlayers = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -204,27 +207,36 @@ const App = () => {
       // Charger les réponses pour chaque joueur
       const playersWithResponses = await Promise.all(
         data.map(async (player) => {
-          const { data: responses, error: respError } = await supabase
-            .from('responses')
-            .select('*')
-            .eq('player_id', player.id)
-            .order('created_at', { ascending: false });
-          
-          if (respError) {
-            console.error('Erreur chargement réponses:', respError);
+          try {
+            const { data: responses, error: respError } = await supabase
+              .from('responses')
+              .select('*')
+              .eq('player_id', player.id)
+              .order('created_at', { ascending: false });
+            
+            if (respError) {
+              console.error('Erreur chargement réponses pour', player.name, ':', respError);
+              return { ...player, responses: [] };
+            }
+            
+            return { ...player, responses: responses || [] };
+          } catch (playerError) {
+            console.error('Erreur traitement joueur', player.name, ':', playerError);
             return { ...player, responses: [] };
           }
-          
-          return { ...player, responses: responses || [] };
         })
       );
       
       setPlayers(playersWithResponses);
       loadPlayerStatistics(playersWithResponses);
+      
+      // Charger les objectifs SEULEMENT si les joueurs sont chargés avec succès
       await loadObjectifs();
+      
     } catch (error) {
       console.error('Erreur lors du chargement des joueurs:', error);
       setError(error);
+      // En cas d'erreur, ne pas essayer de charger les objectifs
     }
     setLoading(false);
   }, [loadPlayerStatistics, loadObjectifs]);
