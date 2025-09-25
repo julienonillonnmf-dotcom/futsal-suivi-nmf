@@ -3,17 +3,15 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Lock, EyeOff, Eye, Settings, LogOut } from 'lucide-react';
 import { supabase } from './supabaseClient';
 
-// Imports directs pour les composants critiques (pas de lazy loading)
+// Imports directs pour TOUS les composants (pas de lazy loading)
 import PlayerGrid from './components/PlayerGrid';
+import AdminPanel from './views/AdminPanel';
+import PlayerDetail from './views/PlayerDetail';
+import AdminPlayerDetail from './views/AdminPlayerDetail';
 import PreSessionQuestionnaire from './views/PreSessionQuestionnaire';
 import PostSessionQuestionnaire from './views/PostSessionQuestionnaire';
-
-// Lazy loading pour les composants moins critiques
-const AdminPanel = React.lazy(() => import('./views/AdminPanel'));
-const PlayerDetail = React.lazy(() => import('./views/PlayerDetail'));
-const AdminPlayerDetail = React.lazy(() => import('./views/AdminPlayerDetail'));
-const MatchQuestionnaire = React.lazy(() => import('./views/MatchQuestionnaire'));
-const InjuryFollowupQuestionnaire = React.lazy(() => import('./views/InjuryFollowupQuestionnaire'));
+import MatchQuestionnaire from './views/MatchQuestionnaire';
+import InjuryFollowupQuestionnaire from './views/InjuryFollowupQuestionnaire';
 
   // Composant de fallback amélioré avec animation plus fluide
   const LoadingFallback = ({ text = "Chargement..." }) => (
@@ -387,7 +385,7 @@ const App = () => {
     </div>
   );
 
-  // Router vers les différentes vues avec Suspense optimisé
+  // Router vers les différentes vues (plus de Suspense = plus de clignotement)
   const renderCurrentView = () => {
     const views = {
       'players': () => (
@@ -397,39 +395,29 @@ const App = () => {
           logout={logout}
         />
       ),
+      'admin': () => (
+        <div>
+          <AppHeader title="Panel Administrateur" />
+          <AdminPanel {...commonProps} />
+        </div>
+      ),
+      'admin-player-detail': () => (
+        <AdminPlayerDetail {...commonProps} />
+      ),
+      'player-detail': () => (
+        <PlayerDetail {...commonProps} />
+      ),
       'pre-session': () => (
         <PreSessionQuestionnaire {...commonProps} />
       ),
       'post-session': () => (
         <PostSessionQuestionnaire {...commonProps} />
       ),
-      'admin': () => (
-        <React.Suspense fallback={<LoadingFallback text="Chargement du panel..." />}>
-          <div>
-            <AppHeader title="Panel Administrateur" />
-            <AdminPanel {...commonProps} />
-          </div>
-        </React.Suspense>
-      ),
-      'admin-player-detail': () => (
-        <React.Suspense fallback={<LoadingFallback text="Chargement des détails..." />}>
-          <AdminPlayerDetail {...commonProps} />
-        </React.Suspense>
-      ),
-      'player-detail': () => (
-        <React.Suspense fallback={<LoadingFallback text="Chargement du profil..." />}>
-          <PlayerDetail {...commonProps} />
-        </React.Suspense>
-      ),
       'match': () => (
-        <React.Suspense fallback={<LoadingFallback text="Chargement du questionnaire..." />}>
-          <MatchQuestionnaire {...commonProps} />
-        </React.Suspense>
+        <MatchQuestionnaire {...commonProps} />
       ),
       'injury-followup': () => (
-        <React.Suspense fallback={<LoadingFallback text="Chargement du suivi..." />}>
-          <InjuryFollowupQuestionnaire {...commonProps} />
-        </React.Suspense>
+        <InjuryFollowupQuestionnaire {...commonProps} />
       )
     };
 
