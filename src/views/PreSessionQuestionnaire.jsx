@@ -1,4 +1,5 @@
-// views/PreSessionQuestionnaire.jsx
+// src/views/PreSessionQuestionnaire.jsx
+
 import React, { useState } from 'react';
 import { ChevronLeft } from 'lucide-react';
 import ScaleQuestion from '../components/ScaleQuestion';
@@ -9,7 +10,7 @@ const PreSessionQuestionnaire = ({
   setCurrentView,
   objectifsCollectifs,
   objectifsIndividuels,
-  objectifsMentaux,
+  objectifsMentaux,  // AMÉLIORATION: Objectifs mentaux ajoutés
   loading,
   setLoading,
   supabase,
@@ -21,7 +22,7 @@ const PreSessionQuestionnaire = ({
     fatigue: 10,
     plaisir: 10,
     objectif_difficulte: 10,
-    injuries: []
+    injuries: []  // AMÉLIORATION: Suivi des blessures intégré
   });
 
   const saveQuestionnaire = async () => {
@@ -83,7 +84,7 @@ const PreSessionQuestionnaire = ({
           </div>
 
           <div className="space-y-6">
-            {/* Affichage des objectifs */}
+            {/* AMÉLIORATION: Affichage des 3 types d'objectifs */}
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
               <h3 className="text-lg font-semibold mb-3" style={{color: '#1D2945'}}>
                 🎯 Objectifs pour cette séance
@@ -99,7 +100,7 @@ const PreSessionQuestionnaire = ({
                 </div>
               )}
               
-              {/* Objectifs Individuels */}
+              {/* Objectifs Individuels Techniques */}
               {selectedPlayer && objectifsIndividuels[selectedPlayer.id] && (
                 <div className="mb-4">
                   <h4 className="font-medium text-blue-800 mb-2">Vos objectifs techniques :</h4>
@@ -109,7 +110,7 @@ const PreSessionQuestionnaire = ({
                 </div>
               )}
 
-              {/* Objectifs Mentaux */}
+              {/* AMÉLIORATION: Objectifs Mentaux */}
               {selectedPlayer && objectifsMentaux[selectedPlayer.id] && (
                 <div>
                   <h4 className="font-medium text-blue-800 mb-2">Vos objectifs mentaux :</h4>
@@ -124,12 +125,14 @@ const PreSessionQuestionnaire = ({
               )}
             </div>
 
+            {/* AMÉLIORATION: ScaleQuestion sans nombres pour les joueuses */}
             <ScaleQuestion
               question="Comment évaluez-vous votre motivation pour cette séance ?"
               value={preSessionForm.motivation}
               onChange={(value) => setPreSessionForm({...preSessionForm, motivation: value})}
               leftLabel="Très faible"
               rightLabel="Très élevée"
+              showValue={false}  // Pas de nombres visibles
             />
 
             <ScaleQuestion
@@ -138,6 +141,7 @@ const PreSessionQuestionnaire = ({
               onChange={(value) => setPreSessionForm({...preSessionForm, fatigue: value})}
               leftLabel="Très fatigué"
               rightLabel="Très en forme"
+              showValue={false}  // Pas de nombres visibles
             />
 
             <ScaleQuestion
@@ -146,6 +150,7 @@ const PreSessionQuestionnaire = ({
               onChange={(value) => setPreSessionForm({...preSessionForm, plaisir: value})}
               leftLabel="Aucun plaisir"
               rightLabel="Énormément de plaisir"
+              showValue={false}  // Pas de nombres visibles
             />
 
             <ScaleQuestion
@@ -154,8 +159,10 @@ const PreSessionQuestionnaire = ({
               onChange={(value) => setPreSessionForm({...preSessionForm, objectif_difficulte: value})}
               leftLabel="Très faciles"
               rightLabel="Très difficiles"
+              showValue={false}  // Pas de nombres visibles
             />
 
+            {/* AMÉLIORATION: Suivi des blessures intégré */}
             <InjuryComponent
               injuries={preSessionForm.injuries}
               onChange={(injuries) => setPreSessionForm({...preSessionForm, injuries})}
