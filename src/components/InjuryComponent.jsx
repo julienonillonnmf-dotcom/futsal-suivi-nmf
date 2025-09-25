@@ -1,8 +1,10 @@
-// components/InjuryComponent.jsx
+// src/components/InjuryComponent.jsx
+
 import React from 'react';
 import { AlertTriangle } from 'lucide-react';
 
 const InjuryComponent = ({ injuries, onChange, showNewInjury = false }) => {
+  // AMÉLIORATION: 15 localisations corporelles précises
   const bodyParts = [
     'Cheville gauche', 'Cheville droite', 'Genou gauche', 'Genou droit',
     'Cuisse gauche', 'Cuisse droite', 'Mollet gauche', 'Mollet droit',
@@ -32,6 +34,7 @@ const InjuryComponent = ({ injuries, onChange, showNewInjury = false }) => {
         Suivi des blessures
       </h3>
       
+      {/* AMÉLIORATION: Gestion multiple des blessures */}
       {injuries.map((injury, index) => (
         <div key={index} className="mb-4 p-3 bg-white rounded border">
           <div className="grid grid-cols-2 gap-3 mb-3">
@@ -54,6 +57,7 @@ const InjuryComponent = ({ injuries, onChange, showNewInjury = false }) => {
               <label className="block text-xs font-medium text-gray-700 mb-1">
                 Intensité douleur (1-10)
               </label>
+              {/* AMÉLIORATION: Échelle d'intensité 1-10 */}
               <input
                 type="range"
                 min="1"
