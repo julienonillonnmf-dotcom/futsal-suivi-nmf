@@ -1,4 +1,5 @@
-// components/PlayerGrid.jsx
+// src/components/PlayerGrid.jsx
+
 import React from 'react';
 import PlayerCard from './PlayerCard';
 import { resizeImage } from '../utils/imageUtils';
@@ -19,16 +20,15 @@ const PlayerGrid = ({
   hasAnsweredToday 
 }) => {
 
-  // Upload de photo avec redimensionnement
+  // AMÉLIORATION: Upload avec redimensionnement automatique
   const handlePhotoUpload = async (playerId, file) => {
     if (!file) return;
     
     setLoading(true);
     try {
-      // Redimensionner l'image
-      const resizedFile = await resizeImage(file);
+      // Redimensionner automatiquement à 400x400px avec qualité 80%
+      const resizedFile = await resizeImage(file, 400, 400, 0.8);
       
-      // Upload vers Supabase Storage
       const fileExt = 'jpg';
       const fileName = `${playerId}-${Date.now()}.${fileExt}`;
       const filePath = `player-photos/${fileName}`;
@@ -39,12 +39,10 @@ const PlayerGrid = ({
 
       if (uploadError) throw uploadError;
 
-      // Obtenir l'URL publique
       const { data: publicUrl } = supabase.storage
         .from('photos')
         .getPublicUrl(filePath);
 
-      // Mettre à jour le player
       const { error: updateError } = await supabase
         .from('players')
         .update({ photo_url: publicUrl.publicUrl })
@@ -52,7 +50,6 @@ const PlayerGrid = ({
 
       if (updateError) throw updateError;
 
-      // Mettre à jour l'état local
       setPlayers(prev => prev.map(p => 
         p.id === playerId 
           ? { ...p, photo_url: publicUrl.publicUrl }
@@ -67,7 +64,6 @@ const PlayerGrid = ({
     setLoading(false);
   };
 
-  // Fonction pour supprimer un joueur
   const handleDeletePlayer = async (playerId) => {
     if (!confirm('Êtes-vous sûr de vouloir désactiver cette joueuse ?')) return;
     
@@ -90,7 +86,6 @@ const PlayerGrid = ({
     setLoading(false);
   };
 
-  // Ajouter un nouveau joueur
   const addNewPlayer = async () => {
     const name = prompt('Nom de la nouvelle joueuse :');
     if (!name) return;
@@ -188,6 +183,7 @@ const PlayerGrid = ({
               showAdminActions={isAdmin}
               onPhotoUpload={handlePhotoUpload}
               onDeletePlayer={handleDeletePlayer}
+              {/* AMÉLIORATION: Point vert intelligent - seulement si jour d'entraînement ET réponse aujourd'hui */}
               shouldShowGreen={isTodayTrainingDay() && hasAnsweredToday(player)}
             />
           ))}
