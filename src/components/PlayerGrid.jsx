@@ -183,7 +183,6 @@ const PlayerGrid = ({
               showAdminActions={isAdmin}
               onPhotoUpload={handlePhotoUpload}
               onDeletePlayer={handleDeletePlayer}
-              {/* AMÉLIORATION: Point vert intelligent - seulement si jour d'entraînement ET réponse aujourd'hui */}
               shouldShowGreen={isTodayTrainingDay() && hasAnsweredToday(player)}
             />
           ))}
