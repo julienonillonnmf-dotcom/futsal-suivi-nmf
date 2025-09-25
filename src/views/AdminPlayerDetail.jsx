@@ -212,7 +212,7 @@ const AdminPlayerDetail = ({
                         </div>
                       </div>
 
-                      {/* Détail des réponses avec suivi blessures */}
+                      {/* Détail des réponses */}
                       <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                         {response.type === 'pre' && (
                           <>
@@ -232,6 +232,12 @@ const AdminPlayerDetail = ({
                               <div className="bg-yellow-50 p-2 rounded">
                                 <div className="text-xs text-gray-600">Plaisir anticipé</div>
                                 <div className="font-semibold text-yellow-700">{response.data.plaisir}/20</div>
+                              </div>
+                            )}
+                            {response.data.difficulte_objectif && (
+                              <div className="bg-purple-50 p-2 rounded">
+                                <div className="text-xs text-gray-600">Difficulté objectif</div>
+                                <div className="font-semibold text-purple-700">{response.data.difficulte_objectif}/20</div>
                               </div>
                             )}
                           </>
@@ -282,4 +288,72 @@ const AdminPlayerDetail = ({
                             )}
                             {response.data.confiance && (
                               <div className="bg-green-50 p-2 rounded">
-                                <div className="text-xs text-gray-600">
+                                <div className="text-xs text-gray-600">Confiance</div>
+                                <div className="font-semibold text-green-700">{response.data.confiance}/20</div>
+                              </div>
+                            )}
+                            {response.data.plaisir && (
+                              <div className="bg-yellow-50 p-2 rounded">
+                                <div className="text-xs text-gray-600">Plaisir</div>
+                                <div className="font-semibold text-yellow-700">{response.data.plaisir}/20</div>
+                              </div>
+                            )}
+                            {response.data.performance && (
+                              <div className="bg-purple-50 p-2 rounded">
+                                <div className="text-xs text-gray-600">Performance</div>
+                                <div className="font-semibold text-purple-700">{response.data.performance}/20</div>
+                              </div>
+                            )}
+                          </>
+                        )}
+
+                        {response.type === 'injury' && response.data.blessure && (
+                          <div className="col-span-full">
+                            <div className="bg-red-100 border border-red-200 p-3 rounded">
+                              <div className="flex items-center space-x-2 mb-2">
+                                <AlertTriangle className="text-red-600" size={16} />
+                                <div className="font-semibold text-red-800">Suivi de blessure</div>
+                              </div>
+                              <div className="grid grid-cols-2 gap-2 text-sm">
+                                <div>
+                                  <span className="text-red-600">Zone:</span> {response.data.blessure.zone}
+                                </div>
+                                <div>
+                                  <span className="text-red-600">Douleur:</span> {response.data.blessure.douleur}/10
+                                </div>
+                                {response.data.blessure.limitation && (
+                                  <div className="col-span-2">
+                                    <span className="text-red-600">Limitation:</span> {response.data.blessure.limitation}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Commentaires */}
+                      {response.data.commentaires && (
+                        <div className="mt-3 p-3 bg-gray-50 rounded">
+                          <div className="text-xs text-gray-600 mb-1">Commentaires</div>
+                          <div className="text-sm text-gray-800">{response.data.commentaires}</div>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-12">
+                  <BarChart3 size={48} className="mx-auto text-gray-400 mb-4" />
+                  <p className="text-gray-500">Aucune réponse enregistrée pour cette joueuse.</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default AdminPlayerDetail;
