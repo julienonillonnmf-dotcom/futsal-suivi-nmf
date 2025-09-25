@@ -1,17 +1,78 @@
-// App.jsx - Composant principal restructuré
-import React, { useState, useEffect } from 'react';
-import { Lock, EyeOff, Eye } from 'lucide-react';
+// App.jsx - Composant principal restructuré et optimisé
+import React, { useState, useEffect, useCallback } from 'react';
+import { Lock, EyeOff, Eye, Settings, LogOut } from 'lucide-react';
 import { supabase } from './supabaseClient';
 
-// Import des composants
-import PlayerGrid from './components/PlayerGrid';
-import AdminPanel from './views/AdminPanel';
-import PlayerDetail from './views/PlayerDetail';
-import AdminPlayerDetail from './views/AdminPlayerDetail';
-import PreSessionQuestionnaire from './views/PreSessionQuestionnaire';
-import PostSessionQuestionnaire from './views/PostSessionQuestionnaire';
-import MatchQuestionnaire from './views/MatchQuestionnaire';
-import InjuryFollowupQuestionnaire from './views/InjuryFollowupQuestionnaire';
+// Import des composants avec gestion d'erreur
+const importComponent = (componentName) => {
+  try {
+    switch(componentName) {
+      case 'PlayerGrid':
+        return React.lazy(() => import('./components/PlayerGrid'));
+      case 'AdminPanel':
+        return React.lazy(() => import('./views/AdminPanel'));
+      case 'PlayerDetail':
+        return React.lazy(() => import('./views/PlayerDetail'));
+      case 'AdminPlayerDetail':
+        return React.lazy(() => import('./views/AdminPlayerDetail'));
+      case 'PreSessionQuestionnaire':
+        return React.lazy(() => import('./views/PreSessionQuestionnaire'));
+      case 'PostSessionQuestionnaire':
+        return React.lazy(() => import('./views/PostSessionQuestionnaire'));
+      case 'MatchQuestionnaire':
+        return React.lazy(() => import('./views/MatchQuestionnaire'));
+      case 'InjuryFollowupQuestionnaire':
+        return React.lazy(() => import('./views/InjuryFollowupQuestionnaire'));
+      default:
+        return null;
+    }
+  } catch (error) {
+    console.error(`Erreur import composant ${componentName}:`, error);
+    return null;
+  }
+};
+
+// Composants lazy
+const PlayerGrid = importComponent('PlayerGrid');
+const AdminPanel = importComponent('AdminPanel');
+const PlayerDetail = importComponent('PlayerDetail');
+const AdminPlayerDetail = importComponent('AdminPlayerDetail');
+const PreSessionQuestionnaire = importComponent('PreSessionQuestionnaire');
+const PostSessionQuestionnaire = importComponent('PostSessionQuestionnaire');
+const MatchQuestionnaire = importComponent('MatchQuestionnaire');
+const InjuryFollowupQuestionnaire = importComponent('InjuryFollowupQuestionnaire');
+
+// Composant de fallback pour le loading
+const LoadingFallback = ({ text = "Chargement..." }) => (
+  <div className="min-h-screen flex items-center justify-center" style={{background: 'linear-gradient(135deg, #f0f4f8 0%, #fef9e7 100%)'}}>
+    <div className="bg-white rounded-xl shadow-lg p-8 text-center">
+      <div className="animate-spin rounded-full h-12 w-12 border-b-2 mx-auto mb-4" style={{borderColor: '#1D2945'}}></div>
+      <p className="text-gray-600">{text}</p>
+    </div>
+  </div>
+);
+
+// Composant d'erreur
+const ErrorFallback = ({ error, onRetry }) => (
+  <div className="min-h-screen flex items-center justify-center" style={{background: 'linear-gradient(135deg, #f0f4f8 0%, #fef9e7 100%)'}}>
+    <div className="bg-white rounded-xl shadow-lg p-8 text-center max-w-md">
+      <div className="text-red-500 text-6xl mb-4">⚠️</div>
+      <h2 className="text-2xl font-bold mb-4" style={{color: '#1D2945'}}>
+        Erreur de chargement
+      </h2>
+      <p className="text-gray-600 mb-6">
+        {error?.message || "Une erreur s'est produite lors du chargement de l'application."}
+      </p>
+      <button
+        onClick={onRetry}
+        className="px-6 py-3 text-white rounded-lg hover:shadow-lg transition-all"
+        style={{backgroundColor: '#1D2945'}}
+      >
+        Réessayer
+      </button>
+    </div>
+  </div>
+);
 
 const App = () => {
   // États principaux
@@ -22,6 +83,7 @@ const App = () => {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
   
   // Données
   const [players, setPlayers] = useState([]);
@@ -30,29 +92,31 @@ const App = () => {
   const [objectifsIndividuels, setObjectifsIndividuels] = useState({});
   const [objectifsMentaux, setObjectifsMentaux] = useState({});
 
-  // Jours d'entraînement
+  // Configuration
   const trainingDays = [1, 2, 4]; // Lundi, Mardi, Jeudi
+  const SITE_PASSWORD = 'NMF2026';
+  const ADMIN_PASSWORD = 'coachNmf_2026';
 
   // Fonction pour vérifier si aujourd'hui est un jour d'entraînement
-  const isTodayTrainingDay = () => {
+  const isTodayTrainingDay = useCallback(() => {
     const today = new Date().getDay();
     return trainingDays.includes(today);
-  };
+  }, [trainingDays]);
 
   // Fonction pour vérifier si une joueuse a répondu aujourd'hui
-  const hasAnsweredToday = (player) => {
-    if (!player.responses) return false;
+  const hasAnsweredToday = useCallback((player) => {
+    if (!player?.responses) return false;
     const today = new Date().toDateString();
     return player.responses.some(response => 
       new Date(response.created_at).toDateString() === today
     );
-  };
+  }, []);
 
   // Fonction pour activer/désactiver le mode admin
-  const toggleAdminMode = () => {
+  const toggleAdminMode = useCallback(() => {
     if (!isAdmin) {
       const pwd = prompt('Mot de passe entraîneur :');
-      if (pwd === 'coachNmf_2026') {
+      if (pwd === ADMIN_PASSWORD) {
         setIsAdmin(true);
         alert('Mode entraîneur activé');
       } else if (pwd) {
@@ -60,89 +124,58 @@ const App = () => {
       }
     } else {
       setIsAdmin(false);
+      if (currentView === 'admin' || currentView === 'admin-player-detail') {
+        setCurrentView('players');
+      }
     }
-  };
-
-  // Charger les joueurs depuis Supabase
-  const loadPlayers = async () => {
-    setLoading(true);
-    try {
-      const { data, error } = await supabase
-        .from('players')
-        .select('*')
-        .eq('is_active', true)
-        .order('name');
-      
-      if (error) throw error;
-      
-      // Charger les réponses pour chaque joueur
-      const playersWithResponses = await Promise.all(
-        data.map(async (player) => {
-          const { data: responses, error: respError } = await supabase
-            .from('responses')
-            .select('*')
-            .eq('player_id', player.id)
-            .order('created_at', { ascending: false });
-          
-          if (respError) {
-            console.error('Erreur chargement réponses:', respError);
-            return { ...player, responses: [] };
-          }
-          
-          return { ...player, responses: responses || [] };
-        })
-      );
-      
-      setPlayers(playersWithResponses);
-      loadPlayerStatistics(playersWithResponses);
-      await loadObjectifs();
-    } catch (error) {
-      console.error('Erreur lors du chargement des joueurs:', error);
-      alert('Erreur lors du chargement des données');
-    }
-    setLoading(false);
-  };
+  }, [isAdmin, currentView, ADMIN_PASSWORD]);
 
   // Charger les statistiques
-  const loadPlayerStatistics = (playersData = players) => {
-    const stats = {};
-    playersData.forEach(player => {
-      const preResponses = player.responses?.filter(r => r.type === 'pre') || [];
-      const postResponses = player.responses?.filter(r => r.type === 'post') || [];
-      const matchResponses = player.responses?.filter(r => r.type === 'match') || [];
-      
-      // Données pour les graphiques
-      const chartData = player.responses?.map(response => ({
-        date: new Date(response.created_at).toLocaleDateString('fr-FR'),
-        ...response.data,
-        type: response.type
-      })) || [];
+  const loadPlayerStatistics = useCallback((playersData = players) => {
+    try {
+      const stats = {};
+      playersData.forEach(player => {
+        if (!player.responses) return;
+        
+        const preResponses = player.responses.filter(r => r.type === 'pre') || [];
+        const postResponses = player.responses.filter(r => r.type === 'post') || [];
+        const matchResponses = player.responses.filter(r => r.type === 'match') || [];
+        
+        // Données pour les graphiques
+        const chartData = player.responses.map(response => ({
+          date: new Date(response.created_at).toLocaleDateString('fr-FR'),
+          ...response.data,
+          type: response.type
+        })) || [];
 
-      stats[player.id] = {
-        total_responses: player.responses?.length || 0,
-        pre_session_responses: preResponses.length,
-        post_session_responses: postResponses.length,
-        match_responses: matchResponses.length,
-        avg_motivation: preResponses.length > 0 
-          ? (preResponses.reduce((sum, r) => sum + (r.data?.motivation || 0), 0) / preResponses.length).toFixed(1)
-          : 0,
-        avg_fatigue: preResponses.length > 0
-          ? (preResponses.reduce((sum, r) => sum + (r.data?.fatigue || 0), 0) / preResponses.length).toFixed(1)
-          : 0,
-        avg_rpe: postResponses.length > 0
-          ? (postResponses.reduce((sum, r) => sum + (r.data?.intensite_rpe || 0), 0) / postResponses.length).toFixed(1)
-          : 0,
-        last_response_date: player.responses?.length > 0 
-          ? new Date(Math.max(...player.responses.map(r => new Date(r.created_at)))).toLocaleDateString('fr-FR')
-          : null,
-        chartData: chartData
-      };
-    });
-    setPlayerStats(stats);
-  };
+        stats[player.id] = {
+          total_responses: player.responses.length,
+          pre_session_responses: preResponses.length,
+          post_session_responses: postResponses.length,
+          match_responses: matchResponses.length,
+          avg_motivation: preResponses.length > 0 
+            ? (preResponses.reduce((sum, r) => sum + (r.data?.motivation || 0), 0) / preResponses.length).toFixed(1)
+            : 0,
+          avg_fatigue: preResponses.length > 0
+            ? (preResponses.reduce((sum, r) => sum + (r.data?.fatigue || 0), 0) / preResponses.length).toFixed(1)
+            : 0,
+          avg_rpe: postResponses.length > 0
+            ? (postResponses.reduce((sum, r) => sum + (r.data?.intensite_rpe || 0), 0) / postResponses.length).toFixed(1)
+            : 0,
+          last_response_date: player.responses.length > 0 
+            ? new Date(Math.max(...player.responses.map(r => new Date(r.created_at)))).toLocaleDateString('fr-FR')
+            : null,
+          chartData: chartData
+        };
+      });
+      setPlayerStats(stats);
+    } catch (error) {
+      console.error('Erreur calcul statistiques:', error);
+    }
+  }, [players]);
 
   // Charger les objectifs depuis Supabase
-  const loadObjectifs = async () => {
+  const loadObjectifs = useCallback(async () => {
     try {
       // Charger les objectifs collectifs
       const { data: collectifs, error: errorCollectifs } = await supabase
@@ -179,32 +212,87 @@ const App = () => {
     } catch (error) {
       console.error('Erreur chargement objectifs:', error);
     }
-  };
+  }, []);
+
+  // Charger les joueurs depuis Supabase
+  const loadPlayers = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const { data, error } = await supabase
+        .from('players')
+        .select('*')
+        .eq('is_active', true)
+        .order('name');
+      
+      if (error) throw error;
+      
+      // Charger les réponses pour chaque joueur
+      const playersWithResponses = await Promise.all(
+        data.map(async (player) => {
+          const { data: responses, error: respError } = await supabase
+            .from('responses')
+            .select('*')
+            .eq('player_id', player.id)
+            .order('created_at', { ascending: false });
+          
+          if (respError) {
+            console.error('Erreur chargement réponses:', respError);
+            return { ...player, responses: [] };
+          }
+          
+          return { ...player, responses: responses || [] };
+        })
+      );
+      
+      setPlayers(playersWithResponses);
+      loadPlayerStatistics(playersWithResponses);
+      await loadObjectifs();
+    } catch (error) {
+      console.error('Erreur lors du chargement des joueurs:', error);
+      setError(error);
+    }
+    setLoading(false);
+  }, [loadPlayerStatistics, loadObjectifs]);
 
   // Charger les joueurs quand l'utilisateur est authentifié
   useEffect(() => {
     if (isAuthenticated) {
       loadPlayers();
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, loadPlayers]);
 
   // Authentification
-  const handleSiteLogin = () => {
-    if (password === 'NMF2026') {
+  const handleSiteLogin = useCallback(() => {
+    if (password === SITE_PASSWORD) {
       setIsAuthenticated(true);
       setCurrentView('players');
       setPassword('');
+      setError(null);
     } else {
       alert('Mot de passe incorrect');
     }
-  };
+  }, [password, SITE_PASSWORD]);
 
-  const logout = () => {
+  const logout = useCallback(() => {
     setIsAuthenticated(false);
     setIsAdmin(false);
     setCurrentView('login');
     setSelectedPlayer(null);
-  };
+    setPlayers([]);
+    setPlayerStats({});
+    setError(null);
+  }, []);
+
+  // Gestionnaire d'erreur pour retry
+  const handleRetry = useCallback(() => {
+    setError(null);
+    if (isAuthenticated) {
+      loadPlayers();
+    } else {
+      window.location.reload();
+    }
+  }, [isAuthenticated, loadPlayers]);
 
   // Props communes pour les composants
   const commonProps = {
@@ -227,8 +315,15 @@ const App = () => {
     loadPlayers,
     supabase,
     isTodayTrainingDay,
-    hasAnsweredToday
+    hasAnsweredToday,
+    error,
+    setError
   };
+
+  // Si erreur critique
+  if (error && !isAuthenticated) {
+    return <ErrorFallback error={error} onRetry={handleRetry} />;
+  }
 
   // Écran de connexion
   if (!isAuthenticated) {
@@ -252,14 +347,15 @@ const App = () => {
                 type={showPassword ? "text" : "password"}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:border-transparent"
+                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:border-transparent transition-all"
+                style={{focusRingColor: '#1D2945'}}
                 placeholder="Entrez le mot de passe"
                 onKeyPress={(e) => e.key === 'Enter' && handleSiteLogin()}
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-3 text-gray-400 hover:text-gray-600"
+                className="absolute right-3 top-3 text-gray-400 hover:text-gray-600 transition-colors"
               >
                 {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
               </button>
@@ -269,7 +365,7 @@ const App = () => {
           <button
             onClick={handleSiteLogin}
             disabled={!password || loading}
-            className="w-full text-white py-3 rounded-lg font-semibold hover:shadow-lg transform hover:scale-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full text-white py-3 rounded-lg font-semibold hover:shadow-lg transform hover:scale-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
             style={{background: 'linear-gradient(135deg, #1D2945 0%, #2563eb 100%)'}}
           >
             {loading ? 'Connexion...' : 'Accéder à l\'application'}
@@ -284,56 +380,127 @@ const App = () => {
     );
   }
 
-  // Router vers les différentes vues
-  switch (currentView) {
-    case 'players':
-      return (
-        <PlayerGrid 
-          {...commonProps}
-          toggleAdminMode={toggleAdminMode}
-          logout={logout}
-        />
-      );
-    
-    case 'admin':
-      return <AdminPanel {...commonProps} />;
-    
-    case 'admin-player-detail':
-      return <AdminPlayerDetail {...commonProps} />;
-    
-    case 'player-detail':
-      return <PlayerDetail {...commonProps} />;
-    
-    case 'pre-session':
-      return <PreSessionQuestionnaire {...commonProps} />;
-    
-    case 'post-session':
-      return <PostSessionQuestionnaire {...commonProps} />;
-    
-    case 'match':
-      return <MatchQuestionnaire {...commonProps} />;
-    
-    case 'injury-followup':
-      return <InjuryFollowupQuestionnaire {...commonProps} />;
-    
-    default:
-      return (
-        <div className="min-h-screen flex items-center justify-center" style={{background: 'linear-gradient(135deg, #f0f4f8 0%, #fef9e7 100%)'}}>
-          <div className="text-center bg-white rounded-xl shadow-lg p-8">
-            <h2 className="text-2xl font-bold mb-4" style={{color: '#1D2945'}}>
-              Vue non trouvée
-            </h2>
+  // Header commun pour les vues authentifiées
+  const AppHeader = ({ title, showAdminToggle = false }) => (
+    <div className="sticky top-0 z-50 bg-white shadow-sm border-b">
+      <div className="flex items-center justify-between p-4">
+        <h1 className="text-xl font-bold" style={{color: '#1D2945'}}>{title}</h1>
+        <div className="flex items-center space-x-2">
+          {showAdminToggle && (
             <button
-              onClick={() => setCurrentView('players')}
-              className="px-6 py-3 text-white rounded-lg"
-              style={{backgroundColor: '#1D2945'}}
+              onClick={toggleAdminMode}
+              className={`flex items-center space-x-2 px-3 py-2 rounded-lg transition-all ${
+                isAdmin 
+                  ? 'bg-amber-100 text-amber-800' 
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
             >
-              Retour à l'accueil
+              <Settings size={16} />
+              <span className="text-sm">{isAdmin ? 'Mode Coach' : 'Coach'}</span>
             </button>
-          </div>
+          )}
+          <button
+            onClick={logout}
+            className="flex items-center space-x-2 px-3 py-2 bg-red-100 text-red-600 hover:bg-red-200 rounded-lg transition-all"
+          >
+            <LogOut size={16} />
+            <span className="text-sm">Déconnexion</span>
+          </button>
         </div>
-      );
-  }
+      </div>
+    </div>
+  );
+
+  // Router vers les différentes vues avec Suspense
+  const renderCurrentView = () => {
+    const views = {
+      'players': () => (
+        <React.Suspense fallback={<LoadingFallback text="Chargement de la grille des joueurs..." />}>
+          <PlayerGrid 
+            {...commonProps}
+            toggleAdminMode={toggleAdminMode}
+            logout={logout}
+          />
+        </React.Suspense>
+      ),
+      'admin': () => (
+        <React.Suspense fallback={<LoadingFallback text="Chargement du panel administrateur..." />}>
+          <AppHeader title="Panel Administrateur" />
+          <AdminPanel {...commonProps} />
+        </React.Suspense>
+      ),
+      'admin-player-detail': () => (
+        <React.Suspense fallback={<LoadingFallback text="Chargement des détails du joueur..." />}>
+          <AdminPlayerDetail {...commonProps} />
+        </React.Suspense>
+      ),
+      'player-detail': () => (
+        <React.Suspense fallback={<LoadingFallback text="Chargement des détails..." />}>
+          <PlayerDetail {...commonProps} />
+        </React.Suspense>
+      ),
+      'pre-session': () => (
+        <React.Suspense fallback={<LoadingFallback text="Chargement du questionnaire..." />}>
+          <PreSessionQuestionnaire {...commonProps} />
+        </React.Suspense>
+      ),
+      'post-session': () => (
+        <React.Suspense fallback={<LoadingFallback text="Chargement du questionnaire..." />}>
+          <PostSessionQuestionnaire {...commonProps} />
+        </React.Suspense>
+      ),
+      'match': () => (
+        <React.Suspense fallback={<LoadingFallback text="Chargement du questionnaire match..." />}>
+          <MatchQuestionnaire {...commonProps} />
+        </React.Suspense>
+      ),
+      'injury-followup': () => (
+        <React.Suspense fallback={<LoadingFallback text="Chargement du suivi blessure..." />}>
+          <InjuryFollowupQuestionnaire {...commonProps} />
+        </React.Suspense>
+      )
+    };
+
+    const ViewComponent = views[currentView];
+    
+    if (ViewComponent) {
+      try {
+        return ViewComponent();
+      } catch (error) {
+        console.error(`Erreur rendu vue ${currentView}:`, error);
+        return <ErrorFallback error={error} onRetry={() => setCurrentView('players')} />;
+      }
+    }
+
+    // Vue par défaut si la vue n'est pas trouvée
+    return (
+      <div className="min-h-screen flex items-center justify-center" style={{background: 'linear-gradient(135deg, #f0f4f8 0%, #fef9e7 100%)'}}>
+        <div className="text-center bg-white rounded-xl shadow-lg p-8">
+          <h2 className="text-2xl font-bold mb-4" style={{color: '#1D2945'}}>
+            Vue non trouvée
+          </h2>
+          <p className="text-gray-600 mb-4">
+            La vue "{currentView}" n'existe pas.
+          </p>
+          <button
+            onClick={() => setCurrentView('players')}
+            className="px-6 py-3 text-white rounded-lg hover:shadow-lg transition-all"
+            style={{backgroundColor: '#1D2945'}}
+          >
+            Retour à l'accueil
+          </button>
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <React.Suspense fallback={<LoadingFallback />}>
+        {renderCurrentView()}
+      </React.Suspense>
+    </div>
+  );
 };
 
 export default App;
