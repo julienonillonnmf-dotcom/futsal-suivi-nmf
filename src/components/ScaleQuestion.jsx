@@ -1,4 +1,5 @@
-// components/ScaleQuestion.jsx
+// src/components/ScaleQuestion.jsx
+
 import React from 'react';
 
 const ScaleQuestion = ({ 
@@ -7,7 +8,7 @@ const ScaleQuestion = ({
   onChange, 
   leftLabel, 
   rightLabel, 
-  showValue = false 
+  showValue = false  // FALSE par défaut = les joueuses ne voient pas les nombres
 }) => (
   <div className="mb-6">
     <label className="block text-sm font-semibold text-gray-700 mb-3">
@@ -27,6 +28,7 @@ const ScaleQuestion = ({
       />
       <div className="flex justify-between text-xs text-gray-600 mt-2 font-medium">
         <span>{leftLabel}</span>
+        {/* AMÉLIORATION: Nombres cachés par défaut pour les joueuses */}
         {showValue && <span className="text-center font-bold">{value}/20</span>}
         <span>{rightLabel}</span>
       </div>
