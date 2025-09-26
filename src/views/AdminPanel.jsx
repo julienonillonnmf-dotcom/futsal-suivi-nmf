@@ -300,19 +300,33 @@ const AdminPanel = ({
         <div className="bg-white rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-auto">
           <div className="sticky top-0 bg-white border-b p-6 flex items-center justify-between">
             <div className="flex items-center space-x-4">
-              <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-gray-200">
-                {player.photo_url ? (
-                  <img src={player.photo_url} alt={player.name} className="w-full h-full object-cover" />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center text-white text-lg font-bold" 
-                       style={{background: 'linear-gradient(135deg, #1D2945 0%, #C09D5A 100%)'}}>
-                    {player.name.split(' ').map(n => n[0]).join('')}
-                  </div>
-                )}
+              <div className="relative">
+                <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-gray-200">
+                  {player.photo_url ? (
+                    <img src={player.photo_url} alt={player.name} className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-white text-lg font-bold" 
+                         style={{background: 'linear-gradient(135deg, #1D2945 0%, #C09D5A 100%)'}}>
+                      {player.name.split(' ').map(n => n[0]).join('')}
+                    </div>
+                  )}
+                </div>
+                
+                {/* Bouton upload photo */}
+                <label className="absolute inset-0 cursor-pointer bg-black bg-opacity-0 hover:bg-opacity-50 flex items-center justify-center opacity-0 hover:opacity-100 transition-all duration-300 rounded-full">
+                  <Camera size={16} className="text-white" />
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => e.target.files[0] && handlePhotoUpload(player.id, e.target.files[0])}
+                  />
+                </label>
               </div>
               <div>
                 <h2 className="text-2xl font-bold" style={{color: '#1D2945'}}>{player.name}</h2>
                 <p className="text-gray-600">{stats.total_responses || 0} réponses totales</p>
+                <p className="text-xs text-gray-500 mt-1">Survolez la photo pour la changer</p>
               </div>
             </div>
             <button
@@ -373,12 +387,12 @@ const AdminPanel = ({
                     [player.id]: e.target.value
                   }))}
                   placeholder="Objectifs techniques..."
-                  className="w-full p-3 border border-gray-300 rounded-lg"
+                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   rows={4}
                 />
                 <button
                   onClick={() => saveObjectifsIndividuels(player.id, objectifsIndividuels[player.id] || '')}
-                  className="mt-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+                  className="mt-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
                 >
                   Sauvegarder
                 </button>
@@ -393,12 +407,12 @@ const AdminPanel = ({
                     [player.id]: e.target.value
                   }))}
                   placeholder="Objectifs mentaux..."
-                  className="w-full p-3 border border-gray-300 rounded-lg"
+                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
                   rows={4}
                 />
                 <button
                   onClick={() => saveObjectifsMentaux(player.id, objectifsMentaux[player.id] || '')}
-                  className="mt-2 px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600"
+                  className="mt-2 px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors"
                 >
                   Sauvegarder
                 </button>
@@ -448,67 +462,71 @@ const AdminPanel = ({
           </div>
         </div>
 
-        {/* Section 1: Photos des joueuses cliquables */}
+        {/* Section 1: Grille des joueuses (style interface principale) */}
         <div className="bg-white rounded-xl shadow-lg p-6 mb-8">
           <h2 className="text-2xl font-bold mb-6" style={{color: '#1D2945'}}>
             <Users className="inline mr-2" size={24} />
             Gestion des Joueuses
           </h2>
           
-          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {players.map(player => (
-              <div key={player.id} className="flex flex-col items-center space-y-2 group">
+              <div 
+                key={player.id} 
+                className="bg-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer transform hover:scale-105 border border-gray-100 overflow-hidden group"
+                onClick={() => setDetailViewPlayer(player)}
+              >
                 <div className="relative">
-                  <div 
-                    className="w-20 h-20 rounded-full overflow-hidden border-2 border-gray-300 cursor-pointer hover:border-blue-400 hover:shadow-lg transition-all duration-300 hover:scale-105"
-                    onClick={() => setDetailViewPlayer(player)}
-                  >
+                  {/* Photo de profil */}
+                  <div className="w-20 h-20 rounded-full mx-auto mt-6 mb-4 overflow-hidden border-2 border-gray-200">
                     {player.photo_url ? (
                       <img 
                         src={player.photo_url} 
-                        alt={player.name} 
-                        className="w-full h-full object-cover" 
+                        alt={player.name}
+                        className="w-full h-full object-cover"
                       />
                     ) : (
                       <div 
-                        className="w-full h-full flex items-center justify-center text-white text-sm font-bold" 
+                        className="w-full h-full flex items-center justify-center text-white text-lg font-bold"
                         style={{background: 'linear-gradient(135deg, #1D2945 0%, #C09D5A 100%)'}}
                       >
                         {player.name.split(' ').map(n => n[0]).join('')}
                       </div>
                     )}
-                    
-                    {/* Overlay pour upload photo */}
-                    <label className="absolute inset-0 cursor-pointer bg-black bg-opacity-0 hover:bg-opacity-60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 rounded-full">
-                      <Camera size={18} className="text-white" />
-                      <input
-                        type="file"
-                        accept="image/*"
-                        className="hidden"
-                        onChange={(e) => e.target.files[0] && handlePhotoUpload(player.id, e.target.files[0])}
-                      />
-                    </label>
                   </div>
-                  
+
                   {/* Bouton suppression */}
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
                       deletePlayer(player.id);
                     }}
-                    className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-all duration-300 hover:bg-red-600 hover:scale-110 flex items-center justify-center"
+                    className="absolute top-2 right-2 w-8 h-8 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-all duration-300 hover:bg-red-600 flex items-center justify-center"
                   >
-                    <Trash2 size={10} />
+                    <Trash2 size={14} />
                   </button>
                 </div>
-                
-                <div className="text-center">
-                  <p className="text-xs font-medium text-gray-800 truncate max-w-[70px]" title={player.name}>
-                    {player.name.split(' ')[0]}
-                  </p>
-                  <p className="text-xs text-gray-500">
-                    {playerStats[player.id]?.total_responses || 0} rép.
-                  </p>
+
+                {/* Informations joueuse */}
+                <div className="px-4 pb-4 text-center">
+                  <h3 className="font-bold text-lg mb-1" style={{color: '#1D2945'}}>
+                    {player.name}
+                  </h3>
+                  
+                  {/* Indicateurs de statut */}
+                  <div className="flex justify-center space-x-1 mb-3">
+                    <div className="w-3 h-3 rounded-full bg-gray-300"></div>
+                    <div className="w-3 h-3 rounded-full bg-gray-300"></div>
+                    <div className="w-3 h-3 rounded-full bg-gray-300"></div>
+                  </div>
+
+                  {/* Statistiques */}
+                  <div className="text-sm text-gray-600">
+                    <p>{playerStats[player.id]?.total_responses || 0} réponses totales</p>
+                    <p className="text-xs mt-1">
+                      Dernière activité: {playerStats[player.id]?.last_response_date || 'Aucune'}
+                    </p>
+                  </div>
                 </div>
               </div>
             ))}
