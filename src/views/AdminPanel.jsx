@@ -425,53 +425,19 @@ const AdminPanel = ({
             Statistiques et Analyses
           </h2>
           
-          {/* Filtres améliorés avec listes déroulantes */}
+          {/* Filtres améliorés avec checkboxes stylisées */}
           <div className="bg-gray-50 rounded-lg p-6 mb-6">
             <h3 className="text-lg font-semibold mb-4 text-gray-700 flex items-center">
               <Filter size={20} className="mr-2" />
               Filtres d'Analyse
             </h3>
             
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {/* Sélection des joueuses - Liste déroulante */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* Sélection des joueuses */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Joueuses</label>
-                <div className="relative">
-                  <select 
-                    multiple
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
-                    style={{ minHeight: '120px' }}
-                    value={selectedPlayers}
-                    onChange={(e) => {
-                      const values = Array.from(e.target.selectedOptions, option => option.value);
-                      if (values.includes('__ALL__')) {
-                        setSelectedPlayers([]);
-                      } else if (values.includes('__NONE__')) {
-                        setSelectedPlayers([]);
-                      } else {
-                        setSelectedPlayers(values.filter(v => !['__ALL__', '__NONE__'].includes(v)));
-                      }
-                    }}
-                  >
-                    <optgroup label="Options rapides">
-                      <option value="__ALL__" className="font-medium text-blue-600">
-                        ✓ Toutes les joueuses ({players.length})
-                      </option>
-                      <option value="__NONE__" className="font-medium text-red-600">
-                        ✗ Aucune sélection
-                      </option>
-                    </optgroup>
-                    <optgroup label="Joueuses disponibles">
-                      {players.map(player => (
-                        <option key={player.id} value={player.id}>
-                          {player.name}
-                        </option>
-                      ))}
-                    </optgroup>
-                  </select>
-                  
-                  {/* Boutons de sélection rapide */}
-                  <div className="flex space-x-2 mt-2">
+                <div className="flex items-center justify-between mb-3">
+                  <label className="block text-sm font-medium text-gray-700">Joueuses</label>
+                  <div className="flex space-x-2">
                     <button
                       onClick={() => setSelectedPlayers([])}
                       className="px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded hover:bg-blue-200 transition-all"
@@ -491,51 +457,57 @@ const AdminPanel = ({
                       Aucune
                     </button>
                   </div>
-                  <p className="text-xs text-gray-500 mt-1">
-                    {selectedPlayers.length === 0 ? `Toutes (${players.length})` : `${selectedPlayers.length} sélectionnée(s)`}
-                  </p>
                 </div>
+                
+                <div className="bg-white border border-gray-200 rounded-lg p-3 max-h-60 overflow-y-auto">
+                  <div className="space-y-2">
+                    {players.map(player => (
+                      <label key={player.id} className="flex items-center space-x-3 p-2 rounded hover:bg-gray-50 cursor-pointer transition-colors">
+                        <input
+                          type="checkbox"
+                          checked={selectedPlayers.length === 0 || selectedPlayers.includes(player.id)}
+                          onChange={() => {
+                            if (selectedPlayers.length === 0) {
+                              // Si toutes étaient sélectionnées, on ne garde que celle-ci
+                              setSelectedPlayers([player.id]);
+                            } else if (selectedPlayers.includes(player.id)) {
+                              // Si elle était sélectionnée, on la retire
+                              const newSelection = selectedPlayers.filter(id => id !== player.id);
+                              setSelectedPlayers(newSelection);
+                            } else {
+                              // Si elle n'était pas sélectionnée, on l'ajoute
+                              setSelectedPlayers([...selectedPlayers, player.id]);
+                            }
+                          }}
+                          className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                        />
+                        <div className="flex items-center space-x-2 flex-1">
+                          <div className="w-6 h-6 rounded-full overflow-hidden bg-gray-200">
+                            {player.photo_url ? (
+                              <img src={player.photo_url} alt={player.name} className="w-full h-full object-cover" />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center text-white text-xs font-bold"
+                                   style={{background: 'linear-gradient(135deg, #1D2945 0%, #C09D5A 100%)'}}>
+                                {player.name.split(' ').map(n => n[0]).join('')}
+                              </div>
+                            )}
+                          </div>
+                          <span className="text-sm text-gray-700">{player.name}</span>
+                        </div>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+                <p className="text-xs text-gray-500 mt-2">
+                  {selectedPlayers.length === 0 ? `Toutes sélectionnées (${players.length})` : `${selectedPlayers.length} sélectionnée(s)`}
+                </p>
               </div>
 
-              {/* Sélection des métriques - Liste déroulante */}
+              {/* Sélection des métriques */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Métriques</label>
-                <div className="relative">
-                  <select 
-                    multiple
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white"
-                    style={{ minHeight: '120px' }}
-                    value={selectedMetrics}
-                    onChange={(e) => {
-                      const values = Array.from(e.target.selectedOptions, option => option.value);
-                      if (values.includes('__ALL__')) {
-                        setSelectedMetrics(metricsOptions.map(m => m.value));
-                      } else if (values.includes('__NONE__')) {
-                        setSelectedMetrics([]);
-                      } else {
-                        setSelectedMetrics(values.filter(v => !['__ALL__', '__NONE__'].includes(v)));
-                      }
-                    }}
-                  >
-                    <optgroup label="Options rapides">
-                      <option value="__ALL__" className="font-medium text-green-600">
-                        ✓ Toutes les métriques
-                      </option>
-                      <option value="__NONE__" className="font-medium text-red-600">
-                        ✗ Aucune métrique
-                      </option>
-                    </optgroup>
-                    <optgroup label="Métriques disponibles">
-                      {metricsOptions.map(metric => (
-                        <option key={metric.value} value={metric.value}>
-                          {metric.label}
-                        </option>
-                      ))}
-                    </optgroup>
-                  </select>
-                  
-                  {/* Boutons de sélection rapide */}
-                  <div className="flex space-x-2 mt-2">
+                <div className="flex items-center justify-between mb-3">
+                  <label className="block text-sm font-medium text-gray-700">Métriques</label>
+                  <div className="flex space-x-2">
                     <button
                       onClick={() => setSelectedMetrics(metricsOptions.map(m => m.value))}
                       className="px-2 py-1 bg-green-100 text-green-700 text-xs rounded hover:bg-green-200 transition-all"
@@ -549,53 +521,45 @@ const AdminPanel = ({
                       Aucune
                     </button>
                   </div>
-                  <p className="text-xs text-gray-500 mt-1">
-                    {selectedMetrics.length} métrique(s) sélectionnée(s)
-                  </p>
                 </div>
+                
+                <div className="bg-white border border-gray-200 rounded-lg p-3 max-h-60 overflow-y-auto">
+                  <div className="space-y-2">
+                    {metricsOptions.map(metric => (
+                      <label key={metric.value} className="flex items-center space-x-3 p-2 rounded hover:bg-gray-50 cursor-pointer transition-colors">
+                        <input
+                          type="checkbox"
+                          checked={selectedMetrics.includes(metric.value)}
+                          onChange={() => {
+                            if (selectedMetrics.includes(metric.value)) {
+                              setSelectedMetrics(selectedMetrics.filter(m => m !== metric.value));
+                            } else {
+                              setSelectedMetrics([...selectedMetrics, metric.value]);
+                            }
+                          }}
+                          className="w-4 h-4 text-green-600 border-gray-300 rounded focus:ring-green-500"
+                        />
+                        <div className="flex items-center space-x-2 flex-1">
+                          <div 
+                            className="w-4 h-4 rounded"
+                            style={{backgroundColor: metric.color}}
+                          ></div>
+                          <span className="text-sm text-gray-700">{metric.label}</span>
+                        </div>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+                <p className="text-xs text-gray-500 mt-2">
+                  {selectedMetrics.length} métrique(s) sélectionnée(s)
+                </p>
               </div>
 
-              {/* Sélection des types de questionnaires - Liste déroulante */}
+              {/* Sélection des types de questionnaires */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Types questionnaires</label>
-                <div className="relative">
-                  <select 
-                    multiple
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white"
-                    style={{ minHeight: '120px' }}
-                    value={selectedQuestionTypes}
-                    onChange={(e) => {
-                      const values = Array.from(e.target.selectedOptions, option => option.value);
-                      if (values.includes('__ALL__')) {
-                        setSelectedQuestionTypes(['all']);
-                      } else if (values.includes('__NONE__')) {
-                        setSelectedQuestionTypes([]);
-                      } else if (values.includes('all')) {
-                        setSelectedQuestionTypes(['all']);
-                      } else {
-                        setSelectedQuestionTypes(values.filter(v => !['__ALL__', '__NONE__'].includes(v)));
-                      }
-                    }}
-                  >
-                    <optgroup label="Options rapides">
-                      <option value="__ALL__" className="font-medium text-purple-600">
-                        ✓ Tous les types
-                      </option>
-                      <option value="__NONE__" className="font-medium text-red-600">
-                        ✗ Aucun type
-                      </option>
-                    </optgroup>
-                    <optgroup label="Types disponibles">
-                      {questionTypeOptions.map(type => (
-                        <option key={type.value} value={type.value}>
-                          {type.label}
-                        </option>
-                      ))}
-                    </optgroup>
-                  </select>
-                  
-                  {/* Boutons de sélection rapide */}
-                  <div className="flex space-x-2 mt-2">
+                <div className="flex items-center justify-between mb-3">
+                  <label className="block text-sm font-medium text-gray-700">Types questionnaires</label>
+                  <div className="flex space-x-2">
                     <button
                       onClick={() => setSelectedQuestionTypes(['all'])}
                       className="px-2 py-1 bg-purple-100 text-purple-700 text-xs rounded hover:bg-purple-200 transition-all"
@@ -609,12 +573,82 @@ const AdminPanel = ({
                       Aucun
                     </button>
                   </div>
-                  <p className="text-xs text-gray-500 mt-1">
-                    {selectedQuestionTypes.length === 0 ? 'Aucun sélectionné' : 
-                     selectedQuestionTypes.includes('all') ? 'Tous les questionnaires' :
-                     `${selectedQuestionTypes.length} type(s) sélectionné(s)`}
-                  </p>
                 </div>
+                
+                <div className="bg-white border border-gray-200 rounded-lg p-3 max-h-60 overflow-y-auto">
+                  <div className="space-y-2">
+                    {questionTypeOptions.map(type => (
+                      <label key={type.value} className="flex items-center space-x-3 p-2 rounded hover:bg-gray-50 cursor-pointer transition-colors">
+                        <input
+                          type="checkbox"
+                          checked={selectedQuestionTypes.includes(type.value)}
+                          onChange={() => {
+                            if (type.value === 'all') {
+                              if (selectedQuestionTypes.includes('all')) {
+                                setSelectedQuestionTypes([]);
+                              } else {
+                                setSelectedQuestionTypes(['all']);
+                              }
+                            } else {
+                              const newTypes = selectedQuestionTypes.filter(t => t !== 'all');
+                              if (selectedQuestionTypes.includes(type.value)) {
+                                setSelectedQuestionTypes(newTypes.filter(t => t !== type.value));
+                              } else {
+                                setSelectedQuestionTypes([...newTypes, type.value]);
+                              }
+                            }
+                          }}
+                          className="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
+                        />
+                        <div className="flex items-center space-x-2 flex-1">
+                          <div className={`w-3 h-3 rounded-full ${
+                            type.value === 'all' ? 'bg-gray-500' :
+                            type.value === 'pre' ? 'bg-blue-500' :
+                            type.value === 'post' ? 'bg-green-500' :
+                            type.value === 'match' ? 'bg-purple-500' :
+                            'bg-yellow-500'
+                          }`}></div>
+                          <span className="text-sm text-gray-700">{type.label}</span>
+                        </div>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+                <p className="text-xs text-gray-500 mt-2">
+                  {selectedQuestionTypes.length === 0 ? 'Aucun sélectionné' : 
+                   selectedQuestionTypes.includes('all') ? 'Tous les questionnaires' :
+                   `${selectedQuestionTypes.length} type(s) sélectionné(s)`}
+                </p>
+              </div>
+            </div>
+
+            {/* Résumé des filtres actifs */}
+            <div className="mt-4 pt-4 border-t border-gray-200">
+              <div className="flex items-center justify-between text-sm">
+                <div className="flex items-center space-x-4">
+                  <span className="text-gray-600">
+                    <strong>Filtres actifs:</strong>
+                  </span>
+                  <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs">
+                    {selectedPlayers.length === 0 ? `${players.length} joueuses` : `${selectedPlayers.length} joueuses`}
+                  </span>
+                  <span className="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs">
+                    {selectedMetrics.length} métriques
+                  </span>
+                  <span className="bg-purple-100 text-purple-800 px-2 py-1 rounded-full text-xs">
+                    {selectedQuestionTypes.includes('all') ? 'Tous types' : `${selectedQuestionTypes.length} types`}
+                  </span>
+                </div>
+                <button
+                  onClick={() => {
+                    setSelectedPlayers([]);
+                    setSelectedMetrics(['motivation']);
+                    setSelectedQuestionTypes(['all']);
+                  }}
+                  className="text-gray-500 hover:text-gray-700 text-xs underline"
+                >
+                  Réinitialiser filtres
+                </button>
               </div>
             </div>
           </div>
