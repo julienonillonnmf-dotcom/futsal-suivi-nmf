@@ -46,51 +46,100 @@ const AdminPanel = ({
     { value: 'injury', label: 'Blessures' }
   ];
 
-  // Fonction pour générer les données du graphique filtré (adaptée au multi-sélection)
-  const getFilteredChartData = () => {
+  // Fonction pour générer les données du graphique unifié avec moyennes
+  const getUnifiedChartData = () => {
     const playersToShow = selectedPlayers.length > 0 ? 
       players.filter(p => selectedPlayers.includes(p.id)) : 
       players;
 
-    return selectedMetrics.map(metric => {
-      const metricInfo = metricsOptions.find(m => m.value === metric);
-      const data = playersToShow.map(player => {
-        const responses = player.responses || [];
+    if (playersToShow.length === 0 || selectedMetrics.length === 0) {
+      return { chartData: [], averageData: [] };
+    }
+
+    // Collecter toutes les dates uniques
+    const allDates = new Set();
+    playersToShow.forEach(player => {
+      const responses = player.responses || [];
+      let filteredResponses = responses;
+      if (!selectedQuestionTypes.includes('all')) {
+        filteredResponses = responses.filter(r => selectedQuestionTypes.includes(r.type));
+      }
+      
+      filteredResponses.forEach(response => {
+        const date = new Date(response.created_at).toLocaleDateString('fr-FR');
+        allDates.add(date);
+      });
+    });
+
+    const sortedDates = Array.from(allDates).sort((a, b) => {
+      const dateA = new Date(a.split('/').reverse().join('-'));
+      const dateB = new Date(b.split('/').reverse().join('-'));
+      return dateA - dateB;
+    });
+
+    // Préparer les données par date
+    const chartData = sortedDates.map(date => {
+      const dayData = { date };
+      
+      // Pour chaque métrique sélectionnée
+      selectedMetrics.forEach(metric => {
+        const valuesForDay = [];
         
-        // Filtrer par types de questionnaires (support multi-sélection)
+        playersToShow.forEach(player => {
+          const responses = player.responses || [];
+          let filteredResponses = responses;
+          if (!selectedQuestionTypes.includes('all')) {
+            filteredResponses = responses.filter(r => selectedQuestionTypes.includes(r.type));
+          }
+          
+          const dayResponses = filteredResponses.filter(r => 
+            new Date(r.created_at).toLocaleDateString('fr-FR') === date
+          );
+          
+          dayResponses.forEach(response => {
+            if (response.data?.[metric] != null && !isNaN(response.data[metric])) {
+              valuesForDay.push(Number(response.data[metric]));
+            }
+          });
+        });
+        
+        // Moyenne du jour pour cette métrique
+        if (valuesForDay.length > 0) {
+          dayData[`${metric}_daily_avg`] = Number((valuesForDay.reduce((sum, v) => sum + v, 0) / valuesForDay.length).toFixed(1));
+        }
+      });
+      
+      return dayData;
+    }).filter(day => {
+      // Garder seulement les jours avec au moins une donnée
+      return selectedMetrics.some(metric => day[`${metric}_daily_avg`] != null);
+    });
+
+    // Calculer les moyennes globales pour chaque métrique
+    const globalAverages = {};
+    selectedMetrics.forEach(metric => {
+      const allValues = [];
+      
+      playersToShow.forEach(player => {
+        const responses = player.responses || [];
         let filteredResponses = responses;
         if (!selectedQuestionTypes.includes('all')) {
           filteredResponses = responses.filter(r => selectedQuestionTypes.includes(r.type));
         }
-
-        // Calculer la métrique
-        let value = 0;
-        if (filteredResponses.length > 0) {
-          const validValues = filteredResponses
-            .map(r => r.data?.[metric])
-            .filter(v => v != null && !isNaN(v));
-          
-          if (validValues.length > 0) {
-            value = validValues.reduce((sum, v) => sum + Number(v), 0) / validValues.length;
+        
+        filteredResponses.forEach(response => {
+          if (response.data?.[metric] != null && !isNaN(response.data[metric])) {
+            allValues.push(Number(response.data[metric]));
           }
-        }
-
-        return {
-          name: player.name.split(' ')[0],
-          fullName: player.name,
-          value: Number(value.toFixed(1)),
-          responses: filteredResponses.length,
-          metric: metric
-        };
-      }).sort((a, b) => b.value - a.value);
-
-      return {
-        metric: metric,
-        label: metricInfo?.label || metric,
-        color: metricInfo?.color || '#1D2945',
-        data: data
-      };
+        });
+      });
+      
+      if (allValues.length > 0) {
+        globalAverages[metric] = Number((allValues.reduce((sum, v) => sum + v, 0) / allValues.length).toFixed(1));
+      }
     });
+
+    return { chartData, globalAverages };
   };
 
   // Sauvegarder les objectifs collectifs
@@ -299,7 +348,7 @@ const AdminPanel = ({
   };
 
   // Données pour les graphiques
-  const chartData = getFilteredChartData();
+  const { chartData, globalAverages } = getUnifiedChartData();
 
   return (
     <div className="min-h-screen p-4" style={{background: 'linear-gradient(135deg, #f0f4f8 0%, #fef9e7 100%)'}}>
@@ -647,39 +696,178 @@ const AdminPanel = ({
             </div>
           </div>
 
-          {/* Graphiques avec métriques multiples */}
+          {/* Graphique unifié avec moyennes */}
           <div className="mb-6">
             <h3 className="text-lg font-semibold mb-4 text-gray-700">
-              Comparaison des Métriques Sélectionnées
+              Évolution Temporelle des Métriques Sélectionnées
             </h3>
             
-            {getFilteredChartData().map((metricData, index) => (
-              <div key={metricData.metric} className="mb-8">
-                <h4 className="text-md font-medium mb-3" style={{color: metricData.color}}>
-                  {metricData.label} - {questionTypeOptions.find(t => selectedQuestionTypes.includes(t.value) || selectedQuestionTypes.includes('all'))?.label || 'Filtres personnalisés'}
-                </h4>
-                <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={metricData.data}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="name" />
-                    <YAxis domain={[0, 20]} />
-                    <Tooltip formatter={(value, name, props) => [
-                      `${value}/20`,
-                      metricData.label,
-                      `${props.payload.responses} réponses`
-                    ]} />
-                    <Bar dataKey="value" fill={metricData.color} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            ))}
-            
-            {selectedMetrics.length === 0 && (
-              <div className="text-center py-8 text-gray-500">
-                <BarChart3 size={48} className="mx-auto mb-4" />
-                <p>Sélectionnez au moins une métrique pour afficher les graphiques</p>
-              </div>
-            )}
+            {(() => {
+              const { chartData, globalAverages } = getUnifiedChartData();
+              
+              if (selectedMetrics.length === 0) {
+                return (
+                  <div className="text-center py-8 text-gray-500">
+                    <BarChart3 size={48} className="mx-auto mb-4" />
+                    <p>Sélectionnez au moins une métrique pour afficher le graphique temporel</p>
+                  </div>
+                );
+              }
+
+              if (chartData.length === 0) {
+                return (
+                  <div className="text-center py-8 text-gray-500">
+                    <p>Aucune donnée disponible pour les filtres sélectionnés</p>
+                  </div>
+                );
+              }
+
+              return (
+                <>
+                  <ResponsiveContainer width="100%" height={400}>
+                    <LineChart data={chartData}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis 
+                        dataKey="date" 
+                        tick={{fontSize: 12}}
+                        angle={-45}
+                        textAnchor="end"
+                        height={60}
+                      />
+                      <YAxis domain={[0, 20]} />
+                      <Tooltip 
+                        content={({ active, payload, label }) => {
+                          if (active && payload && payload.length > 0) {
+                            return (
+                              <div className="bg-white p-4 border border-gray-300 rounded-lg shadow-lg">
+                                <h4 className="font-semibold mb-2 text-gray-800">{label}</h4>
+                                <div className="space-y-1 text-sm">
+                                  {payload.map((entry, index) => {
+                                    const metricKey = entry.dataKey.replace('_daily_avg', '');
+                                    const metricInfo = metricsOptions.find(m => m.value === metricKey);
+                                    return (
+                                      <div key={index} className="flex justify-between items-center">
+                                        <span style={{color: entry.color}}>
+                                          {metricInfo?.label} (moyenne du jour):
+                                        </span>
+                                        <span className="font-medium">{entry.value}/20</span>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            );
+                          }
+                          return null;
+                        }}
+                      />
+                      
+                      {/* Lignes de moyennes quotidiennes */}
+                      {selectedMetrics.map(metric => {
+                        const metricInfo = metricsOptions.find(m => m.value === metric);
+                        return (
+                          <Line
+                            key={`daily_${metric}`}
+                            type="monotone"
+                            dataKey={`${metric}_daily_avg`}
+                            stroke={metricInfo?.color || '#1D2945'}
+                            strokeWidth={3}
+                            dot={{ fill: metricInfo?.color, strokeWidth: 2, r: 5 }}
+                            activeDot={{ r: 7, stroke: metricInfo?.color, strokeWidth: 2 }}
+                            name={`${metricInfo?.label} (jour)`}
+                          />
+                        );
+                      })}
+                      
+                      {/* Lignes de moyennes globales */}
+                      {selectedMetrics.map(metric => {
+                        const metricInfo = metricsOptions.find(m => m.value === metric);
+                        const globalAvg = globalAverages[metric];
+                        
+                        if (!globalAvg) return null;
+                        
+                        // Créer une ligne horizontale avec la moyenne globale
+                        const globalLineData = chartData.map(point => ({
+                          date: point.date,
+                          [`${metric}_global_avg`]: globalAvg
+                        }));
+                        
+                        return (
+                          <Line
+                            key={`global_${metric}`}
+                            type="monotone"
+                            dataKey={`${metric}_global_avg`}
+                            stroke={metricInfo?.color || '#1D2945'}
+                            strokeWidth={2}
+                            strokeDasharray="8 4"
+                            dot={false}
+                            activeDot={false}
+                            name={`${metricInfo?.label} (moyenne globale)`}
+                          />
+                        );
+                      })}
+                    </LineChart>
+                  </ResponsiveContainer>
+
+                  {/* Légende améliorée avec moyennes globales */}
+                  <div className="mt-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {/* Moyennes quotidiennes */}
+                      <div>
+                        <h4 className="text-sm font-semibold mb-3 text-gray-700">Moyennes quotidiennes (lignes pleines)</h4>
+                        <div className="space-y-2">
+                          {selectedMetrics.map(metric => {
+                            const metricInfo = metricsOptions.find(m => m.value === metric);
+                            return (
+                              <div key={metric} className="flex items-center space-x-2 text-sm">
+                                <div 
+                                  className="w-4 h-0.5 rounded"
+                                  style={{backgroundColor: metricInfo?.color}}
+                                ></div>
+                                <span>{metricInfo?.label}</span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* Moyennes globales */}
+                      <div>
+                        <h4 className="text-sm font-semibold mb-3 text-gray-700">Moyennes globales (lignes pointillées)</h4>
+                        <div className="space-y-2">
+                          {selectedMetrics.map(metric => {
+                            const metricInfo = metricsOptions.find(m => m.value === metric);
+                            const globalAvg = globalAverages[metric];
+                            return (
+                              <div key={metric} className="flex items-center justify-between text-sm">
+                                <div className="flex items-center space-x-2">
+                                  <div 
+                                    className="w-4 h-0.5 rounded border-dashed border-2"
+                                    style={{borderColor: metricInfo?.color}}
+                                  ></div>
+                                  <span>{metricInfo?.label}:</span>
+                                </div>
+                                <span className="font-medium text-gray-600">
+                                  {globalAvg || 'N/A'}/20
+                                </span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Informations sur les données */}
+                    <div className="mt-4 p-3 bg-blue-50 rounded-lg">
+                      <p className="text-xs text-blue-800">
+                        <strong>Lecture du graphique:</strong> Les lignes pleines montrent la moyenne quotidienne des joueuses ayant répondu ce jour-là. 
+                        Les lignes pointillées représentent la moyenne globale sur toute la période pour les joueuses sélectionnées.
+                      </p>
+                    </div>
+                  </div>
+                </>
+              );
+            })()}
           </div>
 
           {/* Statistiques contextuelles */}
