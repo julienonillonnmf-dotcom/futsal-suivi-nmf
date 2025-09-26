@@ -616,7 +616,7 @@ const AdminPanel = ({
           </div>
         </div>
 
-        {/* Section 3: Gestion des objectifs avec objectifs individuels */}
+        {/* Section 3: Gestion des objectifs avec édition individuelle */}
         <div className="bg-white rounded-xl shadow-lg p-6">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-2xl font-bold" style={{color: '#1D2945'}}>
@@ -661,93 +661,79 @@ const AdminPanel = ({
             )}
           </div>
 
-          {/* Objectifs individuels par joueuse */}
-          <div>
-            <h3 className="text-lg font-semibold mb-4 text-gray-700">Objectifs Individuels par Joueuse</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {players.map(player => (
-                <div key={player.id} className="border border-gray-200 rounded-lg p-4 hover:border-blue-300 transition-colors">
-                  <div className="flex items-center space-x-3 mb-4">
-                    <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-gray-200">
-                      {player.photo_url ? (
-                        <img src={player.photo_url} alt={player.name} className="w-full h-full object-cover" />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center text-white text-sm font-bold" 
-                             style={{background: 'linear-gradient(135deg, #1D2945 0%, #C09D5A 100%)'}}>
-                          {player.name.split(' ').map(n => n[0]).join('')}
-                        </div>
-                      )}
+          {/* Objectifs individuels */}
+          {editingObjectives && (
+            <div>
+              <h3 className="text-lg font-semibold mb-4 text-gray-700">Objectifs Individuels</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {players.map(player => (
+                  <div key={player.id} className="border border-gray-200 rounded-lg p-4">
+                    <div className="flex items-center space-x-3 mb-4">
+                      <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-gray-200">
+                        {player.photo_url ? (
+                          <img src={player.photo_url} alt={player.name} className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-white text-sm font-bold" 
+                               style={{background: 'linear-gradient(135deg, #1D2945 0%, #C09D5A 100%)'}}>
+                            {player.name.split(' ').map(n => n[0]).join('')}
+                          </div>
+                        )}
+                      </div>
+                      <h4 className="font-semibold text-gray-900">{player.name}</h4>
                     </div>
-                    <h4 className="font-semibold text-gray-900">{player.name}</h4>
-                  </div>
-                  
-                  {/* Objectifs techniques */}
-                  <div className="mb-4">
-                    <label className="block text-sm font-medium text-blue-700 mb-2">
-                      Objectifs Techniques
-                    </label>
-                    {editingObjectives ? (
-                      <div className="space-y-2">
-                        <textarea
-                          value={objectifsIndividuels[player.id] || ''}
-                          onChange={(e) => setObjectifsIndividuels(prev => ({
-                            ...prev,
-                            [player.id]: e.target.value
-                          }))}
-                          placeholder="Objectifs techniques..."
-                          className="w-full p-2 border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                          rows={2}
-                        />
-                        <button
-                          onClick={() => saveObjectifsIndividuels(player.id, objectifsIndividuels[player.id] || '')}
-                          disabled={loading}
-                          className="px-3 py-1 bg-blue-500 text-white text-sm rounded hover:bg-blue-600 transition-colors disabled:opacity-50"
-                        >
-                          {loading ? 'Sauvegarde...' : 'Sauvegarder'}
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="p-2 bg-blue-50 rounded text-sm">
-                        {objectifsIndividuels[player.id] || 'Aucun objectif technique défini.'}
-                      </div>
-                    )}
-                  </div>
+                    
+                    {/* Objectifs techniques */}
+                    <div className="mb-4">
+                      <label className="block text-sm font-medium text-blue-700 mb-2">
+                        Objectifs Techniques
+                      </label>
+                      <textarea
+                        value={objectifsIndividuels[player.id] || ''}
+                        onChange={(e) => setObjectifsIndividuels(prev => ({
+                          ...prev,
+                          [player.id]: e.target.value
+                        }))}
+                        placeholder="Objectifs techniques..."
+                        className="w-full p-2 border border-gray-300 rounded focus:ring-1 focus:ring-blue-500"
+                        rows={3}
+                      />
+                      <button
+                        onClick={() => saveObjectifsIndividuels(player.id, objectifsIndividuels[player.id] || '')}
+                        disabled={loading}
+                        className="mt-2 px-3 py-1 bg-blue-500 text-white text-sm rounded hover:bg-blue-600 transition-colors disabled:opacity-50"
+                      >
+                        Sauvegarder
+                      </button>
+                    </div>
 
-                  {/* Objectifs mentaux */}
-                  <div>
-                    <label className="block text-sm font-medium text-green-700 mb-2">
-                      Objectifs Mentaux
-                    </label>
-                    {editingObjectives ? (
-                      <div className="space-y-2">
-                        <textarea
-                          value={objectifsMentaux[player.id] || ''}
-                          onChange={(e) => setObjectifsMentaux(prev => ({
-                            ...prev,
-                            [player.id]: e.target.value
-                          }))}
-                          placeholder="Objectifs mentaux..."
-                          className="w-full p-2 border border-gray-300 rounded focus:ring-1 focus:ring-green-500 focus:border-green-500"
-                          rows={2}
-                        />
-                        <button
-                          onClick={() => saveObjectifsMentaux(player.id, objectifsMentaux[player.id] || '')}
-                          disabled={loading}
-                          className="px-3 py-1 bg-green-500 text-white text-sm rounded hover:bg-green-600 transition-colors disabled:opacity-50"
-                        >
-                          {loading ? 'Sauvegarde...' : 'Sauvegarder'}
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="p-2 bg-green-50 rounded text-sm">
-                        {objectifsMentaux[player.id] || 'Aucun objectif mental défini.'}
-                      </div>
-                    )}
+                    {/* Objectifs mentaux */}
+                    <div>
+                      <label className="block text-sm font-medium text-green-700 mb-2">
+                        Objectifs Mentaux
+                      </label>
+                      <textarea
+                        value={objectifsMentaux[player.id] || ''}
+                        onChange={(e) => setObjectifsMentaux(prev => ({
+                          ...prev,
+                          [player.id]: e.target.value
+                        }))}
+                        placeholder="Objectifs mentaux..."
+                        className="w-full p-2 border border-gray-300 rounded focus:ring-1 focus:ring-green-500"
+                        rows={3}
+                      />
+                      <button
+                        onClick={() => saveObjectifsMentaux(player.id, objectifsMentaux[player.id] || '')}
+                        disabled={loading}
+                        className="mt-2 px-3 py-1 bg-green-500 text-white text-sm rounded hover:bg-green-600 transition-colors disabled:opacity-50"
+                      >
+                        Sauvegarder
+                      </button>
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
     </div>
