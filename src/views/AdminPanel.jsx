@@ -482,15 +482,9 @@ const AdminPanel = ({
                           className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
                         />
                         <div className="flex items-center space-x-2 flex-1">
-                          <div className="w-6 h-6 rounded-full overflow-hidden bg-gray-200">
-                            {player.photo_url ? (
-                              <img src={player.photo_url} alt={player.name} className="w-full h-full object-cover" />
-                            ) : (
-                              <div className="w-full h-full flex items-center justify-center text-white text-xs font-bold"
-                                   style={{background: 'linear-gradient(135deg, #1D2945 0%, #C09D5A 100%)'}}>
-                                {player.name.split(' ').map(n => n[0]).join('')}
-                              </div>
-                            )}
+                          <div className="w-6 h-6 rounded overflow-hidden flex items-center justify-center text-white text-xs font-bold"
+                               style={{background: 'linear-gradient(135deg, #1D2945 0%, #C09D5A 100%)'}}>
+                            {player.name.split(' ').map(n => n[0]).join('')}
                           </div>
                           <span className="text-sm text-gray-700">{player.name}</span>
                         </div>
