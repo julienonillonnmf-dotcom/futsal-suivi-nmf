@@ -189,28 +189,28 @@ const AdminPlayerDetail = ({
           <div className="space-y-6">
             
             {/* Section Photo de Profil */}
-            <div className="bg-white rounded-xl shadow-lg p-6">
+            <div className="bg-white rounded-xl shadow-lg p-6 h-fit">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-bold" style={{color: '#1D2945'}}>
-                  <User className="inline mr-2" size={20} />
+                <h2 className="text-lg font-semibold" style={{color: '#1D2945'}}>
+                  <User className="inline mr-2" size={18} />
                   Photo de Profil
                 </h2>
                 <button
                   onClick={() => setEditingPhoto(!editingPhoto)}
-                  className={`flex items-center space-x-2 px-3 py-2 rounded-lg text-sm transition-all ${
+                  className={`flex items-center space-x-1 px-2 py-1 rounded text-xs transition-all ${
                     editingPhoto 
                       ? 'bg-red-100 text-red-600 hover:bg-red-200' 
                       : 'bg-blue-100 text-blue-600 hover:bg-blue-200'
                   }`}
                 >
-                  {editingPhoto ? <X size={16} /> : <Edit3 size={16} />}
+                  {editingPhoto ? <X size={12} /> : <Edit3 size={12} />}
                   <span>{editingPhoto ? 'Annuler' : 'Modifier'}</span>
                 </button>
               </div>
 
               <div className="text-center">
                 {/* Affichage de la photo */}
-                <div className="w-24 h-24 rounded-full mx-auto mb-3 overflow-hidden border-3 border-gray-200">
+                <div className="w-20 h-20 rounded-full mx-auto mb-3 overflow-hidden border-2 border-gray-200">
                   {selectedPlayer.photo_url ? (
                     <img 
                       src={selectedPlayer.photo_url} 
@@ -219,7 +219,7 @@ const AdminPlayerDetail = ({
                     />
                   ) : (
                     <div 
-                      className="w-full h-full flex items-center justify-center text-white text-lg font-bold"
+                      className="w-full h-full flex items-center justify-center text-white text-sm font-bold"
                       style={{background: 'linear-gradient(135deg, #1D2945 0%, #C09D5A 100%)'}}
                     >
                       {selectedPlayer.name.split(' ').map(n => n[0]).join('')}
@@ -227,7 +227,7 @@ const AdminPlayerDetail = ({
                   )}
                 </div>
 
-                <h3 className="text-lg font-bold mb-3" style={{color: '#1D2945'}}>
+                <h3 className="text-md font-semibold mb-2" style={{color: '#1D2945'}}>
                   {selectedPlayer.name}
                 </h3>
 
@@ -247,12 +247,12 @@ const AdminPlayerDetail = ({
                     <button
                       onClick={() => fileInputRef.current?.click()}
                       disabled={loading}
-                      className="flex items-center space-x-2 px-3 py-2 bg-green-500 text-white text-sm rounded-lg hover:bg-green-600 transition-all disabled:opacity-50 mx-auto"
+                      className="flex items-center space-x-2 px-3 py-1 bg-green-500 text-white text-xs rounded hover:bg-green-600 transition-all disabled:opacity-50 mx-auto"
                     >
-                      <Upload size={14} />
+                      <Upload size={12} />
                       <span>{loading ? 'Upload...' : 'Nouvelle photo'}</span>
                     </button>
-                    <p className="text-xs text-gray-500">
+                    <p className="text-xs text-gray-400">
                       JPG, PNG, GIF - Max 5MB
                     </p>
                   </div>
