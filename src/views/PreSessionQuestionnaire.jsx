@@ -10,7 +10,7 @@ const PreSessionQuestionnaire = ({
   setCurrentView,
   objectifsCollectifs,
   objectifsIndividuels,
-  objectifsMentaux,  // AMÉLIORATION: Objectifs mentaux ajoutés
+  objectifsMentaux,
   loading,
   setLoading,
   supabase,
@@ -22,7 +22,9 @@ const PreSessionQuestionnaire = ({
     fatigue: 10,
     plaisir: 10,
     objectif_difficulte: 10,
-    injuries: []  // AMÉLIORATION: Suivi des blessures intégré
+    objectifs_personnels: '',
+    commentaires_libres: '',
+    injuries: []
   });
 
   const saveQuestionnaire = async () => {
@@ -49,6 +51,8 @@ const PreSessionQuestionnaire = ({
         fatigue: 10,
         plaisir: 10,
         objectif_difficulte: 10,
+        objectifs_personnels: '',
+        commentaires_libres: '',
         injuries: []
       });
       
@@ -84,10 +88,10 @@ const PreSessionQuestionnaire = ({
           </div>
 
           <div className="space-y-6">
-            {/* AMÉLIORATION: Affichage des 3 types d'objectifs */}
+            {/* Affichage des objectifs existants */}
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
               <h3 className="text-lg font-semibold mb-3" style={{color: '#1D2945'}}>
-                🎯 Objectifs pour cette séance
+                🎯 Objectifs définis par l'encadrement
               </h3>
               
               {/* Objectifs Collectifs */}
@@ -110,7 +114,7 @@ const PreSessionQuestionnaire = ({
                 </div>
               )}
 
-              {/* AMÉLIORATION: Objectifs Mentaux */}
+              {/* Objectifs Mentaux */}
               {selectedPlayer && objectifsMentaux[selectedPlayer.id] && (
                 <div>
                   <h4 className="font-medium text-blue-800 mb-2">Vos objectifs mentaux :</h4>
@@ -121,18 +125,31 @@ const PreSessionQuestionnaire = ({
               )}
               
               {!objectifsCollectifs && (!selectedPlayer || !objectifsIndividuels[selectedPlayer.id]) && (!selectedPlayer || !objectifsMentaux[selectedPlayer.id]) && (
-                <p className="text-gray-600 italic">Aucun objectif défini pour cette séance.</p>
+                <p className="text-gray-600 italic">Aucun objectif défini par l'encadrement pour cette séance.</p>
               )}
             </div>
 
-            {/* AMÉLIORATION: ScaleQuestion sans nombres pour les joueuses */}
+            {/* Objectifs personnels pour cette séance */}
+            <div className="mb-6">
+              <label className="block text-sm font-semibold text-gray-700 mb-3">
+                🎯 Vos objectifs personnels pour cette séance
+              </label>
+              <textarea
+                value={preSessionForm.objectifs_personnels}
+                onChange={(e) => setPreSessionForm({...preSessionForm, objectifs_personnels: e.target.value})}
+                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:border-transparent"
+                rows="3"
+                placeholder="Quels sont vos objectifs personnels pour cette séance ? (ex: améliorer mes passes, être plus vocal, rester concentrée...)"
+              />
+            </div>
+
             <ScaleQuestion
               question="Comment évaluez-vous votre motivation pour cette séance ?"
               value={preSessionForm.motivation}
               onChange={(value) => setPreSessionForm({...preSessionForm, motivation: value})}
               leftLabel="Très faible"
               rightLabel="Très élevée"
-              showValue={false}  // Pas de nombres visibles
+              showValue={false}
             />
 
             <ScaleQuestion
@@ -141,7 +158,7 @@ const PreSessionQuestionnaire = ({
               onChange={(value) => setPreSessionForm({...preSessionForm, fatigue: value})}
               leftLabel="Très fatigué"
               rightLabel="Très en forme"
-              showValue={false}  // Pas de nombres visibles
+              showValue={false}
             />
 
             <ScaleQuestion
@@ -150,7 +167,7 @@ const PreSessionQuestionnaire = ({
               onChange={(value) => setPreSessionForm({...preSessionForm, plaisir: value})}
               leftLabel="Aucun plaisir"
               rightLabel="Énormément de plaisir"
-              showValue={false}  // Pas de nombres visibles
+              showValue={false}
             />
 
             <ScaleQuestion
@@ -159,14 +176,28 @@ const PreSessionQuestionnaire = ({
               onChange={(value) => setPreSessionForm({...preSessionForm, objectif_difficulte: value})}
               leftLabel="Très faciles"
               rightLabel="Très difficiles"
-              showValue={false}  // Pas de nombres visibles
+              showValue={false}
             />
 
-            {/* AMÉLIORATION: Suivi des blessures intégré */}
+            {/* Suivi des blessures */}
             <InjuryComponent
               injuries={preSessionForm.injuries}
               onChange={(injuries) => setPreSessionForm({...preSessionForm, injuries})}
             />
+
+            {/* Zone de commentaires libres ajoutée */}
+            <div className="mb-6">
+              <label className="block text-sm font-semibold text-gray-700 mb-3">
+                💭 Commentaires libres (optionnel)
+              </label>
+              <textarea
+                value={preSessionForm.commentaires_libres}
+                onChange={(e) => setPreSessionForm({...preSessionForm, commentaires_libres: e.target.value})}
+                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:border-transparent"
+                rows="4"
+                placeholder="Partagez votre état d'esprit, vos attentes, remarques ou questions pour cette séance..."
+              />
+            </div>
           </div>
 
           <button
