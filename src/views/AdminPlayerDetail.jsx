@@ -210,7 +210,7 @@ const AdminPlayerDetail = ({
 
               <div className="text-center">
                 {/* Affichage de la photo */}
-                <div className="w-32 h-32 rounded-full mx-auto mb-4 overflow-hidden border-4 border-gray-200">
+                <div className="w-24 h-24 rounded-full mx-auto mb-3 overflow-hidden border-3 border-gray-200">
                   {selectedPlayer.photo_url ? (
                     <img 
                       src={selectedPlayer.photo_url} 
@@ -219,7 +219,7 @@ const AdminPlayerDetail = ({
                     />
                   ) : (
                     <div 
-                      className="w-full h-full flex items-center justify-center text-white text-2xl font-bold"
+                      className="w-full h-full flex items-center justify-center text-white text-lg font-bold"
                       style={{background: 'linear-gradient(135deg, #1D2945 0%, #C09D5A 100%)'}}
                     >
                       {selectedPlayer.name.split(' ').map(n => n[0]).join('')}
@@ -227,13 +227,13 @@ const AdminPlayerDetail = ({
                   )}
                 </div>
 
-                <h3 className="text-xl font-bold mb-2" style={{color: '#1D2945'}}>
+                <h3 className="text-lg font-bold mb-3" style={{color: '#1D2945'}}>
                   {selectedPlayer.name}
                 </h3>
 
-                {/* Interface d'upload */}
+                {/* Interface d'upload compacte */}
                 {editingPhoto && (
-                  <div className="space-y-3">
+                  <div className="space-y-2">
                     <input
                       type="file"
                       ref={fileInputRef}
@@ -247,14 +247,13 @@ const AdminPlayerDetail = ({
                     <button
                       onClick={() => fileInputRef.current?.click()}
                       disabled={loading}
-                      className="flex items-center space-x-2 px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-all disabled:opacity-50 mx-auto"
+                      className="flex items-center space-x-2 px-3 py-2 bg-green-500 text-white text-sm rounded-lg hover:bg-green-600 transition-all disabled:opacity-50 mx-auto"
                     >
-                      <Upload size={16} />
-                      <span>{loading ? 'Upload...' : 'Choisir une photo'}</span>
+                      <Upload size={14} />
+                      <span>{loading ? 'Upload...' : 'Nouvelle photo'}</span>
                     </button>
                     <p className="text-xs text-gray-500">
-                      Formats acceptés: JPG, PNG, GIF<br />
-                      Taille maximum: 5MB
+                      JPG, PNG, GIF - Max 5MB
                     </p>
                   </div>
                 )}
