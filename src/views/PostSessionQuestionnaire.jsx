@@ -1,6 +1,6 @@
 // views/PostSessionQuestionnaire.jsx
-import React, { useState } from 'react';
-import { ChevronLeft } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { ChevronLeft, Target, Clock } from 'lucide-react';
 import ScaleQuestion from '../components/ScaleQuestion';
 import InjuryComponent from '../components/InjuryComponent';
 
@@ -25,6 +25,50 @@ const PostSessionQuestionnaire = ({
     injuries: [],
     new_injury: false
   });
+
+  const [preSessionObjectives, setPreSessionObjectives] = useState(null);
+  const [loadingObjectives, setLoadingObjectives] = useState(true);
+
+  // Récupérer les objectifs définis en pré-séance du jour
+  useEffect(() => {
+    const loadPreSessionObjectives = async () => {
+      if (!selectedPlayer) return;
+      
+      setLoadingObjectives(true);
+      
+      try {
+        const today = new Date();
+        const startOfDay = new Date(today.setHours(0, 0, 0, 0)).toISOString();
+        const endOfDay = new Date(today.setHours(23, 59, 59, 999)).toISOString();
+
+        const { data, error } = await supabase
+          .from('responses')
+          .select('*')
+          .eq('player_id', selectedPlayer.id)
+          .eq('type', 'pre')
+          .gte('created_at', startOfDay)
+          .lte('created_at', endOfDay)
+          .order('created_at', { ascending: false })
+          .limit(1);
+
+        if (error) throw error;
+
+        if (data && data.length > 0) {
+          setPreSessionObjectives(data[0].data);
+        } else {
+          setPreSessionObjectives(null);
+        }
+
+      } catch (error) {
+        console.error('Erreur chargement objectifs pré-séance:', error);
+        setPreSessionObjectives(null);
+      }
+      
+      setLoadingObjectives(false);
+    };
+
+    loadPreSessionObjectives();
+  }, [selectedPlayer, supabase]);
 
   const saveQuestionnaire = async () => {
     if (!selectedPlayer) return;
@@ -87,6 +131,65 @@ const PostSessionQuestionnaire = ({
               <ChevronLeft size={16} />
               <span>Retour</span>
             </button>
+          </div>
+
+          {/* Rappel des objectifs de pré-séance */}
+          <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
+            <div className="flex items-center mb-3">
+              <Target className="text-green-600 mr-2" size={20} />
+              <h3 className="text-lg font-semibold" style={{color: '#1D2945'}}>
+                Rappel de vos objectifs du début de séance
+              </h3>
+            </div>
+            
+            {loadingObjectives ? (
+              <div className="flex items-center text-gray-600">
+                <Clock className="mr-2" size={16} />
+                <span>Chargement de vos objectifs...</span>
+              </div>
+            ) : preSessionObjectives ? (
+              <div className="space-y-3">
+                {/* Objectifs personnels définis en pré-séance */}
+                {preSessionObjectives.objectifs_personnels && (
+                  <div>
+                    <h4 className="font-medium text-green-800 mb-2">Vos objectifs personnels :</h4>
+                    <div className="bg-white p-3 rounded border-l-4 border-green-400">
+                      <p className="text-gray-700 whitespace-pre-wrap">{preSessionObjectives.objectifs_personnels}</p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Informations contextuelles de pré-séance */}
+                <div className="grid grid-cols-2 gap-4 mt-4">
+                  {preSessionObjectives.motivation && (
+                    <div className="bg-white p-3 rounded">
+                      <p className="text-sm text-gray-600">Motivation initiale</p>
+                      <p className="font-medium text-blue-600">{preSessionObjectives.motivation}/20</p>
+                    </div>
+                  )}
+                  {preSessionObjectives.fatigue && (
+                    <div className="bg-white p-3 rounded">
+                      <p className="text-sm text-gray-600">Niveau de forme initial</p>
+                      <p className="font-medium text-green-600">{preSessionObjectives.fatigue}/20</p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Commentaires de pré-séance */}
+                {preSessionObjectives.commentaires_libres && (
+                  <div className="mt-4">
+                    <h4 className="font-medium text-green-800 mb-2">Vos commentaires du début de séance :</h4>
+                    <div className="bg-white p-3 rounded border-l-4 border-blue-400">
+                      <p className="text-gray-700 italic">"{preSessionObjectives.commentaires_libres}"</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="text-gray-600 italic">
+                Aucun questionnaire pré-séance trouvé pour aujourd'hui. Vous pouvez tout de même remplir ce questionnaire post-séance.
+              </div>
+            )}
           </div>
 
           <div className="space-y-6">
@@ -161,7 +264,7 @@ const PostSessionQuestionnaire = ({
                 onChange={(e) => setPostSessionForm({...postSessionForm, commentaires_libres: e.target.value})}
                 className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:border-transparent"
                 rows="4"
-                placeholder="Partagez vos impressions, suggestions ou remarques..."
+                placeholder="Partagez vos impressions, suggestions ou remarques sur cette séance..."
               />
             </div>
           </div>
