@@ -455,49 +455,61 @@ const AdminPanel = ({
             Gestion des Joueuses
           </h2>
           
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 gap-6">
             {players.map(player => (
-              <div key={player.id} className="relative group">
-                <div 
-                  className="w-24 h-24 rounded-full overflow-hidden border-3 border-gray-200 cursor-pointer hover:border-blue-400 transition-all mx-auto relative"
-                  onClick={() => setDetailViewPlayer(player)}
-                >
-                  {player.photo_url ? (
-                    <img src={player.photo_url} alt={player.name} className="w-full h-full object-cover" />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center text-white text-lg font-bold" 
-                         style={{background: 'linear-gradient(135deg, #1D2945 0%, #C09D5A 100%)'}}>
-                      {player.name.split(' ').map(n => n[0]).join('')}
-                    </div>
-                  )}
+              <div key={player.id} className="flex flex-col items-center space-y-2 group">
+                <div className="relative">
+                  <div 
+                    className="w-20 h-20 rounded-full overflow-hidden border-2 border-gray-300 cursor-pointer hover:border-blue-400 hover:shadow-lg transition-all duration-300 hover:scale-105"
+                    onClick={() => setDetailViewPlayer(player)}
+                  >
+                    {player.photo_url ? (
+                      <img 
+                        src={player.photo_url} 
+                        alt={player.name} 
+                        className="w-full h-full object-cover" 
+                      />
+                    ) : (
+                      <div 
+                        className="w-full h-full flex items-center justify-center text-white text-sm font-bold" 
+                        style={{background: 'linear-gradient(135deg, #1D2945 0%, #C09D5A 100%)'}}
+                      >
+                        {player.name.split(' ').map(n => n[0]).join('')}
+                      </div>
+                    )}
+                    
+                    {/* Overlay pour upload photo */}
+                    <label className="absolute inset-0 cursor-pointer bg-black bg-opacity-0 hover:bg-opacity-60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 rounded-full">
+                      <Camera size={18} className="text-white" />
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => e.target.files[0] && handlePhotoUpload(player.id, e.target.files[0])}
+                      />
+                    </label>
+                  </div>
                   
-                  {/* Overlay pour upload photo */}
-                  <label className="absolute inset-0 cursor-pointer bg-black bg-opacity-0 hover:bg-opacity-50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all">
-                    <Camera size={20} className="text-white" />
-                    <input
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={(e) => e.target.files[0] && handlePhotoUpload(player.id, e.target.files[0])}
-                    />
-                  </label>
+                  {/* Bouton suppression */}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      deletePlayer(player.id);
+                    }}
+                    className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-all duration-300 hover:bg-red-600 hover:scale-110 flex items-center justify-center"
+                  >
+                    <Trash2 size={10} />
+                  </button>
                 </div>
                 
-                <div className="text-center mt-2">
-                  <p className="text-sm font-medium truncate">{player.name.split(' ')[0]}</p>
-                  <p className="text-xs text-gray-500">{playerStats[player.id]?.total_responses || 0} rép.</p>
+                <div className="text-center">
+                  <p className="text-xs font-medium text-gray-800 truncate max-w-[70px]" title={player.name}>
+                    {player.name.split(' ')[0]}
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    {playerStats[player.id]?.total_responses || 0} rép.
+                  </p>
                 </div>
-                
-                {/* Bouton suppression */}
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    deletePlayer(player.id);
-                  }}
-                  className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-all hover:bg-red-600"
-                >
-                  <Trash2 size={12} className="mx-auto" />
-                </button>
               </div>
             ))}
           </div>
