@@ -189,10 +189,10 @@ const AdminPlayerDetail = ({
           <div className="space-y-6">
             
             {/* Section Photo de Profil */}
-            <div className="bg-white rounded-xl shadow-lg p-6 h-fit">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-semibold" style={{color: '#1D2945'}}>
-                  <User className="inline mr-2" size={18} />
+            <div className="bg-white rounded-xl shadow-lg p-4" style={{maxHeight: '200px'}}>
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="text-base font-semibold" style={{color: '#1D2945'}}>
+                  <User className="inline mr-2" size={16} />
                   Photo de Profil
                 </h2>
                 <button
@@ -209,31 +209,48 @@ const AdminPlayerDetail = ({
               </div>
 
               <div className="text-center">
-                {/* Affichage de la photo */}
-                <div className="w-20 h-20 rounded-full mx-auto mb-3 overflow-hidden border-2 border-gray-200">
+                {/* Affichage de la photo - TAILLE FORCÉE */}
+                <div 
+                  className="mx-auto mb-2 overflow-hidden border-2 border-gray-200 bg-gray-100" 
+                  style={{
+                    width: '60px', 
+                    height: '60px', 
+                    borderRadius: '50%',
+                    flexShrink: 0
+                  }}
+                >
                   {selectedPlayer.photo_url ? (
                     <img 
                       src={selectedPlayer.photo_url} 
                       alt={selectedPlayer.name}
-                      className="w-full h-full object-cover"
+                      style={{
+                        width: '60px',
+                        height: '60px',
+                        objectFit: 'cover',
+                        display: 'block'
+                      }}
                     />
                   ) : (
                     <div 
-                      className="w-full h-full flex items-center justify-center text-white text-sm font-bold"
-                      style={{background: 'linear-gradient(135deg, #1D2945 0%, #C09D5A 100%)'}}
+                      className="flex items-center justify-center text-white text-sm font-bold"
+                      style={{
+                        background: 'linear-gradient(135deg, #1D2945 0%, #C09D5A 100%)',
+                        width: '60px',
+                        height: '60px'
+                      }}
                     >
                       {selectedPlayer.name.split(' ').map(n => n[0]).join('')}
                     </div>
                   )}
                 </div>
 
-                <h3 className="text-md font-semibold mb-2" style={{color: '#1D2945'}}>
+                <h3 className="text-sm font-semibold mb-2" style={{color: '#1D2945'}}>
                   {selectedPlayer.name}
                 </h3>
 
                 {/* Interface d'upload compacte */}
                 {editingPhoto && (
-                  <div className="space-y-2">
+                  <div className="space-y-1">
                     <input
                       type="file"
                       ref={fileInputRef}
@@ -247,13 +264,13 @@ const AdminPlayerDetail = ({
                     <button
                       onClick={() => fileInputRef.current?.click()}
                       disabled={loading}
-                      className="flex items-center space-x-2 px-3 py-1 bg-green-500 text-white text-xs rounded hover:bg-green-600 transition-all disabled:opacity-50 mx-auto"
+                      className="flex items-center space-x-1 px-2 py-1 bg-green-500 text-white text-xs rounded hover:bg-green-600 transition-all disabled:opacity-50 mx-auto"
                     >
-                      <Upload size={12} />
-                      <span>{loading ? 'Upload...' : 'Nouvelle photo'}</span>
+                      <Upload size={10} />
+                      <span>{loading ? 'Upload...' : 'Photo'}</span>
                     </button>
-                    <p className="text-xs text-gray-400">
-                      JPG, PNG, GIF - Max 5MB
+                    <p className="text-xs text-gray-400" style={{fontSize: '10px'}}>
+                      Max 5MB
                     </p>
                   </div>
                 )}
