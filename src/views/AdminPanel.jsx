@@ -473,12 +473,27 @@ const AdminPanel = ({
             {players.map(player => (
               <div 
                 key={player.id} 
-                className="bg-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer transform hover:scale-105 border border-gray-100 overflow-hidden group"
+                className="bg-white rounded-xl shadow-md hover:shadow-lg transition-all duration-300 cursor-pointer transform hover:scale-105 border border-gray-200 overflow-hidden group relative max-w-sm mx-auto"
                 onClick={() => setDetailViewPlayer(player)}
+                style={{
+                  background: 'linear-gradient(135deg, #fef9e7 0%, #f0f4f8 100%)',
+                  border: '2px solid #C09D5A'
+                }}
               >
-                <div className="relative">
+                {/* Bouton suppression */}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    deletePlayer(player.id);
+                  }}
+                  className="absolute top-3 right-3 w-7 h-7 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-all duration-300 hover:bg-red-600 hover:scale-110 flex items-center justify-center z-10"
+                >
+                  <Trash2 size={12} />
+                </button>
+
+                <div className="p-6 text-center">
                   {/* Photo de profil */}
-                  <div className="w-20 h-20 rounded-full mx-auto mt-6 mb-4 overflow-hidden border-2 border-gray-200">
+                  <div className="w-20 h-20 rounded-full mx-auto mb-4 overflow-hidden border-2 border-gray-300">
                     {player.photo_url ? (
                       <img 
                         src={player.photo_url} 
@@ -495,35 +510,22 @@ const AdminPanel = ({
                     )}
                   </div>
 
-                  {/* Bouton suppression */}
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      deletePlayer(player.id);
-                    }}
-                    className="absolute top-2 right-2 w-8 h-8 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-all duration-300 hover:bg-red-600 flex items-center justify-center"
-                  >
-                    <Trash2 size={14} />
-                  </button>
-                </div>
-
-                {/* Informations joueuse */}
-                <div className="px-4 pb-4 text-center">
-                  <h3 className="font-bold text-lg mb-1" style={{color: '#1D2945'}}>
+                  {/* Nom joueuse */}
+                  <h3 className="font-bold text-lg mb-3" style={{color: '#1D2945'}}>
                     {player.name}
                   </h3>
                   
                   {/* Indicateurs de statut */}
-                  <div className="flex justify-center space-x-1 mb-3">
-                    <div className="w-3 h-3 rounded-full bg-gray-300"></div>
-                    <div className="w-3 h-3 rounded-full bg-gray-300"></div>
-                    <div className="w-3 h-3 rounded-full bg-gray-300"></div>
+                  <div className="flex justify-center space-x-2 mb-4">
+                    <div className="w-3 h-3 rounded-full bg-gray-400"></div>
+                    <div className="w-3 h-3 rounded-full bg-gray-400"></div>
+                    <div className="w-3 h-3 rounded-full bg-gray-400"></div>
                   </div>
 
                   {/* Statistiques */}
-                  <div className="text-sm text-gray-600">
-                    <p>{playerStats[player.id]?.total_responses || 0} réponses totales</p>
-                    <p className="text-xs mt-1">
+                  <div className="text-sm text-gray-700 space-y-1">
+                    <p className="font-medium">{playerStats[player.id]?.total_responses || 0} réponses totales</p>
+                    <p className="text-xs">
                       Dernière activité: {playerStats[player.id]?.last_response_date || 'Aucune'}
                     </p>
                   </div>
