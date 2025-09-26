@@ -434,17 +434,238 @@ const AdminPlayerDetail = ({
                   <Calendar className="inline mr-2" size={20} />
                   Évolution des Métriques
                 </h3>
-                <ResponsiveContainer width="100%" height={250}>
+                <ResponsiveContainer width="100%" height={300}>
                   <LineChart data={stats.chartData.slice(-10)}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="date" />
                     <YAxis domain={[0, 20]} />
-                    <Tooltip />
-                    <Line type="monotone" dataKey="motivation" stroke="#2563eb" strokeWidth={2} />
-                    <Line type="monotone" dataKey="fatigue" stroke="#dc2626" strokeWidth={2} />
-                    <Line type="monotone" dataKey="intensite_rpe" stroke="#f59e0b" strokeWidth={2} />
+                    <Tooltip 
+                      content={({ active, payload, label }) => {
+                        if (active && payload && payload.length > 0) {
+                          // Trouver la réponse complète correspondante
+                          const responseData = stats.chartData.find(item => item.date === label);
+                          
+                          return (
+                            <div className="bg-white p-4 border border-gray-300 rounded-lg shadow-lg max-w-sm">
+                              <h4 className="font-semibold mb-3 text-gray-800">
+                                {label} - {responseData?.type === 'pre' ? 'Pré-séance' : 
+                                         responseData?.type === 'post' ? 'Post-séance' : 
+                                         responseData?.type === 'match' ? 'Match' : 'Blessure'}
+                              </h4>
+                              
+                              <div className="space-y-2 text-sm">
+                                {/* Métriques principales */}
+                                {responseData?.motivation && (
+                                  <div className="flex justify-between">
+                                    <span className="text-blue-600">Motivation:</span>
+                                    <span className="font-medium">{responseData.motivation}/20</span>
+                                  </div>
+                                )}
+                                
+                                {responseData?.fatigue && (
+                                  <div className="flex justify-between">
+                                    <span className="text-red-600">Fatigue:</span>
+                                    <span className="font-medium">{responseData.fatigue}/20</span>
+                                  </div>
+                                )}
+                                
+                                {responseData?.intensite_rpe && (
+                                  <div className="flex justify-between">
+                                    <span className="text-orange-600">RPE:</span>
+                                    <span className="font-medium">{responseData.intensite_rpe}/20</span>
+                                  </div>
+                                )}
+                                
+                                {responseData?.plaisir && (
+                                  <div className="flex justify-between">
+                                    <span className="text-green-600">Plaisir:</span>
+                                    <span className="font-medium">{responseData.plaisir}/20</span>
+                                  </div>
+                                )}
+                                
+                                {responseData?.plaisir_seance && (
+                                  <div className="flex justify-between">
+                                    <span className="text-green-600">Plaisir séance:</span>
+                                    <span className="font-medium">{responseData.plaisir_seance}/20</span>
+                                  </div>
+                                )}
+                                
+                                {responseData?.confiance && (
+                                  <div className="flex justify-between">
+                                    <span className="text-purple-600">Confiance:</span>
+                                    <span className="font-medium">{responseData.confiance}/20</span>
+                                  </div>
+                                )}
+                                
+                                {responseData?.technique && (
+                                  <div className="flex justify-between">
+                                    <span className="text-pink-600">Technique:</span>
+                                    <span className="font-medium">{responseData.technique}/20</span>
+                                  </div>
+                                )}
+                                
+                                {responseData?.tactique && (
+                                  <div className="flex justify-between">
+                                    <span className="text-indigo-600">Tactique:</span>
+                                    <span className="font-medium">{responseData.tactique}/20</span>
+                                  </div>
+                                )}
+                                
+                                {/* Informations spéciales */}
+                                {responseData?.blessure_actuelle === 'oui' && (
+                                  <div className="pt-2 border-t border-gray-200">
+                                    <p className="text-red-600 font-medium">⚠️ Blessure signalée</p>
+                                    {responseData?.zone_blessure && (
+                                      <p className="text-sm text-gray-600">Zone: {responseData.zone_blessure}</p>
+                                    )}
+                                    {responseData?.douleur_niveau && (
+                                      <p className="text-sm text-gray-600">Douleur: {responseData.douleur_niveau}/10</p>
+                                    )}
+                                  </div>
+                                )}
+                                
+                                {/* Objectifs et difficultés */}
+                                {responseData?.objectifs_atteints && (
+                                  <div className="pt-2 border-t border-gray-200">
+                                    <p className="text-green-600 text-sm">✅ Objectifs: {responseData.objectifs_atteints}</p>
+                                  </div>
+                                )}
+                                
+                                {responseData?.difficultes_rencontrees && (
+                                  <div className="pt-1">
+                                    <p className="text-orange-600 text-sm">⚠️ Difficultés: {responseData.difficultes_rencontrees}</p>
+                                  </div>
+                                )}
+                                
+                                {/* Commentaires */}
+                                {responseData?.commentaires_libres && (
+                                  <div className="pt-2 border-t border-gray-200">
+                                    <p className="text-gray-700 text-sm italic">
+                                      "{responseData.commentaires_libres}"
+                                    </p>
+                                  </div>
+                                )}
+                                
+                                {/* Informations contextuelles */}
+                                {responseData?.sommeil && (
+                                  <div className="pt-2 border-t border-gray-200">
+                                    <p className="text-sm text-gray-600">Sommeil: {responseData.sommeil}h</p>
+                                  </div>
+                                )}
+                                
+                                {responseData?.stress && (
+                                  <div className="pt-1">
+                                    <p className="text-sm text-gray-600">Stress: {responseData.stress}/10</p>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        }
+                        return null;
+                      }}
+                    />
+                    
+                    {/* Lignes de données avec couleurs distinctes */}
+                    <Line 
+                      type="monotone" 
+                      dataKey="motivation" 
+                      stroke="#2563eb" 
+                      strokeWidth={2}
+                      dot={{ fill: '#2563eb', strokeWidth: 2, r: 4 }}
+                      activeDot={{ r: 6, stroke: '#2563eb', strokeWidth: 2 }}
+                    />
+                    <Line 
+                      type="monotone" 
+                      dataKey="fatigue" 
+                      stroke="#dc2626" 
+                      strokeWidth={2}
+                      dot={{ fill: '#dc2626', strokeWidth: 2, r: 4 }}
+                      activeDot={{ r: 6, stroke: '#dc2626', strokeWidth: 2 }}
+                    />
+                    <Line 
+                      type="monotone" 
+                      dataKey="intensite_rpe" 
+                      stroke="#f59e0b" 
+                      strokeWidth={2}
+                      dot={{ fill: '#f59e0b', strokeWidth: 2, r: 4 }}
+                      activeDot={{ r: 6, stroke: '#f59e0b', strokeWidth: 2 }}
+                    />
+                    <Line 
+                      type="monotone" 
+                      dataKey="plaisir" 
+                      stroke="#10b981" 
+                      strokeWidth={2}
+                      dot={{ fill: '#10b981', strokeWidth: 2, r: 4 }}
+                      activeDot={{ r: 6, stroke: '#10b981', strokeWidth: 2 }}
+                    />
+                    <Line 
+                      type="monotone" 
+                      dataKey="plaisir_seance" 
+                      stroke="#10b981" 
+                      strokeWidth={2}
+                      strokeDasharray="5 5"
+                      dot={{ fill: '#10b981', strokeWidth: 2, r: 4 }}
+                      activeDot={{ r: 6, stroke: '#10b981', strokeWidth: 2 }}
+                    />
+                    <Line 
+                      type="monotone" 
+                      dataKey="confiance" 
+                      stroke="#8b5cf6" 
+                      strokeWidth={2}
+                      dot={{ fill: '#8b5cf6', strokeWidth: 2, r: 4 }}
+                      activeDot={{ r: 6, stroke: '#8b5cf6', strokeWidth: 2 }}
+                    />
+                    <Line 
+                      type="monotone" 
+                      dataKey="technique" 
+                      stroke="#ec4899" 
+                      strokeWidth={2}
+                      dot={{ fill: '#ec4899', strokeWidth: 2, r: 4 }}
+                      activeDot={{ r: 6, stroke: '#ec4899', strokeWidth: 2 }}
+                    />
+                    <Line 
+                      type="monotone" 
+                      dataKey="tactique" 
+                      stroke="#6366f1" 
+                      strokeWidth={2}
+                      dot={{ fill: '#6366f1', strokeWidth: 2, r: 4 }}
+                      activeDot={{ r: 6, stroke: '#6366f1', strokeWidth: 2 }}
+                    />
                   </LineChart>
                 </ResponsiveContainer>
+                
+                {/* Légende des couleurs */}
+                <div className="mt-4 flex flex-wrap gap-4 text-xs">
+                  <div className="flex items-center space-x-1">
+                    <div className="w-3 h-3 bg-blue-600 rounded"></div>
+                    <span>Motivation</span>
+                  </div>
+                  <div className="flex items-center space-x-1">
+                    <div className="w-3 h-3 bg-red-600 rounded"></div>
+                    <span>Fatigue</span>
+                  </div>
+                  <div className="flex items-center space-x-1">
+                    <div className="w-3 h-3 bg-orange-500 rounded"></div>
+                    <span>RPE</span>
+                  </div>
+                  <div className="flex items-center space-x-1">
+                    <div className="w-3 h-3 bg-green-600 rounded"></div>
+                    <span>Plaisir</span>
+                  </div>
+                  <div className="flex items-center space-x-1">
+                    <div className="w-3 h-3 bg-purple-600 rounded"></div>
+                    <span>Confiance</span>
+                  </div>
+                  <div className="flex items-center space-x-1">
+                    <div className="w-3 h-3 bg-pink-600 rounded"></div>
+                    <span>Technique</span>
+                  </div>
+                  <div className="flex items-center space-x-1">
+                    <div className="w-3 h-3 bg-indigo-600 rounded"></div>
+                    <span>Tactique</span>
+                  </div>
+                </div>
               </div>
             )}
 
