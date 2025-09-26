@@ -1,4 +1,4 @@
-// views/AdminPanel.jsx - Version améliorée avec interface visuelle
+// views/AdminPanel.jsx - Version améliorée avec filtres en listes déroulantes
 import React, { useState } from 'react';
 import { ChevronLeft, Edit3, UserPlus, Download, Camera, Trash2, Filter, TrendingUp, BarChart3, Users } from 'lucide-react';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
@@ -90,37 +90,6 @@ const AdminPanel = ({
         color: metricInfo?.color || '#1D2945',
         data: data
       };
-    });
-  };
-
-  // Fonctions pour gérer les sélections multiples
-  const togglePlayerSelection = (playerId) => {
-    setSelectedPlayers(prev => 
-      prev.includes(playerId) 
-        ? prev.filter(id => id !== playerId)
-        : [...prev, playerId]
-    );
-  };
-
-  const toggleMetricSelection = (metric) => {
-    setSelectedMetrics(prev => 
-      prev.includes(metric)
-        ? prev.filter(m => m !== metric)
-        : [...prev, metric]
-    );
-  };
-
-  const toggleQuestionTypeSelection = (type) => {
-    setSelectedQuestionTypes(prev => {
-      // Si on sélectionne "all", on désélectionne les autres
-      if (type === 'all') {
-        return ['all'];
-      }
-      // Si on sélectionne autre chose, on enlève "all"
-      const newSelection = prev.filter(t => t !== 'all');
-      return newSelection.includes(type)
-        ? newSelection.filter(t => t !== type)
-        : [...newSelection, type];
     });
   };
 
@@ -456,99 +425,197 @@ const AdminPanel = ({
             Statistiques et Analyses
           </h2>
           
-          {/* Filtres améliorés avec sélections multiples */}
+          {/* Filtres améliorés avec listes déroulantes */}
           <div className="bg-gray-50 rounded-lg p-6 mb-6">
             <h3 className="text-lg font-semibold mb-4 text-gray-700 flex items-center">
               <Filter size={20} className="mr-2" />
               Filtres d'Analyse
             </h3>
             
-            {/* Sélection des joueuses */}
-            <div className="mb-6">
-              <label className="block text-sm font-medium text-gray-700 mb-3">Joueuses sélectionnées</label>
-              <div className="flex flex-wrap gap-2 mb-3">
-                <button
-                  onClick={() => setSelectedPlayers([])}
-                  className={`px-3 py-1 rounded-full text-sm transition-all ${
-                    selectedPlayers.length === 0 
-                      ? 'bg-blue-500 text-white' 
-                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                  }`}
-                >
-                  Toutes ({players.length})
-                </button>
-                {players.map(player => (
-                  <button
-                    key={player.id}
-                    onClick={() => togglePlayerSelection(player.id)}
-                    className={`px-3 py-1 rounded-full text-sm transition-all ${
-                      selectedPlayers.includes(player.id)
-                        ? 'bg-blue-500 text-white'
-                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                    }`}
-                  >
-                    {player.name.split(' ')[0]}
-                  </button>
-                ))}
-              </div>
-              {selectedPlayers.length > 0 && (
-                <p className="text-xs text-blue-600">
-                  {selectedPlayers.length} joueuse(s) sélectionnée(s)
-                </p>
-              )}
-            </div>
-
-            {/* Sélection des métriques */}
-            <div className="mb-6">
-              <label className="block text-sm font-medium text-gray-700 mb-3">Métriques à analyser</label>
-              <div className="flex flex-wrap gap-2">
-                {metricsOptions.map(metric => (
-                  <button
-                    key={metric.value}
-                    onClick={() => toggleMetricSelection(metric.value)}
-                    className={`px-3 py-1 rounded-full text-sm transition-all border-2 ${
-                      selectedMetrics.includes(metric.value)
-                        ? 'text-white border-transparent'
-                        : 'text-gray-700 border-gray-300 hover:border-gray-400'
-                    }`}
-                    style={{
-                      backgroundColor: selectedMetrics.includes(metric.value) ? metric.color : 'transparent'
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {/* Sélection des joueuses - Liste déroulante */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Joueuses</label>
+                <div className="relative">
+                  <select 
+                    multiple
+                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+                    style={{ minHeight: '120px' }}
+                    value={selectedPlayers}
+                    onChange={(e) => {
+                      const values = Array.from(e.target.selectedOptions, option => option.value);
+                      if (values.includes('__ALL__')) {
+                        setSelectedPlayers([]);
+                      } else if (values.includes('__NONE__')) {
+                        setSelectedPlayers([]);
+                      } else {
+                        setSelectedPlayers(values.filter(v => !['__ALL__', '__NONE__'].includes(v)));
+                      }
                     }}
                   >
-                    {metric.label}
-                  </button>
-                ))}
+                    <optgroup label="Options rapides">
+                      <option value="__ALL__" className="font-medium text-blue-600">
+                        ✓ Toutes les joueuses ({players.length})
+                      </option>
+                      <option value="__NONE__" className="font-medium text-red-600">
+                        ✗ Aucune sélection
+                      </option>
+                    </optgroup>
+                    <optgroup label="Joueuses disponibles">
+                      {players.map(player => (
+                        <option key={player.id} value={player.id}>
+                          {player.name}
+                        </option>
+                      ))}
+                    </optgroup>
+                  </select>
+                  
+                  {/* Boutons de sélection rapide */}
+                  <div className="flex space-x-2 mt-2">
+                    <button
+                      onClick={() => setSelectedPlayers([])}
+                      className="px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded hover:bg-blue-200 transition-all"
+                    >
+                      Toutes
+                    </button>
+                    <button
+                      onClick={() => setSelectedPlayers(players.map(p => p.id))}
+                      className="px-2 py-1 bg-green-100 text-green-700 text-xs rounded hover:bg-green-200 transition-all"
+                    >
+                      Sélectionner
+                    </button>
+                    <button
+                      onClick={() => setSelectedPlayers([])}
+                      className="px-2 py-1 bg-red-100 text-red-700 text-xs rounded hover:bg-red-200 transition-all"
+                    >
+                      Aucune
+                    </button>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">
+                    {selectedPlayers.length === 0 ? `Toutes (${players.length})` : `${selectedPlayers.length} sélectionnée(s)`}
+                  </p>
+                </div>
               </div>
-              {selectedMetrics.length > 0 && (
-                <p className="text-xs text-green-600 mt-2">
-                  {selectedMetrics.length} métrique(s) sélectionnée(s)
-                </p>
-              )}
-            </div>
 
-            {/* Sélection des types de questionnaires */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-3">Types de questionnaires</label>
-              <div className="flex flex-wrap gap-2">
-                {questionTypeOptions.map(type => (
-                  <button
-                    key={type.value}
-                    onClick={() => toggleQuestionTypeSelection(type.value)}
-                    className={`px-3 py-1 rounded-full text-sm transition-all ${
-                      selectedQuestionTypes.includes(type.value)
-                        ? 'bg-purple-500 text-white'
-                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                    }`}
+              {/* Sélection des métriques - Liste déroulante */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Métriques</label>
+                <div className="relative">
+                  <select 
+                    multiple
+                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white"
+                    style={{ minHeight: '120px' }}
+                    value={selectedMetrics}
+                    onChange={(e) => {
+                      const values = Array.from(e.target.selectedOptions, option => option.value);
+                      if (values.includes('__ALL__')) {
+                        setSelectedMetrics(metricsOptions.map(m => m.value));
+                      } else if (values.includes('__NONE__')) {
+                        setSelectedMetrics([]);
+                      } else {
+                        setSelectedMetrics(values.filter(v => !['__ALL__', '__NONE__'].includes(v)));
+                      }
+                    }}
                   >
-                    {type.label}
-                  </button>
-                ))}
+                    <optgroup label="Options rapides">
+                      <option value="__ALL__" className="font-medium text-green-600">
+                        ✓ Toutes les métriques
+                      </option>
+                      <option value="__NONE__" className="font-medium text-red-600">
+                        ✗ Aucune métrique
+                      </option>
+                    </optgroup>
+                    <optgroup label="Métriques disponibles">
+                      {metricsOptions.map(metric => (
+                        <option key={metric.value} value={metric.value}>
+                          {metric.label}
+                        </option>
+                      ))}
+                    </optgroup>
+                  </select>
+                  
+                  {/* Boutons de sélection rapide */}
+                  <div className="flex space-x-2 mt-2">
+                    <button
+                      onClick={() => setSelectedMetrics(metricsOptions.map(m => m.value))}
+                      className="px-2 py-1 bg-green-100 text-green-700 text-xs rounded hover:bg-green-200 transition-all"
+                    >
+                      Toutes
+                    </button>
+                    <button
+                      onClick={() => setSelectedMetrics([])}
+                      className="px-2 py-1 bg-red-100 text-red-700 text-xs rounded hover:bg-red-200 transition-all"
+                    >
+                      Aucune
+                    </button>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">
+                    {selectedMetrics.length} métrique(s) sélectionnée(s)
+                  </p>
+                </div>
               </div>
-              {selectedQuestionTypes.length > 0 && (
-                <p className="text-xs text-purple-600 mt-2">
-                  {selectedQuestionTypes.join(', ')}
-                </p>
-              )}
+
+              {/* Sélection des types de questionnaires - Liste déroulante */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Types questionnaires</label>
+                <div className="relative">
+                  <select 
+                    multiple
+                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white"
+                    style={{ minHeight: '120px' }}
+                    value={selectedQuestionTypes}
+                    onChange={(e) => {
+                      const values = Array.from(e.target.selectedOptions, option => option.value);
+                      if (values.includes('__ALL__')) {
+                        setSelectedQuestionTypes(['all']);
+                      } else if (values.includes('__NONE__')) {
+                        setSelectedQuestionTypes([]);
+                      } else if (values.includes('all')) {
+                        setSelectedQuestionTypes(['all']);
+                      } else {
+                        setSelectedQuestionTypes(values.filter(v => !['__ALL__', '__NONE__'].includes(v)));
+                      }
+                    }}
+                  >
+                    <optgroup label="Options rapides">
+                      <option value="__ALL__" className="font-medium text-purple-600">
+                        ✓ Tous les types
+                      </option>
+                      <option value="__NONE__" className="font-medium text-red-600">
+                        ✗ Aucun type
+                      </option>
+                    </optgroup>
+                    <optgroup label="Types disponibles">
+                      {questionTypeOptions.map(type => (
+                        <option key={type.value} value={type.value}>
+                          {type.label}
+                        </option>
+                      ))}
+                    </optgroup>
+                  </select>
+                  
+                  {/* Boutons de sélection rapide */}
+                  <div className="flex space-x-2 mt-2">
+                    <button
+                      onClick={() => setSelectedQuestionTypes(['all'])}
+                      className="px-2 py-1 bg-purple-100 text-purple-700 text-xs rounded hover:bg-purple-200 transition-all"
+                    >
+                      Tous
+                    </button>
+                    <button
+                      onClick={() => setSelectedQuestionTypes([])}
+                      className="px-2 py-1 bg-red-100 text-red-700 text-xs rounded hover:bg-red-200 transition-all"
+                    >
+                      Aucun
+                    </button>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">
+                    {selectedQuestionTypes.length === 0 ? 'Aucun sélectionné' : 
+                     selectedQuestionTypes.includes('all') ? 'Tous les questionnaires' :
+                     `${selectedQuestionTypes.length} type(s) sélectionné(s)`}
+                  </p>
+                </div>
+              </div>
             </div>
           </div>
 
