@@ -348,8 +348,12 @@ const App = () => {
       <div className="min-h-screen flex items-center justify-center p-4" style={{background: 'linear-gradient(135deg, #f0f4f8 0%, #fef9e7 100%)'}}>
         <div className="bg-white rounded-xl shadow-2xl p-8 w-full max-w-md">
           <div className="text-center mb-8">
-            <div className="inline-flex items-center justify-center w-20 h-20 rounded-full mb-4" style={{background: 'linear-gradient(135deg, #1D2945 0%, #C09D5A 100%)'}}>
-              <Lock className="text-white text-2xl" />
+            <div className="inline-flex items-center justify-center w-20 h-20 rounded-full mb-4 bg-white shadow-lg border-2 border-gray-100">
+              <img 
+                src="/Logo NMF Rose.png" 
+                alt="Nantes Métropole Futsal" 
+                className="w-16 h-16 object-contain"
+              />
             </div>
             <h1 className="text-2xl font-bold mb-2" style={{color: '#1D2945'}}>Suivi Équipe Futsal</h1>
             <p className="text-gray-600">Nantes Métropole Futsal</p>
