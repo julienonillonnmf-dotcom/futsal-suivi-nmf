@@ -24,9 +24,8 @@ const AdminPanel = ({
   
   const [editingObjectives, setEditingObjectives] = useState(false);
   const [selectedPlayers, setSelectedPlayers] = useState([]); // Filtre joueuses
-  const [selectedMetric, setSelectedMetric] = useState('motivation'); // Métrique sélectionnée
-  const [selectedQuestionType, setSelectedQuestionType] = useState('all'); // Type questionnaire
-  const [detailViewPlayer, setDetailViewPlayer] = useState(null); // Vue détail joueuse
+  const [selectedMetrics, setSelectedMetrics] = useState(['motivation']); // Métriques sélectionnées (multiple)
+  const [selectedQuestionTypes, setSelectedQuestionTypes] = useState(['all']); // Types questionnaire (multiple)
 
   // Options de métriques disponibles
   const metricsOptions = [
@@ -34,51 +33,95 @@ const AdminPanel = ({
     { value: 'fatigue', label: 'Fatigue', color: '#dc2626' },
     { value: 'intensite_rpe', label: 'RPE (Intensité)', color: '#f59e0b' },
     { value: 'plaisir', label: 'Plaisir', color: '#10b981' },
-    { value: 'confiance', label: 'Confiance', color: '#8b5cf6' }
+    { value: 'confiance', label: 'Confiance', color: '#8b5cf6' },
+    { value: 'technique', label: 'Technique', color: '#ec4899' },
+    { value: 'tactique', label: 'Tactique', color: '#6366f1' }
   ];
 
   const questionTypeOptions = [
     { value: 'all', label: 'Tous les questionnaires' },
     { value: 'pre', label: 'Pré-séance' },
     { value: 'post', label: 'Post-séance' },
-    { value: 'match', label: 'Match' }
+    { value: 'match', label: 'Match' },
+    { value: 'injury', label: 'Blessures' }
   ];
 
-  // Fonction pour générer les données du graphique filtré
+  // Fonction pour générer les données du graphique filtré (adaptée au multi-sélection)
   const getFilteredChartData = () => {
     const playersToShow = selectedPlayers.length > 0 ? 
       players.filter(p => selectedPlayers.includes(p.id)) : 
       players;
 
-    return playersToShow.map(player => {
-      const playerData = playerStats[player.id];
-      const responses = player.responses || [];
-      
-      // Filtrer par type de questionnaire
-      const filteredResponses = selectedQuestionType === 'all' ? 
-        responses : 
-        responses.filter(r => r.type === selectedQuestionType);
-
-      // Calculer la métrique sélectionnée
-      let value = 0;
-      if (filteredResponses.length > 0) {
-        const validValues = filteredResponses
-          .map(r => r.data?.[selectedMetric])
-          .filter(v => v != null && !isNaN(v));
+    return selectedMetrics.map(metric => {
+      const metricInfo = metricsOptions.find(m => m.value === metric);
+      const data = playersToShow.map(player => {
+        const responses = player.responses || [];
         
-        if (validValues.length > 0) {
-          value = validValues.reduce((sum, v) => sum + Number(v), 0) / validValues.length;
+        // Filtrer par types de questionnaires (support multi-sélection)
+        let filteredResponses = responses;
+        if (!selectedQuestionTypes.includes('all')) {
+          filteredResponses = responses.filter(r => selectedQuestionTypes.includes(r.type));
         }
-      }
+
+        // Calculer la métrique
+        let value = 0;
+        if (filteredResponses.length > 0) {
+          const validValues = filteredResponses
+            .map(r => r.data?.[metric])
+            .filter(v => v != null && !isNaN(v));
+          
+          if (validValues.length > 0) {
+            value = validValues.reduce((sum, v) => sum + Number(v), 0) / validValues.length;
+          }
+        }
+
+        return {
+          name: player.name.split(' ')[0],
+          fullName: player.name,
+          value: Number(value.toFixed(1)),
+          responses: filteredResponses.length,
+          metric: metric
+        };
+      }).sort((a, b) => b.value - a.value);
 
       return {
-        name: player.name.split(' ')[0], // Prénom seulement
-        fullName: player.name,
-        value: Number(value.toFixed(1)),
-        responses: filteredResponses.length,
-        total_responses: playerData?.total_responses || 0
+        metric: metric,
+        label: metricInfo?.label || metric,
+        color: metricInfo?.color || '#1D2945',
+        data: data
       };
-    }).sort((a, b) => b.value - a.value);
+    });
+  };
+
+  // Fonctions pour gérer les sélections multiples
+  const togglePlayerSelection = (playerId) => {
+    setSelectedPlayers(prev => 
+      prev.includes(playerId) 
+        ? prev.filter(id => id !== playerId)
+        : [...prev, playerId]
+    );
+  };
+
+  const toggleMetricSelection = (metric) => {
+    setSelectedMetrics(prev => 
+      prev.includes(metric)
+        ? prev.filter(m => m !== metric)
+        : [...prev, metric]
+    );
+  };
+
+  const toggleQuestionTypeSelection = (type) => {
+    setSelectedQuestionTypes(prev => {
+      // Si on sélectionne "all", on désélectionne les autres
+      if (type === 'all') {
+        return ['all'];
+      }
+      // Si on sélectionne autre chose, on enlève "all"
+      const newSelection = prev.filter(t => t !== 'all');
+      return newSelection.includes(type)
+        ? newSelection.filter(t => t !== type)
+        : [...newSelection, type];
+    });
   };
 
   // Sauvegarder les objectifs collectifs
@@ -288,141 +331,6 @@ const AdminPanel = ({
 
   // Données pour les graphiques
   const chartData = getFilteredChartData();
-  const selectedMetricInfo = metricsOptions.find(m => m.value === selectedMetric);
-
-  // Modal de détail joueuse
-  const PlayerDetailModal = ({ player, onClose }) => {
-    const stats = playerStats[player.id] || {};
-    const chartData = stats.chartData || [];
-
-    return (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-        <div className="bg-white rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-auto">
-          <div className="sticky top-0 bg-white border-b p-6 flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <div className="relative">
-                <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-gray-200">
-                  {player.photo_url ? (
-                    <img src={player.photo_url} alt={player.name} className="w-full h-full object-cover" />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center text-white text-lg font-bold" 
-                         style={{background: 'linear-gradient(135deg, #1D2945 0%, #C09D5A 100%)'}}>
-                      {player.name.split(' ').map(n => n[0]).join('')}
-                    </div>
-                  )}
-                </div>
-                
-                {/* Bouton upload photo */}
-                <label className="absolute inset-0 cursor-pointer bg-black bg-opacity-0 hover:bg-opacity-50 flex items-center justify-center opacity-0 hover:opacity-100 transition-all duration-300 rounded-full">
-                  <Camera size={16} className="text-white" />
-                  <input
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={(e) => e.target.files[0] && handlePhotoUpload(player.id, e.target.files[0])}
-                  />
-                </label>
-              </div>
-              <div>
-                <h2 className="text-2xl font-bold" style={{color: '#1D2945'}}>{player.name}</h2>
-                <p className="text-gray-600">{stats.total_responses || 0} réponses totales</p>
-                <p className="text-xs text-gray-500 mt-1">Survolez la photo pour la changer</p>
-              </div>
-            </div>
-            <button
-              onClick={onClose}
-              className="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600"
-            >
-              Fermer
-            </button>
-          </div>
-
-          <div className="p-6 space-y-6">
-            {/* Statistiques résumées */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="p-4 bg-blue-50 rounded-lg">
-                <div className="text-2xl font-bold text-blue-600">{stats.avg_motivation || 0}/20</div>
-                <div className="text-sm text-gray-600">Motivation moyenne</div>
-              </div>
-              <div className="p-4 bg-red-50 rounded-lg">
-                <div className="text-2xl font-bold text-red-600">{stats.avg_fatigue || 0}/20</div>
-                <div className="text-sm text-gray-600">Fatigue moyenne</div>
-              </div>
-              <div className="p-4 bg-yellow-50 rounded-lg">
-                <div className="text-2xl font-bold text-yellow-600">{stats.avg_rpe || 0}/20</div>
-                <div className="text-sm text-gray-600">RPE moyen</div>
-              </div>
-              <div className="p-4 bg-green-50 rounded-lg">
-                <div className="text-2xl font-bold text-green-600">{stats.pre_session_responses || 0}</div>
-                <div className="text-sm text-gray-600">Questionnaires</div>
-              </div>
-            </div>
-
-            {/* Graphique d'évolution */}
-            {chartData.length > 0 && (
-              <div>
-                <h3 className="text-lg font-semibold mb-3">Évolution des métriques</h3>
-                <ResponsiveContainer width="100%" height={300}>
-                  <LineChart data={chartData.slice(-10)}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="date" />
-                    <YAxis domain={[0, 20]} />
-                    <Tooltip />
-                    <Line type="monotone" dataKey="motivation" stroke="#2563eb" strokeWidth={2} name="Motivation" />
-                    <Line type="monotone" dataKey="fatigue" stroke="#dc2626" strokeWidth={2} name="Fatigue" />
-                    <Line type="monotone" dataKey="intensite_rpe" stroke="#f59e0b" strokeWidth={2} name="RPE" />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-            )}
-
-            {/* Objectifs */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <h3 className="text-lg font-semibold mb-3">Objectifs Techniques</h3>
-                <textarea
-                  value={objectifsIndividuels[player.id] || ''}
-                  onChange={(e) => setObjectifsIndividuels(prev => ({
-                    ...prev,
-                    [player.id]: e.target.value
-                  }))}
-                  placeholder="Objectifs techniques..."
-                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  rows={4}
-                />
-                <button
-                  onClick={() => saveObjectifsIndividuels(player.id, objectifsIndividuels[player.id] || '')}
-                  className="mt-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
-                >
-                  Sauvegarder
-                </button>
-              </div>
-              
-              <div>
-                <h3 className="text-lg font-semibold mb-3">Objectifs Mentaux</h3>
-                <textarea
-                  value={objectifsMentaux[player.id] || ''}
-                  onChange={(e) => setObjectifsMentaux(prev => ({
-                    ...prev,
-                    [player.id]: e.target.value
-                  }))}
-                  placeholder="Objectifs mentaux..."
-                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                  rows={4}
-                />
-                <button
-                  onClick={() => saveObjectifsMentaux(player.id, objectifsMentaux[player.id] || '')}
-                  className="mt-2 px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors"
-                >
-                  Sauvegarder
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  };
 
   return (
     <div className="min-h-screen p-4" style={{background: 'linear-gradient(135deg, #f0f4f8 0%, #fef9e7 100%)'}}>
@@ -474,7 +382,10 @@ const AdminPanel = ({
               <div 
                 key={player.id} 
                 className="bg-white rounded-xl shadow-md hover:shadow-lg transition-all duration-300 cursor-pointer transform hover:scale-105 border-2 overflow-hidden group relative"
-                onClick={() => setDetailViewPlayer(player)}
+                onClick={() => {
+                  setSelectedPlayer(player);
+                  setCurrentView('admin-player-detail');
+                }}
                 style={{
                   background: 'linear-gradient(135deg, #fef9e7 0%, #f0f4f8 100%)',
                   borderColor: '#C09D5A',
@@ -545,94 +456,162 @@ const AdminPanel = ({
             Statistiques et Analyses
           </h2>
           
-          {/* Filtres */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6 p-4 bg-gray-50 rounded-lg">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Joueuses</label>
-              <select
-                multiple
-                value={selectedPlayers}
-                onChange={(e) => setSelectedPlayers(Array.from(e.target.selectedOptions, option => option.value))}
-                className="w-full p-2 border border-gray-300 rounded-lg"
-                size="4"
-              >
-                {players.map(player => (
-                  <option key={player.id} value={player.id}>{player.name}</option>
-                ))}
-              </select>
-              <p className="text-xs text-gray-500 mt-1">Ctrl+clic pour sélection multiple</p>
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Métrique</label>
-              <select
-                value={selectedMetric}
-                onChange={(e) => setSelectedMetric(e.target.value)}
-                className="w-full p-2 border border-gray-300 rounded-lg"
-              >
-                {metricsOptions.map(metric => (
-                  <option key={metric.value} value={metric.value}>{metric.label}</option>
-                ))}
-              </select>
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Type de questionnaire</label>
-              <select
-                value={selectedQuestionType}
-                onChange={(e) => setSelectedQuestionType(e.target.value)}
-                className="w-full p-2 border border-gray-300 rounded-lg"
-              >
-                {questionTypeOptions.map(type => (
-                  <option key={type.value} value={type.value}>{type.label}</option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          {/* Graphique */}
-          <div className="mb-6">
-            <h3 className="text-lg font-semibold mb-4" style={{color: selectedMetricInfo?.color}}>
-              {selectedMetricInfo?.label} - {questionTypeOptions.find(t => t.value === selectedQuestionType)?.label}
+          {/* Filtres améliorés avec sélections multiples */}
+          <div className="bg-gray-50 rounded-lg p-6 mb-6">
+            <h3 className="text-lg font-semibold mb-4 text-gray-700 flex items-center">
+              <Filter size={20} className="mr-2" />
+              Filtres d'Analyse
             </h3>
-            <ResponsiveContainer width="100%" height={400}>
-              <BarChart data={chartData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="name" />
-                <YAxis domain={[0, 20]} />
-                <Tooltip formatter={(value, name, props) => [
-                  `${value}/20`,
-                  selectedMetricInfo?.label,
-                  `${props.payload.responses} réponses`
-                ]} />
-                <Bar dataKey="value" fill={selectedMetricInfo?.color || '#1D2945'} />
-              </BarChart>
-            </ResponsiveContainer>
+            
+            {/* Sélection des joueuses */}
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-gray-700 mb-3">Joueuses sélectionnées</label>
+              <div className="flex flex-wrap gap-2 mb-3">
+                <button
+                  onClick={() => setSelectedPlayers([])}
+                  className={`px-3 py-1 rounded-full text-sm transition-all ${
+                    selectedPlayers.length === 0 
+                      ? 'bg-blue-500 text-white' 
+                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                  }`}
+                >
+                  Toutes ({players.length})
+                </button>
+                {players.map(player => (
+                  <button
+                    key={player.id}
+                    onClick={() => togglePlayerSelection(player.id)}
+                    className={`px-3 py-1 rounded-full text-sm transition-all ${
+                      selectedPlayers.includes(player.id)
+                        ? 'bg-blue-500 text-white'
+                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                    }`}
+                  >
+                    {player.name.split(' ')[0]}
+                  </button>
+                ))}
+              </div>
+              {selectedPlayers.length > 0 && (
+                <p className="text-xs text-blue-600">
+                  {selectedPlayers.length} joueuse(s) sélectionnée(s)
+                </p>
+              )}
+            </div>
+
+            {/* Sélection des métriques */}
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-gray-700 mb-3">Métriques à analyser</label>
+              <div className="flex flex-wrap gap-2">
+                {metricsOptions.map(metric => (
+                  <button
+                    key={metric.value}
+                    onClick={() => toggleMetricSelection(metric.value)}
+                    className={`px-3 py-1 rounded-full text-sm transition-all border-2 ${
+                      selectedMetrics.includes(metric.value)
+                        ? 'text-white border-transparent'
+                        : 'text-gray-700 border-gray-300 hover:border-gray-400'
+                    }`}
+                    style={{
+                      backgroundColor: selectedMetrics.includes(metric.value) ? metric.color : 'transparent'
+                    }}
+                  >
+                    {metric.label}
+                  </button>
+                ))}
+              </div>
+              {selectedMetrics.length > 0 && (
+                <p className="text-xs text-green-600 mt-2">
+                  {selectedMetrics.length} métrique(s) sélectionnée(s)
+                </p>
+              )}
+            </div>
+
+            {/* Sélection des types de questionnaires */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-3">Types de questionnaires</label>
+              <div className="flex flex-wrap gap-2">
+                {questionTypeOptions.map(type => (
+                  <button
+                    key={type.value}
+                    onClick={() => toggleQuestionTypeSelection(type.value)}
+                    className={`px-3 py-1 rounded-full text-sm transition-all ${
+                      selectedQuestionTypes.includes(type.value)
+                        ? 'bg-purple-500 text-white'
+                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                    }`}
+                  >
+                    {type.label}
+                  </button>
+                ))}
+              </div>
+              {selectedQuestionTypes.length > 0 && (
+                <p className="text-xs text-purple-600 mt-2">
+                  {selectedQuestionTypes.join(', ')}
+                </p>
+              )}
+            </div>
           </div>
 
-          {/* Statistiques générales */}
+          {/* Graphiques avec métriques multiples */}
+          <div className="mb-6">
+            <h3 className="text-lg font-semibold mb-4 text-gray-700">
+              Comparaison des Métriques Sélectionnées
+            </h3>
+            
+            {getFilteredChartData().map((metricData, index) => (
+              <div key={metricData.metric} className="mb-8">
+                <h4 className="text-md font-medium mb-3" style={{color: metricData.color}}>
+                  {metricData.label} - {questionTypeOptions.find(t => selectedQuestionTypes.includes(t.value) || selectedQuestionTypes.includes('all'))?.label || 'Filtres personnalisés'}
+                </h4>
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart data={metricData.data}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="name" />
+                    <YAxis domain={[0, 20]} />
+                    <Tooltip formatter={(value, name, props) => [
+                      `${value}/20`,
+                      metricData.label,
+                      `${props.payload.responses} réponses`
+                    ]} />
+                    <Bar dataKey="value" fill={metricData.color} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            ))}
+            
+            {selectedMetrics.length === 0 && (
+              <div className="text-center py-8 text-gray-500">
+                <BarChart3 size={48} className="mx-auto mb-4" />
+                <p>Sélectionnez au moins une métrique pour afficher les graphiques</p>
+              </div>
+            )}
+          </div>
+
+          {/* Statistiques contextuelles */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="p-4 bg-blue-50 rounded-lg text-center">
-              <div className="text-3xl font-bold text-blue-600">{players.length}</div>
-              <div className="text-sm text-gray-600">Joueuses actives</div>
+              <div className="text-3xl font-bold text-blue-600">
+                {selectedPlayers.length > 0 ? selectedPlayers.length : players.length}
+              </div>
+              <div className="text-sm text-gray-600">Joueuses analysées</div>
             </div>
             <div className="p-4 bg-green-50 rounded-lg text-center">
               <div className="text-3xl font-bold text-green-600">
-                {Object.values(playerStats).reduce((sum, stat) => sum + (stat.total_responses || 0), 0)}
+                {selectedMetrics.length}
               </div>
-              <div className="text-sm text-gray-600">Réponses totales</div>
-            </div>
-            <div className="p-4 bg-yellow-50 rounded-lg text-center">
-              <div className="text-3xl font-bold text-yellow-600">
-                {chartData.length > 0 ? (chartData.reduce((sum, d) => sum + d.value, 0) / chartData.length).toFixed(1) : '0'}
-              </div>
-              <div className="text-sm text-gray-600">{selectedMetricInfo?.label} moyenne</div>
+              <div className="text-sm text-gray-600">Métriques suivies</div>
             </div>
             <div className="p-4 bg-purple-50 rounded-lg text-center">
               <div className="text-3xl font-bold text-purple-600">
-                {chartData.reduce((sum, d) => sum + d.responses, 0)}
+                {selectedQuestionTypes.length}
               </div>
-              <div className="text-sm text-gray-600">Réponses filtrées</div>
+              <div className="text-sm text-gray-600">Types de questionnaire</div>
+            </div>
+            <div className="p-4 bg-yellow-50 rounded-lg text-center">
+              <div className="text-3xl font-bold text-yellow-600">
+                {Object.values(playerStats).reduce((sum, stat) => sum + (stat.total_responses || 0), 0)}
+              </div>
+              <div className="text-sm text-gray-600">Réponses totales</div>
             </div>
           </div>
         </div>
@@ -682,14 +661,6 @@ const AdminPanel = ({
             )}
           </div>
         </div>
-
-        {/* Modal de détail joueuse */}
-        {detailViewPlayer && (
-          <PlayerDetailModal
-            player={detailViewPlayer}
-            onClose={() => setDetailViewPlayer(null)}
-          />
-        )}
       </div>
     </div>
   );
