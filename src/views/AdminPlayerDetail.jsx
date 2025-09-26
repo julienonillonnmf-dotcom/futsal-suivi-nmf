@@ -1,353 +1,484 @@
-// views/AdminPlayerDetail.jsx
-import React from 'react';
-import { ChevronLeft, AlertTriangle, BarChart3 } from 'lucide-react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+// views/AdminPlayerDetail.jsx - Version améliorée avec édition photo et objectifs
+import React, { useState, useRef } from 'react';
+import { 
+  ChevronLeft, 
+  Camera, 
+  Edit3, 
+  Save, 
+  X, 
+  Upload,
+  User,
+  Target,
+  Brain,
+  Calendar,
+  BarChart3,
+  MessageSquare
+} from 'lucide-react';
+import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { resizeImage } from '../utils/imageUtils';
 
 const AdminPlayerDetail = ({ 
   selectedPlayer,
+  setSelectedPlayer,
   setCurrentView,
+  loading,
+  setLoading,
   playerStats,
   objectifsIndividuels,
-  objectifsMentaux
+  setObjectifsIndividuels,
+  objectifsMentaux,
+  setObjectifsMentaux,
+  players,
+  setPlayers,
+  supabase
 }) => {
   
+  const [editingPhoto, setEditingPhoto] = useState(false);
+  const [editingTechnical, setEditingTechnical] = useState(false);
+  const [editingMental, setEditingMental] = useState(false);
+  const [tempTechnicalObjectives, setTempTechnicalObjectives] = useState('');
+  const [tempMentalObjectives, setTempMentalObjectives] = useState('');
+  const fileInputRef = useRef(null);
+
   if (!selectedPlayer) return null;
 
-  const chartData = playerStats[selectedPlayer.id]?.chartData || [];
+  const stats = playerStats[selectedPlayer.id] || {};
+
+  // Initialiser les objectifs temporaires
+  React.useEffect(() => {
+    setTempTechnicalObjectives(objectifsIndividuels[selectedPlayer.id] || '');
+    setTempMentalObjectives(objectifsMentaux[selectedPlayer.id] || '');
+  }, [selectedPlayer.id, objectifsIndividuels, objectifsMentaux]);
+
+  // Upload de photo amélioré
+  const handlePhotoUpload = async (file) => {
+    if (!file) return;
+    
+    setLoading(true);
+    try {
+      // Valider le fichier
+      if (!file.type.startsWith('image/')) {
+        alert('Veuillez sélectionner un fichier image valide.');
+        return;
+      }
+
+      if (file.size > 5 * 1024 * 1024) { // 5MB max
+        alert('Le fichier est trop volumineux. Maximum 5MB.');
+        return;
+      }
+
+      const resizedFile = await resizeImage(file);
+      
+      const fileExt = 'jpg';
+      const fileName = `${selectedPlayer.id}-${Date.now()}.${fileExt}`;
+      const filePath = `player-photos/${fileName}`;
+
+      // Upload vers Supabase Storage
+      const { error: uploadError } = await supabase.storage
+        .from('photos')
+        .upload(filePath, resizedFile, { upsert: true });
+
+      if (uploadError) throw uploadError;
+
+      // Obtenir l'URL publique
+      const { data: publicUrl } = supabase.storage
+        .from('photos')
+        .getPublicUrl(filePath);
+
+      // Mettre à jour la base de données
+      const { error: updateError } = await supabase
+        .from('players')
+        .update({ photo_url: publicUrl.publicUrl })
+        .eq('id', selectedPlayer.id);
+
+      if (updateError) throw updateError;
+
+      // Mettre à jour l'état local
+      const updatedPlayer = { ...selectedPlayer, photo_url: publicUrl.publicUrl };
+      setSelectedPlayer(updatedPlayer);
+      setPlayers(prev => prev.map(p => 
+        p.id === selectedPlayer.id ? updatedPlayer : p
+      ));
+
+      setEditingPhoto(false);
+      alert('Photo mise à jour avec succès !');
+
+    } catch (error) {
+      console.error('Erreur upload photo:', error);
+      alert('Erreur lors de la mise à jour de la photo: ' + error.message);
+    }
+    setLoading(false);
+  };
+
+  // Sauvegarder les objectifs techniques
+  const saveTechnicalObjectives = async () => {
+    setLoading(true);
+    try {
+      const { error } = await supabase
+        .from('players')
+        .update({ objectifs_individuels: tempTechnicalObjectives || null })
+        .eq('id', selectedPlayer.id);
+      
+      if (error) throw error;
+      
+      setObjectifsIndividuels(prev => ({
+        ...prev,
+        [selectedPlayer.id]: tempTechnicalObjectives
+      }));
+      
+      setEditingTechnical(false);
+      alert('Objectifs techniques sauvegardés !');
+      
+    } catch (error) {
+      console.error('Erreur sauvegarde objectifs techniques:', error);
+      alert('Erreur lors de la sauvegarde: ' + error.message);
+    }
+    setLoading(false);
+  };
+
+  // Sauvegarder les objectifs mentaux
+  const saveMentalObjectives = async () => {
+    setLoading(true);
+    try {
+      const { error } = await supabase
+        .from('players')
+        .update({ objectifs_mentaux: tempMentalObjectives || null })
+        .eq('id', selectedPlayer.id);
+      
+      if (error) throw error;
+      
+      setObjectifsMentaux(prev => ({
+        ...prev,
+        [selectedPlayer.id]: tempMentalObjectives
+      }));
+      
+      setEditingMental(false);
+      alert('Objectifs mentaux sauvegardés !');
+      
+    } catch (error) {
+      console.error('Erreur sauvegarde objectifs mentaux:', error);
+      alert('Erreur lors de la sauvegarde: ' + error.message);
+    }
+    setLoading(false);
+  };
 
   return (
-    <div className="min-h-screen p-4" style={{background: 'linear-gradient(135deg, #f0f4f8 0%, #fef9e7 100%)'}}>
-      <div className="max-w-6xl mx-auto">
-        {/* En-tête */}
-        <div className="bg-white rounded-xl shadow-lg p-6 mb-8">
+    <div className="min-h-screen" style={{background: 'linear-gradient(135deg, #f0f4f8 0%, #fef9e7 100%)'}}>
+      <div className="max-w-6xl mx-auto p-4">
+        
+        {/* En-tête avec retour */}
+        <div className="bg-white rounded-xl shadow-lg p-6 mb-6">
           <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-gray-200">
-                {selectedPlayer.photo_url ? (
-                  <img 
-                    src={selectedPlayer.photo_url} 
-                    alt={selectedPlayer.name}
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center text-white text-lg font-bold" style={{background: 'linear-gradient(135deg, #1D2945 0%, #C09D5A 100%)'}}>
-                    {selectedPlayer.name.split(' ').map(n => n[0]).join('')}
-                  </div>
-                )}
-              </div>
-              <div>
-                <h1 className="text-3xl font-bold" style={{color: '#1D2945'}}>
-                  {selectedPlayer.name} - Vue Entraîneur
-                </h1>
-                <p className="text-gray-600">
-                  {playerStats[selectedPlayer.id]?.total_responses || 0} réponses totales
-                </p>
-              </div>
-            </div>
             <button
               onClick={() => setCurrentView('admin')}
-              className="flex items-center space-x-2 px-6 py-3 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors"
+              className="flex items-center space-x-2 px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-all"
             >
               <ChevronLeft size={20} />
-              <span>Retour Admin</span>
+              <span>Retour Administration</span>
             </button>
+            <h1 className="text-2xl font-bold" style={{color: '#1D2945'}}>
+              Administration - {selectedPlayer.name}
+            </h1>
+            <div className="w-32"></div> {/* Spacer pour centrer le titre */}
           </div>
         </div>
 
-        {/* Graphiques d'évolution */}
-        {chartData.length > 0 && (
-          <div className="bg-white rounded-xl shadow-lg p-6 mb-8">
-            <h2 className="text-xl font-bold mb-6" style={{color: '#1D2945'}}>Évolution des Métriques</h2>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          
+          {/* Colonne 1: Profil et Photo */}
+          <div className="space-y-6">
             
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Graphique Motivation */}
-              <div>
-                <h3 className="text-lg font-semibold mb-3 text-blue-600">Motivation</h3>
-                <ResponsiveContainer width="100%" height={200}>
-                  <LineChart data={chartData.filter(d => d.motivation)}>
+            {/* Section Photo de Profil */}
+            <div className="bg-white rounded-xl shadow-lg p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-bold" style={{color: '#1D2945'}}>
+                  <User className="inline mr-2" size={20} />
+                  Photo de Profil
+                </h2>
+                <button
+                  onClick={() => setEditingPhoto(!editingPhoto)}
+                  className={`flex items-center space-x-2 px-3 py-2 rounded-lg text-sm transition-all ${
+                    editingPhoto 
+                      ? 'bg-red-100 text-red-600 hover:bg-red-200' 
+                      : 'bg-blue-100 text-blue-600 hover:bg-blue-200'
+                  }`}
+                >
+                  {editingPhoto ? <X size={16} /> : <Edit3 size={16} />}
+                  <span>{editingPhoto ? 'Annuler' : 'Modifier'}</span>
+                </button>
+              </div>
+
+              <div className="text-center">
+                {/* Affichage de la photo */}
+                <div className="w-32 h-32 rounded-full mx-auto mb-4 overflow-hidden border-4 border-gray-200">
+                  {selectedPlayer.photo_url ? (
+                    <img 
+                      src={selectedPlayer.photo_url} 
+                      alt={selectedPlayer.name}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div 
+                      className="w-full h-full flex items-center justify-center text-white text-2xl font-bold"
+                      style={{background: 'linear-gradient(135deg, #1D2945 0%, #C09D5A 100%)'}}
+                    >
+                      {selectedPlayer.name.split(' ').map(n => n[0]).join('')}
+                    </div>
+                  )}
+                </div>
+
+                <h3 className="text-xl font-bold mb-2" style={{color: '#1D2945'}}>
+                  {selectedPlayer.name}
+                </h3>
+
+                {/* Interface d'upload */}
+                {editingPhoto && (
+                  <div className="space-y-3">
+                    <input
+                      type="file"
+                      ref={fileInputRef}
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) handlePhotoUpload(file);
+                      }}
+                      accept="image/*"
+                      className="hidden"
+                    />
+                    <button
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={loading}
+                      className="flex items-center space-x-2 px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-all disabled:opacity-50 mx-auto"
+                    >
+                      <Upload size={16} />
+                      <span>{loading ? 'Upload...' : 'Choisir une photo'}</span>
+                    </button>
+                    <p className="text-xs text-gray-500">
+                      Formats acceptés: JPG, PNG, GIF<br />
+                      Taille maximum: 5MB
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Statistiques rapides */}
+            <div className="bg-white rounded-xl shadow-lg p-6">
+              <h3 className="text-lg font-bold mb-4" style={{color: '#1D2945'}}>
+                <BarChart3 className="inline mr-2" size={20} />
+                Statistiques
+              </h3>
+              <div className="space-y-3">
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Réponses totales:</span>
+                  <span className="font-semibold">{stats.total_responses || 0}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Motivation moyenne:</span>
+                  <span className="font-semibold">{stats.avg_motivation || 0}/20</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Fatigue moyenne:</span>
+                  <span className="font-semibold">{stats.avg_fatigue || 0}/20</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">RPE moyen:</span>
+                  <span className="font-semibold">{stats.avg_rpe || 0}/20</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Dernière réponse:</span>
+                  <span className="font-semibold text-sm">{stats.last_response_date || 'Aucune'}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Colonne 2: Objectifs Personnels */}
+          <div className="space-y-6">
+            
+            {/* Objectifs Techniques */}
+            <div className="bg-white rounded-xl shadow-lg p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-bold" style={{color: '#1D2945'}}>
+                  <Target className="inline mr-2" size={20} />
+                  Objectifs Techniques
+                </h2>
+                <button
+                  onClick={() => {
+                    if (editingTechnical) {
+                      setTempTechnicalObjectives(objectifsIndividuels[selectedPlayer.id] || '');
+                    }
+                    setEditingTechnical(!editingTechnical);
+                  }}
+                  className={`flex items-center space-x-2 px-3 py-2 rounded-lg text-sm transition-all ${
+                    editingTechnical 
+                      ? 'bg-red-100 text-red-600 hover:bg-red-200' 
+                      : 'bg-blue-100 text-blue-600 hover:bg-blue-200'
+                  }`}
+                >
+                  {editingTechnical ? <X size={16} /> : <Edit3 size={16} />}
+                  <span>{editingTechnical ? 'Annuler' : 'Modifier'}</span>
+                </button>
+              </div>
+
+              {editingTechnical ? (
+                <div className="space-y-4">
+                  <textarea
+                    value={tempTechnicalObjectives}
+                    onChange={(e) => setTempTechnicalObjectives(e.target.value)}
+                    placeholder="Définissez les objectifs techniques pour cette joueuse..."
+                    className="w-full p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                    rows={6}
+                  />
+                  <div className="flex space-x-3">
+                    <button
+                      onClick={saveTechnicalObjectives}
+                      disabled={loading}
+                      className="flex items-center space-x-2 px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-all disabled:opacity-50"
+                    >
+                      <Save size={16} />
+                      <span>{loading ? 'Sauvegarde...' : 'Sauvegarder'}</span>
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <div className="p-4 bg-blue-50 rounded-lg min-h-[120px]">
+                    <p className="text-gray-700 whitespace-pre-wrap">
+                      {objectifsIndividuels[selectedPlayer.id] || 'Aucun objectif technique défini.'}
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Objectifs Mentaux */}
+            <div className="bg-white rounded-xl shadow-lg p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-bold" style={{color: '#1D2945'}}>
+                  <Brain className="inline mr-2" size={20} />
+                  Objectifs Mentaux
+                </h2>
+                <button
+                  onClick={() => {
+                    if (editingMental) {
+                      setTempMentalObjectives(objectifsMentaux[selectedPlayer.id] || '');
+                    }
+                    setEditingMental(!editingMental);
+                  }}
+                  className={`flex items-center space-x-2 px-3 py-2 rounded-lg text-sm transition-all ${
+                    editingMental 
+                      ? 'bg-red-100 text-red-600 hover:bg-red-200' 
+                      : 'bg-green-100 text-green-600 hover:bg-green-200'
+                  }`}
+                >
+                  {editingMental ? <X size={16} /> : <Edit3 size={16} />}
+                  <span>{editingMental ? 'Annuler' : 'Modifier'}</span>
+                </button>
+              </div>
+
+              {editingMental ? (
+                <div className="space-y-4">
+                  <textarea
+                    value={tempMentalObjectives}
+                    onChange={(e) => setTempMentalObjectives(e.target.value)}
+                    placeholder="Définissez les objectifs mentaux pour cette joueuse..."
+                    className="w-full p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent resize-none"
+                    rows={6}
+                  />
+                  <div className="flex space-x-3">
+                    <button
+                      onClick={saveMentalObjectives}
+                      disabled={loading}
+                      className="flex items-center space-x-2 px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-all disabled:opacity-50"
+                    >
+                      <Save size={16} />
+                      <span>{loading ? 'Sauvegarde...' : 'Sauvegarder'}</span>
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <div className="p-4 bg-green-50 rounded-lg min-h-[120px]">
+                    <p className="text-gray-700 whitespace-pre-wrap">
+                      {objectifsMentaux[selectedPlayer.id] || 'Aucun objectif mental défini.'}
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Colonne 3: Historique et Graphiques */}
+          <div className="space-y-6">
+            
+            {/* Graphique d'évolution */}
+            {stats.chartData && stats.chartData.length > 0 && (
+              <div className="bg-white rounded-xl shadow-lg p-6">
+                <h3 className="text-lg font-bold mb-4" style={{color: '#1D2945'}}>
+                  <Calendar className="inline mr-2" size={20} />
+                  Évolution des Métriques
+                </h3>
+                <ResponsiveContainer width="100%" height={250}>
+                  <LineChart data={stats.chartData.slice(-10)}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="date" />
                     <YAxis domain={[0, 20]} />
                     <Tooltip />
                     <Line type="monotone" dataKey="motivation" stroke="#2563eb" strokeWidth={2} />
+                    <Line type="monotone" dataKey="fatigue" stroke="#dc2626" strokeWidth={2} />
+                    <Line type="monotone" dataKey="intensite_rpe" stroke="#f59e0b" strokeWidth={2} />
                   </LineChart>
                 </ResponsiveContainer>
               </div>
+            )}
 
-              {/* Graphique RPE */}
-              <div>
-                <h3 className="text-lg font-semibold mb-3 text-red-600">RPE (Intensité)</h3>
-                <ResponsiveContainer width="100%" height={200}>
-                  <LineChart data={chartData.filter(d => d.intensite_rpe)}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="date" />
-                    <YAxis domain={[0, 20]} />
-                    <Tooltip />
-                    <Line type="monotone" dataKey="intensite_rpe" stroke="#dc2626" strokeWidth={2} />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-
-              {/* Graphique Plaisir */}
-              <div>
-                <h3 className="text-lg font-semibold mb-3 text-yellow-600">Plaisir</h3>
-                <ResponsiveContainer width="100%" height={200}>
-                  <LineChart data={chartData.filter(d => d.plaisir || d.plaisir_seance)}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="date" />
-                    <YAxis domain={[0, 20]} />
-                    <Tooltip />
-                    <Line type="monotone" dataKey="plaisir" stroke="#eab308" strokeWidth={2} />
-                    <Line type="monotone" dataKey="plaisir_seance" stroke="#f59e0b" strokeWidth={2} />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-
-              {/* Graphique Fatigue */}
-              <div>
-                <h3 className="text-lg font-semibold mb-3 text-purple-600">Fatigue</h3>
-                <ResponsiveContainer width="100%" height={200}>
-                  <LineChart data={chartData.filter(d => d.fatigue)}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="date" />
-                    <YAxis domain={[0, 20]} />
-                    <Tooltip />
-                    <Line type="monotone" dataKey="fatigue" stroke="#9333ea" strokeWidth={2} />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-          </div>
-        )}
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Statistiques détaillées */}
-          <div className="lg:col-span-1">
-            <div className="bg-white rounded-xl shadow-lg p-6 mb-6">
-              <h2 className="text-xl font-bold mb-4" style={{color: '#1D2945'}}>Statistiques</h2>
-              {playerStats[selectedPlayer.id] && (
-                <div className="space-y-4">
-                  <div className="p-3 bg-blue-50 rounded-lg">
-                    <div className="text-2xl font-bold text-blue-600">
-                      {playerStats[selectedPlayer.id].pre_session_responses}
-                    </div>
-                    <div className="text-sm text-gray-600">Questionnaires pré-séance</div>
-                  </div>
-                  <div className="p-3 bg-green-50 rounded-lg">
-                    <div className="text-2xl font-bold text-green-600">
-                      {playerStats[selectedPlayer.id].post_session_responses}
-                    </div>
-                    <div className="text-sm text-gray-600">Questionnaires post-séance</div>
-                  </div>
-                  <div className="p-3 bg-orange-50 rounded-lg">
-                    <div className="text-2xl font-bold text-orange-600">
-                      {playerStats[selectedPlayer.id].match_responses || 0}
-                    </div>
-                    <div className="text-sm text-gray-600">Questionnaires match</div>
-                  </div>
-                  <div className="p-3 bg-yellow-50 rounded-lg">
-                    <div className="text-lg font-bold text-yellow-600">
-                      {playerStats[selectedPlayer.id].avg_motivation}/20
-                    </div>
-                    <div className="text-sm text-gray-600">Motivation moyenne</div>
-                  </div>
-                  <div className="p-3 bg-red-50 rounded-lg">
-                    <div className="text-lg font-bold text-red-600">
-                      {playerStats[selectedPlayer.id].avg_fatigue}/20
-                    </div>
-                    <div className="text-sm text-gray-600">Fatigue moyenne</div>
-                  </div>
-                  <div className="p-3 bg-purple-50 rounded-lg">
-                    <div className="text-lg font-bold text-purple-600">
-                      {playerStats[selectedPlayer.id].avg_rpe}/20
-                    </div>
-                    <div className="text-sm text-gray-600">RPE moyen</div>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Objectifs personnels */}
+            {/* Historique des réponses récentes */}
             <div className="bg-white rounded-xl shadow-lg p-6">
-              <h2 className="text-xl font-bold mb-4" style={{color: '#1D2945'}}>Objectifs Personnels</h2>
-              <div className="space-y-3">
-                <div className="p-3 bg-blue-50 rounded-lg">
-                  <h4 className="font-semibold text-blue-800 text-sm mb-1">Techniques</h4>
-                  <p className="text-gray-700 text-sm">
-                    {objectifsIndividuels[selectedPlayer.id] || 'Aucun objectif technique défini.'}
-                  </p>
-                </div>
-                <div className="p-3 bg-green-50 rounded-lg">
-                  <h4 className="font-semibold text-green-800 text-sm mb-1">Mentaux</h4>
-                  <p className="text-gray-700 text-sm">
-                    {objectifsMentaux[selectedPlayer.id] || 'Aucun objectif mental défini.'}
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Historique des réponses détaillé */}
-          <div className="lg:col-span-2">
-            <div className="bg-white rounded-xl shadow-lg p-6">
-              <h2 className="text-xl font-bold mb-6" style={{color: '#1D2945'}}>
-                Historique Complet des Réponses
-              </h2>
-              
-              {selectedPlayer.responses && selectedPlayer.responses.length > 0 ? (
-                <div className="space-y-6">
-                  {selectedPlayer.responses.map(response => (
-                    <div key={response.id} className="border rounded-lg p-4 hover:bg-gray-50">
-                      <div className="flex justify-between items-start mb-3">
-                        <div>
-                          <h3 className="font-semibold text-lg" style={{color: '#1D2945'}}>
-                            {response.type === 'pre' && '📋 Pré-séance'}
-                            {response.type === 'post' && '📊 Post-séance'}
-                            {response.type === 'match' && '⚽ Match'}
-                            {response.type === 'injury' && '🏥 Suivi blessure'}
-                          </h3>
-                          <p className="text-sm text-gray-600">
-                            {new Date(response.created_at).toLocaleDateString('fr-FR')} à {new Date(response.created_at).toLocaleTimeString('fr-FR', {hour: '2-digit', minute: '2-digit'})}
-                          </p>
-                        </div>
+              <h3 className="text-lg font-bold mb-4" style={{color: '#1D2945'}}>
+                <MessageSquare className="inline mr-2" size={20} />
+                Réponses Récentes
+              </h3>
+              <div className="space-y-3 max-h-80 overflow-y-auto">
+                {selectedPlayer.responses && selectedPlayer.responses.length > 0 ? (
+                  selectedPlayer.responses.slice(0, 8).map((response, index) => (
+                    <div key={index} className="p-3 border border-gray-200 rounded-lg">
+                      <div className="flex justify-between items-center mb-2">
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                          response.type === 'pre' ? 'bg-blue-100 text-blue-800' :
+                          response.type === 'post' ? 'bg-green-100 text-green-800' :
+                          response.type === 'match' ? 'bg-purple-100 text-purple-800' :
+                          'bg-yellow-100 text-yellow-800'
+                        }`}>
+                          {response.type === 'pre' ? 'Pré-séance' :
+                           response.type === 'post' ? 'Post-séance' :
+                           response.type === 'match' ? 'Match' : 'Blessure'}
+                        </span>
+                        <span className="text-xs text-gray-500">
+                          {new Date(response.created_at).toLocaleDateString('fr-FR')}
+                        </span>
                       </div>
-
-                      {/* Détail des réponses */}
-                      <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                        {response.type === 'pre' && (
-                          <>
-                            {response.data.motivation && (
-                              <div className="bg-blue-50 p-2 rounded">
-                                <div className="text-xs text-gray-600">Motivation</div>
-                                <div className="font-semibold text-blue-700">{response.data.motivation}/20</div>
-                              </div>
-                            )}
-                            {response.data.fatigue && (
-                              <div className="bg-red-50 p-2 rounded">
-                                <div className="text-xs text-gray-600">Fatigue</div>
-                                <div className="font-semibold text-red-700">{response.data.fatigue}/20</div>
-                              </div>
-                            )}
-                            {response.data.plaisir && (
-                              <div className="bg-yellow-50 p-2 rounded">
-                                <div className="text-xs text-gray-600">Plaisir anticipé</div>
-                                <div className="font-semibold text-yellow-700">{response.data.plaisir}/20</div>
-                              </div>
-                            )}
-                            {response.data.difficulte_objectif && (
-                              <div className="bg-purple-50 p-2 rounded">
-                                <div className="text-xs text-gray-600">Difficulté objectif</div>
-                                <div className="font-semibold text-purple-700">{response.data.difficulte_objectif}/20</div>
-                              </div>
-                            )}
-                          </>
+                      <div className="text-sm space-y-1">
+                        {response.data.motivation && (
+                          <p><span className="font-medium">Motivation:</span> {response.data.motivation}/20</p>
                         )}
-
-                        {response.type === 'post' && (
-                          <>
-                            {response.data.objectifs_repondu && (
-                              <div className="bg-green-50 p-2 rounded">
-                                <div className="text-xs text-gray-600">Objectifs atteints</div>
-                                <div className="font-semibold text-green-700">{response.data.objectifs_repondu}/20</div>
-                              </div>
-                            )}
-                            {response.data.intensite_rpe && (
-                              <div className="bg-red-50 p-2 rounded">
-                                <div className="text-xs text-gray-600">RPE</div>
-                                <div className="font-semibold text-red-700">{response.data.intensite_rpe}/20</div>
-                              </div>
-                            )}
-                            {response.data.plaisir_seance && (
-                              <div className="bg-yellow-50 p-2 rounded">
-                                <div className="text-xs text-gray-600">Plaisir</div>
-                                <div className="font-semibold text-yellow-700">{response.data.plaisir_seance}/20</div>
-                              </div>
-                            )}
-                            {response.data.tactique && (
-                              <div className="bg-blue-50 p-2 rounded">
-                                <div className="text-xs text-gray-600">Progrès tactique</div>
-                                <div className="font-semibold text-blue-700">{response.data.tactique}/20</div>
-                              </div>
-                            )}
-                            {response.data.technique && (
-                              <div className="bg-indigo-50 p-2 rounded">
-                                <div className="text-xs text-gray-600">Progrès technique</div>
-                                <div className="font-semibold text-indigo-700">{response.data.technique}/20</div>
-                              </div>
-                            )}
-                          </>
+                        {response.data.fatigue && (
+                          <p><span className="font-medium">Fatigue:</span> {response.data.fatigue}/20</p>
                         )}
-
-                        {response.type === 'match' && (
-                          <>
-                            {response.data.motivation && (
-                              <div className="bg-blue-50 p-2 rounded">
-                                <div className="text-xs text-gray-600">Motivation</div>
-                                <div className="font-semibold text-blue-700">{response.data.motivation}/20</div>
-                              </div>
-                            )}
-                            {response.data.confiance && (
-                              <div className="bg-green-50 p-2 rounded">
-                                <div className="text-xs text-gray-600">Confiance</div>
-                                <div className="font-semibold text-green-700">{response.data.confiance}/20</div>
-                              </div>
-                            )}
-                            {response.data.plaisir && (
-                              <div className="bg-yellow-50 p-2 rounded">
-                                <div className="text-xs text-gray-600">Plaisir</div>
-                                <div className="font-semibold text-yellow-700">{response.data.plaisir}/20</div>
-                              </div>
-                            )}
-                            {response.data.performance && (
-                              <div className="bg-purple-50 p-2 rounded">
-                                <div className="text-xs text-gray-600">Performance</div>
-                                <div className="font-semibold text-purple-700">{response.data.performance}/20</div>
-                              </div>
-                            )}
-                          </>
+                        {response.data.intensite_rpe && (
+                          <p><span className="font-medium">RPE:</span> {response.data.intensite_rpe}/20</p>
                         )}
-
-                        {response.type === 'injury' && response.data.blessure && (
-                          <div className="col-span-full">
-                            <div className="bg-red-100 border border-red-200 p-3 rounded">
-                              <div className="flex items-center space-x-2 mb-2">
-                                <AlertTriangle className="text-red-600" size={16} />
-                                <div className="font-semibold text-red-800">Suivi de blessure</div>
-                              </div>
-                              <div className="grid grid-cols-2 gap-2 text-sm">
-                                <div>
-                                  <span className="text-red-600">Zone:</span> {response.data.blessure.zone}
-                                </div>
-                                <div>
-                                  <span className="text-red-600">Douleur:</span> {response.data.blessure.douleur}/10
-                                </div>
-                                {response.data.blessure.limitation && (
-                                  <div className="col-span-2">
-                                    <span className="text-red-600">Limitation:</span> {response.data.blessure.limitation}
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                          </div>
+                        {response.data.commentaires_libres && (
+                          <p className="text-gray-600 italic">"{response.data.commentaires_libres}"</p>
                         )}
                       </div>
-
-                      {/* Commentaires */}
-                      {response.data.commentaires && (
-                        <div className="mt-3 p-3 bg-gray-50 rounded">
-                          <div className="text-xs text-gray-600 mb-1">Commentaires</div>
-                          <div className="text-sm text-gray-800">{response.data.commentaires}</div>
-                        </div>
-                      )}
                     </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-12">
-                  <BarChart3 size={48} className="mx-auto text-gray-400 mb-4" />
-                  <p className="text-gray-500">Aucune réponse enregistrée pour cette joueuse.</p>
-                </div>
-              )}
+                  ))
+                ) : (
+                  <p className="text-gray-500 text-center py-8">
+                    Aucune réponse enregistrée pour cette joueuse.
+                  </p>
+                )}
+              </div>
             </div>
           </div>
         </div>
