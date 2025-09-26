@@ -1,9 +1,9 @@
-// App.jsx - Composant principal restructuré et optimisé
+// App.jsx - Version de diagnostic pour éliminer la boucle infinie
 import React, { useState, useEffect, useCallback } from 'react';
 import { Lock, EyeOff, Eye, Settings, LogOut } from 'lucide-react';
 import { supabase } from './supabaseClient';
 
-// Imports directs pour TOUS les composants (pas de lazy loading)
+// Imports directs pour TOUS les composants
 import PlayerGrid from './components/PlayerGrid';
 import AdminPanel from './views/AdminPanel';
 import PlayerDetail from './views/PlayerDetail';
@@ -46,35 +46,37 @@ const App = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   
-  // Données
+  // Données - initialisées avec des valeurs par défaut sûres
   const [players, setPlayers] = useState([]);
   const [playerStats, setPlayerStats] = useState({});
   const [objectifsCollectifs, setObjectifsCollectifs] = useState('');
   const [objectifsIndividuels, setObjectifsIndividuels] = useState({});
   const [objectifsMentaux, setObjectifsMentaux] = useState({});
+  
+  // État pour empêcher les chargements multiples
+  const [isLoadingPlayers, setIsLoadingPlayers] = useState(false);
 
   // Configuration
   const trainingDays = [1, 2, 4]; // Lundi, Mardi, Jeudi
   const SITE_PASSWORD = 'NMF2026';
   const ADMIN_PASSWORD = 'coachNmf_2026';
 
-  // Fonction pour vérifier si aujourd'hui est un jour d'entraînement
-  const isTodayTrainingDay = useCallback(() => {
+  // Fonctions utilitaires SANS useCallback pour éviter les dépendances instables
+  const isTodayTrainingDay = () => {
     const today = new Date().getDay();
     return trainingDays.includes(today);
-  }, [trainingDays]);
+  };
 
-  // Fonction pour vérifier si une joueuse a répondu aujourd'hui
-  const hasAnsweredToday = useCallback((player) => {
+  const hasAnsweredToday = (player) => {
     if (!player?.responses) return false;
     const today = new Date().toDateString();
     return player.responses.some(response => 
       new Date(response.created_at).toDateString() === today
     );
-  }, []);
+  };
 
-  // Fonction pour activer/désactiver le mode admin
-  const toggleAdminMode = useCallback(() => {
+  // Mode admin SANS useCallback
+  const toggleAdminMode = () => {
     if (!isAdmin) {
       const pwd = prompt('Mot de passe entraîneur :');
       if (pwd === ADMIN_PASSWORD) {
@@ -89,10 +91,10 @@ const App = () => {
         setCurrentView('players');
       }
     }
-  }, [isAdmin, currentView, ADMIN_PASSWORD]);
+  };
 
-  // Charger les statistiques
-  const loadPlayerStatistics = useCallback((playersData = players) => {
+  // Statistiques SANS useCallback
+  const loadPlayerStatistics = (playersData) => {
     try {
       const stats = {};
       playersData.forEach(player => {
@@ -102,7 +104,6 @@ const App = () => {
         const postResponses = player.responses.filter(r => r.type === 'post') || [];
         const matchResponses = player.responses.filter(r => r.type === 'match') || [];
         
-        // Données pour les graphiques
         const chartData = player.responses.map(response => ({
           date: new Date(response.created_at).toLocaleDateString('fr-FR'),
           ...response.data,
@@ -132,79 +133,92 @@ const App = () => {
       setPlayerStats(stats);
     } catch (error) {
       console.error('Erreur calcul statistiques:', error);
+      setPlayerStats({});
     }
-  }, [players]);
+  };
 
-  // Charger les objectifs depuis Supabase avec gestion d'erreur renforcée
-  const loadObjectifs = useCallback(async () => {
+  // Chargement des objectifs SIMPLIFIÉ - pas de useCallback
+  const loadObjectifs = async () => {
     try {
-      // Charger les objectifs collectifs
-      const { data: collectifs, error: errorCollectifs } = await supabase
-        .from('team_settings')
-        .select('value')
-        .eq('key', 'objectifs_collectifs')
-        .maybeSingle();
+      console.log('📋 Chargement objectifs...');
       
-      if (errorCollectifs && errorCollectifs.code !== 'PGRST116') {
-        console.error('Erreur chargement objectifs collectifs:', errorCollectifs);
-        // Ne pas faire planter l'app pour les objectifs collectifs
-      } else {
+      // Objectifs collectifs - non-critique
+      try {
+        const { data: collectifs } = await supabase
+          .from('team_settings')
+          .select('value')
+          .eq('key', 'objectifs_collectifs')
+          .maybeSingle();
+        
         setObjectifsCollectifs(collectifs?.value || '');
+      } catch (error) {
+        console.log('Objectifs collectifs échoués (non-critique):', error);
+        setObjectifsCollectifs('');
       }
 
-      // Charger les objectifs individuels et mentaux avec meilleure gestion d'erreur
+      // Objectifs individuels - non-critique
       try {
-        const { data: individuels, error: errorIndividuels } = await supabase
+        const { data: individuels } = await supabase
           .from('players')
           .select('id, objectifs_individuels, objectifs_mentaux')
           .eq('is_active', true);
 
-        if (errorIndividuels) {
-          console.error('Erreur chargement objectifs individuels:', errorIndividuels);
-          // Initialiser avec des objets vides pour éviter les erreurs
-          setObjectifsIndividuels({});
-          setObjectifsMentaux({});
-        } else {
+        if (individuels) {
           const objIndiv = {};
           const objMentaux = {};
-          individuels?.forEach(player => {
-            // Gérer les cas EMPTY, NULL et undefined
+          individuels.forEach(player => {
             objIndiv[player.id] = (player.objectifs_individuels && player.objectifs_individuels !== 'EMPTY') ? player.objectifs_individuels : '';
             objMentaux[player.id] = (player.objectifs_mentaux && player.objectifs_mentaux !== 'EMPTY') ? player.objectifs_mentaux : '';
           });
           setObjectifsIndividuels(objIndiv);
           setObjectifsMentaux(objMentaux);
+        } else {
+          setObjectifsIndividuels({});
+          setObjectifsMentaux({});
         }
-      } catch (individualError) {
-        console.error('Erreur critique objectifs individuels:', individualError);
-        // Valeurs par défaut pour éviter le crash
+      } catch (error) {
+        console.log('Objectifs individuels échoués (non-critique):', error);
         setObjectifsIndividuels({});
         setObjectifsMentaux({});
       }
 
     } catch (error) {
-      console.error('Erreur générale chargement objectifs:', error);
-      // Valeurs par défaut pour éviter le crash complet
+      console.log('Erreur générale objectifs (non-critique):', error);
       setObjectifsCollectifs('');
       setObjectifsIndividuels({});
       setObjectifsMentaux({});
     }
-  }, []);
+  };
 
-  // Charger les joueurs depuis Supabase avec gestion d'erreur renforcée
-  const loadPlayers = useCallback(async () => {
+  // Chargement des joueurs SIMPLIFIÉ - protection contre les appels multiples
+  const loadPlayers = async () => {
+    // Protection contre les appels multiples simultanés
+    if (isLoadingPlayers) {
+      console.log('⚠️ loadPlayers déjà en cours, ignoré');
+      return;
+    }
+
+    console.log('🔄 Début loadPlayers à:', new Date().toLocaleTimeString());
+    setIsLoadingPlayers(true);
     setLoading(true);
     setError(null);
+
     try {
+      // Charger les joueurs
       const { data, error } = await supabase
         .from('players')
         .select('*')
         .eq('is_active', true)
         .order('name');
       
-      if (error) throw error;
+      if (error) {
+        console.error('Erreur requête players:', error);
+        throw error;
+      }
+
+      console.log(`✅ ${data.length} joueurs chargés`);
       
-      // Charger les réponses pour chaque joueur
+      // Charger les réponses - UNE SEULE FOIS par joueur
       const playersWithResponses = await Promise.all(
         data.map(async (player) => {
           try {
@@ -215,41 +229,53 @@ const App = () => {
               .order('created_at', { ascending: false });
             
             if (respError) {
-              console.error('Erreur chargement réponses pour', player.name, ':', respError);
+              console.warn(`Réponses échouées pour ${player.name}:`, respError);
               return { ...player, responses: [] };
             }
             
             return { ...player, responses: responses || [] };
           } catch (playerError) {
-            console.error('Erreur traitement joueur', player.name, ':', playerError);
+            console.warn(`Erreur joueur ${player.name}:`, playerError);
             return { ...player, responses: [] };
           }
         })
       );
       
+      console.log('✅ Réponses chargées pour tous les joueurs');
+      
+      // Mettre à jour les états
       setPlayers(playersWithResponses);
       loadPlayerStatistics(playersWithResponses);
       
-      // Charger les objectifs SEULEMENT si les joueurs sont chargés avec succès
-      await loadObjectifs();
+      // Charger les objectifs - SANS ATTENDRE (async)
+      loadObjectifs().catch(error => {
+        console.log('Objectifs échoués (non-bloquant):', error);
+      });
       
     } catch (error) {
-      console.error('Erreur lors du chargement des joueurs:', error);
+      console.error('❌ Erreur critique loadPlayers:', error);
       setError(error);
-      // En cas d'erreur, ne pas essayer de charger les objectifs
+      setPlayers([]);
+      setPlayerStats({});
+    } finally {
+      setLoading(false);
+      setIsLoadingPlayers(false);
+      console.log('🏁 Fin loadPlayers à:', new Date().toLocaleTimeString());
     }
-    setLoading(false);
-  }, [loadPlayerStatistics, loadObjectifs]);
+  };
 
-  // Charger les joueurs quand l'utilisateur est authentifié
+  // useEffect SIMPLIFIÉ - chargement unique
   useEffect(() => {
-    if (isAuthenticated) {
+    console.log('⚡ useEffect déclenché - isAuthenticated:', isAuthenticated);
+    if (isAuthenticated && !isLoadingPlayers && players.length === 0) {
       loadPlayers();
     }
-  }, [isAuthenticated, loadPlayers]);
+  }, [isAuthenticated]); // UNIQUEMENT isAuthenticated comme dépendance
 
   // Authentification
-  const handleSiteLogin = useCallback(() => {
+  const handleSiteLogin = () => {
+    if (loading) return; // Empêcher les soumissions multiples
+    
     if (password === SITE_PASSWORD) {
       setIsAuthenticated(true);
       setCurrentView('players');
@@ -258,27 +284,32 @@ const App = () => {
     } else {
       alert('Mot de passe incorrect');
     }
-  }, [password, SITE_PASSWORD]);
+  };
 
-  const logout = useCallback(() => {
+  const logout = () => {
     setIsAuthenticated(false);
     setIsAdmin(false);
     setCurrentView('login');
     setSelectedPlayer(null);
     setPlayers([]);
     setPlayerStats({});
+    setObjectifsCollectifs('');
+    setObjectifsIndividuels({});
+    setObjectifsMentaux({});
     setError(null);
-  }, []);
+    setIsLoadingPlayers(false);
+  };
 
   // Gestionnaire d'erreur pour retry
-  const handleRetry = useCallback(() => {
+  const handleRetry = () => {
     setError(null);
+    setIsLoadingPlayers(false);
     if (isAuthenticated) {
       loadPlayers();
     } else {
       window.location.reload();
     }
-  }, [isAuthenticated, loadPlayers]);
+  };
 
   // Props communes pour les composants
   const commonProps = {
@@ -311,7 +342,7 @@ const App = () => {
     return <ErrorFallback error={error} onRetry={handleRetry} />;
   }
 
-  // Écran de connexion
+  // Écran de connexion avec form pour éviter les avertissements DOM
   if (!isAuthenticated) {
     return (
       <div className="min-h-screen flex items-center justify-center p-4" style={{background: 'linear-gradient(135deg, #f0f4f8 0%, #fef9e7 100%)'}}>
@@ -324,38 +355,41 @@ const App = () => {
             <p className="text-gray-600">Nantes Métropole Futsal</p>
           </div>
           
-          <div className="mb-6">
-            <label className="block text-sm font-semibold text-gray-700 mb-2">
-              Mot de passe d'accès
-            </label>
-            <div className="relative">
-              <input
-                type={showPassword ? "text" : "password"}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:border-transparent transition-all"
-                style={{focusRingColor: '#1D2945'}}
-                placeholder="Entrez le mot de passe"
-                onKeyPress={(e) => e.key === 'Enter' && handleSiteLogin()}
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-3 text-gray-400 hover:text-gray-600 transition-colors"
-              >
-                {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
-              </button>
+          <form onSubmit={(e) => { e.preventDefault(); handleSiteLogin(); }}>
+            <div className="mb-6">
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                Mot de passe d'accès
+              </label>
+              <div className="relative">
+                <input
+                  type={showPassword ? "text" : "password"}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:border-transparent transition-all"
+                  style={{focusRingColor: '#1D2945'}}
+                  placeholder="Entrez le mot de passe"
+                  disabled={loading}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-3 text-gray-400 hover:text-gray-600 transition-colors"
+                  disabled={loading}
+                >
+                  {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                </button>
+              </div>
             </div>
-          </div>
-          
-          <button
-            onClick={handleSiteLogin}
-            disabled={!password || loading}
-            className="w-full text-white py-3 rounded-lg font-semibold hover:shadow-lg transform hover:scale-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
-            style={{background: 'linear-gradient(135deg, #1D2945 0%, #2563eb 100%)'}}
-          >
-            {loading ? 'Connexion...' : 'Accéder à l\'application'}
-          </button>
+            
+            <button
+              type="submit"
+              disabled={!password || loading}
+              className="w-full text-white py-3 rounded-lg font-semibold hover:shadow-lg transform hover:scale-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+              style={{background: 'linear-gradient(135deg, #1D2945 0%, #2563eb 100%)'}}
+            >
+              {loading ? 'Connexion...' : 'Accéder à l\'application'}
+            </button>
+          </form>
           
           <div className="mt-6 text-center text-xs text-gray-500">
             <p>Accès réservé aux membres de l'équipe</p>
@@ -397,7 +431,7 @@ const App = () => {
     </div>
   );
 
-  // Router vers les différentes vues (plus de Suspense = plus de clignotement)
+  // Router vers les différentes vues
   const renderCurrentView = () => {
     const views = {
       'players': () => (
