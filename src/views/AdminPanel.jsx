@@ -469,15 +469,18 @@ const AdminPanel = ({
             Gestion des Joueuses
           </h2>
           
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '24px' }}>
             {players.map(player => (
               <div 
                 key={player.id} 
-                className="bg-white rounded-xl shadow-md hover:shadow-lg transition-all duration-300 cursor-pointer transform hover:scale-105 border border-gray-200 overflow-hidden group relative max-w-sm mx-auto"
+                className="bg-white rounded-xl shadow-md hover:shadow-lg transition-all duration-300 cursor-pointer transform hover:scale-105 border-2 overflow-hidden group relative"
                 onClick={() => setDetailViewPlayer(player)}
                 style={{
                   background: 'linear-gradient(135deg, #fef9e7 0%, #f0f4f8 100%)',
-                  border: '2px solid #C09D5A'
+                  borderColor: '#C09D5A',
+                  minHeight: '300px',
+                  width: '100%',
+                  maxWidth: '300px'
                 }}
               >
                 {/* Bouton suppression */}
@@ -491,7 +494,7 @@ const AdminPanel = ({
                   <Trash2 size={12} />
                 </button>
 
-                <div className="p-6 text-center">
+                <div className="p-6 text-center h-full flex flex-col justify-center">
                   {/* Photo de profil */}
                   <div className="w-20 h-20 rounded-full mx-auto mb-4 overflow-hidden border-2 border-gray-300">
                     {player.photo_url ? (
