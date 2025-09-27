@@ -52,13 +52,13 @@ const AdminPanel = ({
       players.filter(p => selectedPlayers.includes(p.id)) : 
       players;
 
-    if (playersToShow.length === 0 || selectedMetrics.length === 0) {
+    if (selectedMetrics.length === 0) {
       return { chartData: [], globalAverages: [], selectedAverages: [] };
     }
 
-    // Collecter toutes les dates uniques
+    // Collecter toutes les dates uniques de TOUTES les joueuses pour les moyennes globales
     const allDates = new Set();
-    playersToShow.forEach(player => {
+    players.forEach(player => {
       const responses = player.responses || [];
       let filteredResponses = responses;
       if (!selectedQuestionTypes.includes('all')) {
@@ -77,49 +77,15 @@ const AdminPanel = ({
       return dateA - dateB;
     });
 
-    // Préparer les données par date
-    const chartData = sortedDates.map(date => {
-      const dayData = { date };
-      
-      // Pour chaque métrique sélectionnée
-      selectedMetrics.forEach(metric => {
-        const valuesForDay = [];
-        
-        playersToShow.forEach(player => {
-          const responses = player.responses || [];
-          let filteredResponses = responses;
-          if (!selectedQuestionTypes.includes('all')) {
-            filteredResponses = responses.filter(r => selectedQuestionTypes.includes(r.type));
-          }
-          
-          const dayResponses = filteredResponses.filter(r => 
-            new Date(r.created_at).toLocaleDateString('fr-FR') === date
-          );
-          
-          dayResponses.forEach(response => {
-            if (response.data?.[metric] != null && !isNaN(response.data[metric])) {
-              valuesForDay.push(Number(response.data[metric]));
-            }
-          });
-        });
-        
-        // Moyenne du jour pour cette métrique
-        if (valuesForDay.length > 0) {
-          dayData[`${metric}_daily_avg`] = Number((valuesForDay.reduce((sum, v) => sum + v, 0) / valuesForDay.length).toFixed(1));
-        }
-      });
-      
-      return dayData;
-    }).filter(day => {
-      // Garder seulement les jours avec au moins une donnée
-      return selectedMetrics.some(metric => day[`${metric}_daily_avg`] != null);
-    });
+    // Créer une structure de données simple pour le graphique
+    const chartData = sortedDates.map(date => ({ date }));
 
-    // Calculer les moyennes globales (toutes les joueuses) pour chaque métrique
+    // Calculer les moyennes globales (TOUTES les joueuses) pour chaque métrique
     const globalAverages = {};
     selectedMetrics.forEach(metric => {
       const allValues = [];
       
+      // Utiliser TOUS les players, pas seulement playersToShow
       players.forEach(player => {
         const responses = player.responses || [];
         let filteredResponses = responses;
@@ -141,27 +107,30 @@ const AdminPanel = ({
 
     // Calculer les moyennes des joueuses sélectionnées pour chaque métrique
     const selectedAverages = {};
-    selectedMetrics.forEach(metric => {
-      const selectedValues = [];
-      
-      playersToShow.forEach(player => {
-        const responses = player.responses || [];
-        let filteredResponses = responses;
-        if (!selectedQuestionTypes.includes('all')) {
-          filteredResponses = responses.filter(r => selectedQuestionTypes.includes(r.type));
-        }
+    if (selectedPlayers.length > 0) {
+      selectedMetrics.forEach(metric => {
+        const selectedValues = [];
         
-        filteredResponses.forEach(response => {
-          if (response.data?.[metric] != null && !isNaN(response.data[metric])) {
-            selectedValues.push(Number(response.data[metric]));
+        // Utiliser seulement playersToShow pour les moyennes sélectionnées
+        playersToShow.forEach(player => {
+          const responses = player.responses || [];
+          let filteredResponses = responses;
+          if (!selectedQuestionTypes.includes('all')) {
+            filteredResponses = responses.filter(r => selectedQuestionTypes.includes(r.type));
           }
+          
+          filteredResponses.forEach(response => {
+            if (response.data?.[metric] != null && !isNaN(response.data[metric])) {
+              selectedValues.push(Number(response.data[metric]));
+            }
+          });
         });
+        
+        if (selectedValues.length > 0) {
+          selectedAverages[metric] = Number((selectedValues.reduce((sum, v) => sum + v, 0) / selectedValues.length).toFixed(1));
+        }
       });
-      
-      if (selectedValues.length > 0) {
-        selectedAverages[metric] = Number((selectedValues.reduce((sum, v) => sum + v, 0) / selectedValues.length).toFixed(1));
-      }
-    });
+    }
 
     return { chartData, globalAverages, selectedAverages };
   };
