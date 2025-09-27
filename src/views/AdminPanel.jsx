@@ -48,15 +48,11 @@ const AdminPanel = ({
 
   // Fonction pour générer les données du graphique unifié avec moyennes
   const getUnifiedChartData = () => {
-    const playersToShow = selectedPlayers.length > 0 ? 
-      players.filter(p => selectedPlayers.includes(p.id)) : 
-      players;
-
     if (selectedMetrics.length === 0) {
-      return { chartData: [], globalAverages: [], selectedAverages: [] };
+      return { chartData: [], globalAverages: {}, selectedAverages: {} };
     }
 
-    // Collecter toutes les dates uniques de TOUTES les joueuses pour les moyennes globales
+    // Collecter toutes les dates uniques de TOUTES les joueuses pour avoir un axe temporel
     const allDates = new Set();
     players.forEach(player => {
       const responses = player.responses || [];
@@ -77,15 +73,20 @@ const AdminPanel = ({
       return dateA - dateB;
     });
 
-    // Créer une structure de données simple pour le graphique
+    // Créer les données de base pour le graphique
     const chartData = sortedDates.map(date => ({ date }));
+
+    // Si pas de données, retourner un graphique vide mais fonctionnel
+    if (chartData.length === 0) {
+      const today = new Date().toLocaleDateString('fr-FR');
+      chartData.push({ date: today });
+    }
 
     // Calculer les moyennes globales (TOUTES les joueuses) pour chaque métrique
     const globalAverages = {};
     selectedMetrics.forEach(metric => {
       const allValues = [];
       
-      // Utiliser TOUS les players, pas seulement playersToShow
       players.forEach(player => {
         const responses = player.responses || [];
         let filteredResponses = responses;
@@ -108,10 +109,11 @@ const AdminPanel = ({
     // Calculer les moyennes des joueuses sélectionnées pour chaque métrique
     const selectedAverages = {};
     if (selectedPlayers.length > 0) {
+      const playersToShow = players.filter(p => selectedPlayers.includes(p.id));
+      
       selectedMetrics.forEach(metric => {
         const selectedValues = [];
         
-        // Utiliser seulement playersToShow pour les moyennes sélectionnées
         playersToShow.forEach(player => {
           const responses = player.responses || [];
           let filteredResponses = responses;
