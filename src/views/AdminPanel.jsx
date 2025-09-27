@@ -482,7 +482,7 @@ const AdminPanel = ({
             </h3>
             
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {/* Sélection des joueuses */}
+              {/* Sélection des joueuses - Liste déroulante compacte */}
               <div>
                 <div className="flex items-center justify-between mb-3">
                   <label className="block text-sm font-medium text-gray-700">Joueuses</label>
@@ -508,42 +508,35 @@ const AdminPanel = ({
                   </div>
                 </div>
                 
-                <div className="bg-white border border-gray-200 rounded-lg p-3 max-h-60 overflow-y-auto">
-                  <div className="space-y-2">
+                <div className="relative">
+                  <select 
+                    multiple
+                    size="6"
+                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-sm"
+                    value={selectedPlayers}
+                    onChange={(e) => {
+                      const values = Array.from(e.target.selectedOptions, option => option.value);
+                      setSelectedPlayers(values);
+                    }}
+                  >
                     {players.map(player => (
-                      <label key={player.id} className="flex items-center space-x-3 p-2 rounded hover:bg-gray-50 cursor-pointer transition-colors">
-                        <input
-                          type="checkbox"
-                          checked={selectedPlayers.length === 0 || selectedPlayers.includes(player.id)}
-                          onChange={() => {
-                            if (selectedPlayers.length === 0) {
-                              // Si toutes étaient sélectionnées, on ne garde que celle-ci
-                              setSelectedPlayers([player.id]);
-                            } else if (selectedPlayers.includes(player.id)) {
-                              // Si elle était sélectionnée, on la retire
-                              const newSelection = selectedPlayers.filter(id => id !== player.id);
-                              setSelectedPlayers(newSelection);
-                            } else {
-                              // Si elle n'était pas sélectionnée, on l'ajoute
-                              setSelectedPlayers([...selectedPlayers, player.id]);
-                            }
-                          }}
-                          className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                        />
-                        <div className="flex items-center space-x-2 flex-1">
-                          <div className="w-6 h-6 rounded overflow-hidden flex items-center justify-center text-white text-xs font-bold"
-                               style={{background: 'linear-gradient(135deg, #1D2945 0%, #C09D5A 100%)'}}>
-                            {player.name.split(' ').map(n => n[0]).join('')}
-                          </div>
-                          <span className="text-sm text-gray-700">{player.name}</span>
-                        </div>
-                      </label>
+                      <option 
+                        key={player.id} 
+                        value={player.id}
+                        className="py-1 px-2 hover:bg-blue-50"
+                      >
+                        {player.name}
+                      </option>
                     ))}
-                  </div>
+                  </select>
+                  
+                  <p className="text-xs text-gray-500 mt-2">
+                    {selectedPlayers.length === 0 ? `Toutes sélectionnées (${players.length})` : `${selectedPlayers.length} sélectionnée(s)`}
+                  </p>
+                  <p className="text-xs text-gray-400 mt-1">
+                    Maintenez Ctrl/Cmd pour sélectionner plusieurs joueuses
+                  </p>
                 </div>
-                <p className="text-xs text-gray-500 mt-2">
-                  {selectedPlayers.length === 0 ? `Toutes sélectionnées (${players.length})` : `${selectedPlayers.length} sélectionnée(s)`}
-                </p>
               </div>
 
               {/* Sélection des métriques */}
