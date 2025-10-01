@@ -1,4 +1,4 @@
-// views/AdminPanel.jsx - Version corrigée avec graphique fonctionnel
+// views/AdminPanel.jsx - Version corrigée avec moyennes globales fonctionnelles
 import React, { useState } from 'react';
 import { ChevronLeft, Edit3, UserPlus, Download, Camera, Trash2, Filter, TrendingUp, BarChart3, Users } from 'lucide-react';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
@@ -147,6 +147,15 @@ const AdminPanel = ({
       }
       
       console.log(`Moyenne globale ${metric}:`, globalAverages[metric], `(${allValues.length} valeurs)`);
+    });
+
+    // CORRECTION : Intégrer les moyennes globales dans chaque point de chartData
+    chartData.forEach(point => {
+      selectedMetrics.forEach(metric => {
+        if (globalAverages[metric] != null) {
+          point[`${metric}_global_avg`] = globalAverages[metric];
+        }
+      });
     });
 
     // Calculer les moyennes des joueuses sélectionnées
@@ -430,7 +439,7 @@ const AdminPanel = ({
           </div>
         </div>
 
-        {/* Section 1: Grille des joueuses (style interface principale) */}
+        {/* Section 1: Grille des joueuses */}
         <div className="bg-white rounded-xl shadow-lg p-6 mb-8">
           <h2 className="text-2xl font-bold mb-6" style={{color: '#1D2945'}}>
             <Users className="inline mr-2" size={24} />
@@ -454,7 +463,6 @@ const AdminPanel = ({
                   maxWidth: '300px'
                 }}
               >
-                {/* Bouton suppression */}
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
@@ -466,7 +474,6 @@ const AdminPanel = ({
                 </button>
 
                 <div className="p-6 text-center h-full flex flex-col justify-center">
-                  {/* Photo de profil */}
                   <div className="w-20 h-20 rounded-full mx-auto mb-4 overflow-hidden border-2 border-gray-300">
                     {player.photo_url ? (
                       <img 
@@ -484,19 +491,16 @@ const AdminPanel = ({
                     )}
                   </div>
 
-                  {/* Nom joueuse */}
                   <h3 className="font-bold text-lg mb-3" style={{color: '#1D2945'}}>
                     {player.name}
                   </h3>
                   
-                  {/* Indicateurs de statut */}
                   <div className="flex justify-center space-x-2 mb-4">
                     <div className="w-3 h-3 rounded-full bg-gray-400"></div>
                     <div className="w-3 h-3 rounded-full bg-gray-400"></div>
                     <div className="w-3 h-3 rounded-full bg-gray-400"></div>
                   </div>
 
-                  {/* Statistiques */}
                   <div className="text-sm text-gray-700 space-y-1">
                     <p className="font-medium">{playerStats[player.id]?.total_responses || 0} réponses totales</p>
                     <p className="text-xs">
@@ -516,7 +520,7 @@ const AdminPanel = ({
             Statistiques et Analyses
           </h2>
           
-          {/* Filtres améliorés avec checkboxes stylisées */}
+          {/* Filtres */}
           <div className="bg-gray-50 rounded-lg p-6 mb-6">
             <h3 className="text-lg font-semibold mb-4 text-gray-700 flex items-center">
               <Filter size={20} className="mr-2" />
@@ -524,7 +528,7 @@ const AdminPanel = ({
             </h3>
             
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {/* Sélection des joueuses - Liste déroulante compacte */}
+              {/* Sélection des joueuses */}
               <div>
                 <div className="flex items-center justify-between mb-3">
                   <label className="block text-sm font-medium text-gray-700">Joueuses</label>
@@ -731,7 +735,7 @@ const AdminPanel = ({
             </div>
           </div>
 
-          {/* Graphique unifié avec moyennes */}
+          {/* Graphique unifié avec moyennes - SUITE DANS LE PROCHAIN MESSAGE */}
           <div className="mb-6">
             <h3 className="text-lg font-semibold mb-4 text-gray-700">
               Évolution Temporelle des Métriques Sélectionnées
@@ -778,12 +782,13 @@ const AdminPanel = ({
                                 <h4 className="font-semibold mb-2 text-gray-800">{label}</h4>
                                 <div className="space-y-1 text-sm">
                                   {payload.map((entry, index) => {
-                                    const metricKey = entry.dataKey.replace('_daily_avg', '');
+                                    const metricKey = entry.dataKey.replace('_daily_avg', '').replace('_global_avg', '');
                                     const metricInfo = metricsOptions.find(m => m.value === metricKey);
+                                    const isGlobal = entry.dataKey.includes('_global_avg');
                                     return (
                                       <div key={index} className="flex justify-between items-center">
                                         <span style={{color: entry.color}}>
-                                          {metricInfo?.label} (moyenne du jour):
+                                          {metricInfo?.label} {isGlobal ? '(moyenne globale)' : '(moyenne du jour)'}:
                                         </span>
                                         <span className="font-medium">{entry.value}/20</span>
                                       </div>
@@ -814,18 +819,12 @@ const AdminPanel = ({
                         );
                       })}
                       
-                      {/* Lignes de moyennes globales */}
+                      {/* Lignes de moyennes globales - CORRECTION APPLIQUÉE */}
                       {selectedMetrics.map(metric => {
                         const metricInfo = metricsOptions.find(m => m.value === metric);
                         const globalAvg = globalAverages[metric];
                         
                         if (!globalAvg) return null;
-                        
-                        // Créer une ligne horizontale avec la moyenne globale
-                        const globalLineData = chartData.map(point => ({
-                          date: point.date,
-                          [`${metric}_global_avg`]: globalAvg
-                        }));
                         
                         return (
                           <Line
@@ -844,10 +843,9 @@ const AdminPanel = ({
                     </LineChart>
                   </ResponsiveContainer>
 
-                  {/* Légende améliorée avec moyennes globales */}
+                  {/* Légende améliorée */}
                   <div className="mt-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {/* Moyennes quotidiennes */}
                       <div>
                         <h4 className="text-sm font-semibold mb-3 text-gray-700">Moyennes quotidiennes (lignes pleines)</h4>
                         <div className="space-y-2">
@@ -866,7 +864,6 @@ const AdminPanel = ({
                         </div>
                       </div>
 
-                      {/* Moyennes globales */}
                       <div>
                         <h4 className="text-sm font-semibold mb-3 text-gray-700">Moyennes globales (lignes pointillées)</h4>
                         <div className="space-y-2">
@@ -892,7 +889,6 @@ const AdminPanel = ({
                       </div>
                     </div>
 
-                    {/* Informations sur les données */}
                     <div className="mt-4 p-3 bg-blue-50 rounded-lg">
                       <p className="text-xs text-blue-800">
                         <strong>Lecture du graphique:</strong> Les lignes pleines montrent la moyenne quotidienne des joueuses ayant répondu ce jour-là. 
@@ -934,7 +930,7 @@ const AdminPanel = ({
           </div>
         </div>
 
-        {/* Section 3: Gestion des objectifs avec édition individuelle */}
+        {/* Section 3: Gestion des objectifs */}
         <div className="bg-white rounded-xl shadow-lg p-6">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-2xl font-bold" style={{color: '#1D2945'}}>
@@ -1000,7 +996,6 @@ const AdminPanel = ({
                       <h4 className="font-semibold text-gray-900">{player.name}</h4>
                     </div>
                     
-                    {/* Objectifs techniques */}
                     <div className="mb-4">
                       <label className="block text-sm font-medium text-blue-700 mb-2">
                         Objectifs Techniques
@@ -1024,7 +1019,6 @@ const AdminPanel = ({
                       </button>
                     </div>
 
-                    {/* Objectifs mentaux */}
                     <div>
                       <label className="block text-sm font-medium text-green-700 mb-2">
                         Objectifs Mentaux
