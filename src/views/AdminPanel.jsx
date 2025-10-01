@@ -48,7 +48,13 @@ const AdminPanel = ({
 
   // Fonction pour générer les données du graphique unifié avec moyennes
   const getUnifiedChartData = () => {
+    console.log('=== DEBUG getUnifiedChartData ===');
+    console.log('selectedMetrics:', selectedMetrics);
+    console.log('players count:', players.length);
+    console.log('selectedPlayers:', selectedPlayers);
+    
     if (selectedMetrics.length === 0) {
+      console.log('Aucune métrique sélectionnée');
       return { chartData: [], globalAverages: {}, selectedAverages: {} };
     }
 
@@ -56,6 +62,8 @@ const AdminPanel = ({
     const allDates = new Set();
     players.forEach(player => {
       const responses = player.responses || [];
+      console.log(`Player ${player.name}: ${responses.length} réponses`);
+      
       let filteredResponses = responses;
       if (!selectedQuestionTypes.includes('all')) {
         filteredResponses = responses.filter(r => selectedQuestionTypes.includes(r.type));
@@ -66,6 +74,8 @@ const AdminPanel = ({
         allDates.add(date);
       });
     });
+
+    console.log('Dates uniques collectées:', Array.from(allDates));
 
     const sortedDates = Array.from(allDates).sort((a, b) => {
       const dateA = new Date(a.split('/').reverse().join('-'));
@@ -78,9 +88,13 @@ const AdminPanel = ({
 
     // Si pas de données, retourner un graphique vide mais fonctionnel
     if (chartData.length === 0) {
+      console.log('ATTENTION: chartData vide, création de données par défaut');
       const today = new Date().toLocaleDateString('fr-FR');
-      chartData.push({ date: today });
+      const yesterday = new Date(Date.now() - 24*60*60*1000).toLocaleDateString('fr-FR');
+      chartData.push({ date: yesterday }, { date: today });
     }
+
+    console.log('chartData length:', chartData.length);
 
     // Calculer les moyennes globales (TOUTES les joueuses) pour chaque métrique
     const globalAverages = {};
@@ -104,12 +118,15 @@ const AdminPanel = ({
       if (allValues.length > 0) {
         globalAverages[metric] = Number((allValues.reduce((sum, v) => sum + v, 0) / allValues.length).toFixed(1));
       }
+      
+      console.log(`Moyenne globale ${metric}:`, globalAverages[metric], `(${allValues.length} valeurs)`);
     });
 
     // Calculer les moyennes des joueuses sélectionnées pour chaque métrique
     const selectedAverages = {};
     if (selectedPlayers.length > 0) {
       const playersToShow = players.filter(p => selectedPlayers.includes(p.id));
+      console.log('Joueuses sélectionnées:', playersToShow.map(p => p.name));
       
       selectedMetrics.forEach(metric => {
         const selectedValues = [];
@@ -131,9 +148,12 @@ const AdminPanel = ({
         if (selectedValues.length > 0) {
           selectedAverages[metric] = Number((selectedValues.reduce((sum, v) => sum + v, 0) / selectedValues.length).toFixed(1));
         }
+        
+        console.log(`Moyenne sélectionnée ${metric}:`, selectedAverages[metric], `(${selectedValues.length} valeurs)`);
       });
     }
 
+    console.log('=== FIN DEBUG ===');
     return { chartData, globalAverages, selectedAverages };
   };
 
