@@ -1,4 +1,4 @@
-// views/AdminPanel.jsx - Version améliorée avec filtres en listes déroulantes
+// views/AdminPanel.jsx - Version corrigée avec graphique fonctionnel
 import React, { useState } from 'react';
 import { ChevronLeft, Edit3, UserPlus, Download, Camera, Trash2, Filter, TrendingUp, BarChart3, Users } from 'lucide-react';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
@@ -46,7 +46,7 @@ const AdminPanel = ({
     { value: 'injury', label: 'Blessures' }
   ];
 
-  // Fonction pour générer les données du graphique unifié avec moyennes
+  // Fonction pour générer les données du graphique unifié avec moyennes - VERSION CORRIGÉE
   const getUnifiedChartData = () => {
     console.log('=== DEBUG getUnifiedChartData ===');
     console.log('selectedMetrics:', selectedMetrics);
@@ -58,8 +58,10 @@ const AdminPanel = ({
       return { chartData: [], globalAverages: {}, selectedAverages: {} };
     }
 
-    // Collecter toutes les dates uniques de TOUTES les joueuses pour avoir un axe temporel
+    // Collecter toutes les dates uniques
     const allDates = new Set();
+    const dateResponses = {}; // Stocker les réponses par date
+    
     players.forEach(player => {
       const responses = player.responses || [];
       console.log(`Player ${player.name}: ${responses.length} réponses`);
@@ -72,6 +74,12 @@ const AdminPanel = ({
       filteredResponses.forEach(response => {
         const date = new Date(response.created_at).toLocaleDateString('fr-FR');
         allDates.add(date);
+        
+        // Stocker les réponses groupées par date
+        if (!dateResponses[date]) {
+          dateResponses[date] = [];
+        }
+        dateResponses[date].push(response);
       });
     });
 
@@ -83,10 +91,28 @@ const AdminPanel = ({
       return dateA - dateB;
     });
 
-    // Créer les données de base pour le graphique
-    const chartData = sortedDates.map(date => ({ date }));
+    // Créer les données du graphique avec moyennes quotidiennes
+    const chartData = sortedDates.map(date => {
+      const dataPoint = { date };
+      
+      // Calculer la moyenne pour chaque métrique pour cette date
+      selectedMetrics.forEach(metric => {
+        const responsesForDate = dateResponses[date] || [];
+        const valuesForMetric = responsesForDate
+          .map(r => r.data?.[metric])
+          .filter(v => v != null && !isNaN(v))
+          .map(v => Number(v));
+        
+        if (valuesForMetric.length > 0) {
+          const avg = valuesForMetric.reduce((sum, v) => sum + v, 0) / valuesForMetric.length;
+          dataPoint[`${metric}_daily_avg`] = Number(avg.toFixed(1));
+        }
+      });
+      
+      return dataPoint;
+    });
 
-    // Si pas de données, retourner un graphique vide mais fonctionnel
+    // Si pas de données, créer un graphique vide mais fonctionnel
     if (chartData.length === 0) {
       console.log('ATTENTION: chartData vide, création de données par défaut');
       const today = new Date().toLocaleDateString('fr-FR');
@@ -95,8 +121,9 @@ const AdminPanel = ({
     }
 
     console.log('chartData length:', chartData.length);
+    console.log('chartData sample:', chartData[0]);
 
-    // Calculer les moyennes globales (TOUTES les joueuses) pour chaque métrique
+    // Calculer les moyennes globales (TOUTES les joueuses, toute la période)
     const globalAverages = {};
     selectedMetrics.forEach(metric => {
       const allValues = [];
@@ -122,7 +149,7 @@ const AdminPanel = ({
       console.log(`Moyenne globale ${metric}:`, globalAverages[metric], `(${allValues.length} valeurs)`);
     });
 
-    // Calculer les moyennes des joueuses sélectionnées pour chaque métrique
+    // Calculer les moyennes des joueuses sélectionnées
     const selectedAverages = {};
     if (selectedPlayers.length > 0) {
       const playersToShow = players.filter(p => selectedPlayers.includes(p.id));
@@ -669,7 +696,7 @@ const AdminPanel = ({
                   {selectedQuestionTypes.length === 0 ? 'Aucun sélectionné' : 
                    selectedQuestionTypes.includes('all') ? 'Tous les questionnaires' :
                    `${selectedQuestionTypes.length} type(s) sélectionné(s)`}
-                </p>
+                  </p>
               </div>
             </div>
 
