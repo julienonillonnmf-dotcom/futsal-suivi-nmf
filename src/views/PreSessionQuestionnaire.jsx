@@ -171,7 +171,7 @@ const PreSessionQuestionnaire = ({
             />
 
             <ScaleQuestion
-              question="Comment évaluez-vous la difficulté des objectifs que fixez pour cette séance ?"
+              question="Comment évaluez-vous la difficulté des objectifs fixés pour cette séance ?"
               value={preSessionForm.objectif_difficulte}
               onChange={(value) => setPreSessionForm({...preSessionForm, objectif_difficulte: value})}
               leftLabel="Très faciles"
