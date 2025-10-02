@@ -55,14 +55,21 @@ const AdminPanel = ({
     
     if (selectedMetrics.length === 0) {
       console.log('Aucune métrique sélectionnée');
-      return { chartData: [], globalAverages: {}, selectedAverages: {} };
+      return { chartData: [], globalAverages: {}, filteredAverages: {} };
     }
 
-    // Collecter toutes les dates uniques
+    // Déterminer les joueuses à analyser : soit les sélectionnées, soit toutes
+    const playersToAnalyze = selectedPlayers.length > 0 
+      ? players.filter(p => selectedPlayers.includes(p.id))
+      : players;
+    
+    console.log('Joueuses analysées:', playersToAnalyze.map(p => p.name));
+
+    // Collecter toutes les dates uniques (pour les joueuses filtrées)
     const allDates = new Set();
     const dateResponses = {}; // Stocker les réponses par date
     
-    players.forEach(player => {
+    playersToAnalyze.forEach(player => {
       const responses = player.responses || [];
       console.log(`Player ${player.name}: ${responses.length} réponses`);
       
@@ -123,7 +130,33 @@ const AdminPanel = ({
     console.log('chartData length:', chartData.length);
     console.log('chartData sample:', chartData[0]);
 
-    // Calculer les moyennes globales (TOUTES les joueuses, toute la période)
+    // Calculer les moyennes FILTRÉES (joueuses sélectionnées OU toutes)
+    const filteredAverages = {};
+    selectedMetrics.forEach(metric => {
+      const allValues = [];
+      
+      playersToAnalyze.forEach(player => {
+        const responses = player.responses || [];
+        let filteredResponses = responses;
+        if (!selectedQuestionTypes.includes('all')) {
+          filteredResponses = responses.filter(r => selectedQuestionTypes.includes(r.type));
+        }
+        
+        filteredResponses.forEach(response => {
+          if (response.data?.[metric] != null && !isNaN(response.data[metric])) {
+            allValues.push(Number(response.data[metric]));
+          }
+        });
+      });
+      
+      if (allValues.length > 0) {
+        filteredAverages[metric] = Number((allValues.reduce((sum, v) => sum + v, 0) / allValues.length).toFixed(1));
+      }
+      
+      console.log(`Moyenne filtrée ${metric}:`, filteredAverages[metric], `(${allValues.length} valeurs)`);
+    });
+
+    // Calculer les moyennes GLOBALES (TOUTES les joueuses, peu importe le filtre)
     const globalAverages = {};
     selectedMetrics.forEach(metric => {
       const allValues = [];
@@ -149,48 +182,17 @@ const AdminPanel = ({
       console.log(`Moyenne globale ${metric}:`, globalAverages[metric], `(${allValues.length} valeurs)`);
     });
 
-    // CORRECTION : Intégrer les moyennes globales dans chaque point de chartData
+    // CORRECTION : Intégrer les moyennes filtrées dans chaque point de chartData
     chartData.forEach(point => {
       selectedMetrics.forEach(metric => {
-        if (globalAverages[metric] != null) {
-          point[`${metric}_global_avg`] = globalAverages[metric];
+        if (filteredAverages[metric] != null) {
+          point[`${metric}_global_avg`] = filteredAverages[metric];
         }
       });
     });
 
-    // Calculer les moyennes des joueuses sélectionnées
-    const selectedAverages = {};
-    if (selectedPlayers.length > 0) {
-      const playersToShow = players.filter(p => selectedPlayers.includes(p.id));
-      console.log('Joueuses sélectionnées:', playersToShow.map(p => p.name));
-      
-      selectedMetrics.forEach(metric => {
-        const selectedValues = [];
-        
-        playersToShow.forEach(player => {
-          const responses = player.responses || [];
-          let filteredResponses = responses;
-          if (!selectedQuestionTypes.includes('all')) {
-            filteredResponses = responses.filter(r => selectedQuestionTypes.includes(r.type));
-          }
-          
-          filteredResponses.forEach(response => {
-            if (response.data?.[metric] != null && !isNaN(response.data[metric])) {
-              selectedValues.push(Number(response.data[metric]));
-            }
-          });
-        });
-        
-        if (selectedValues.length > 0) {
-          selectedAverages[metric] = Number((selectedValues.reduce((sum, v) => sum + v, 0) / selectedValues.length).toFixed(1));
-        }
-        
-        console.log(`Moyenne sélectionnée ${metric}:`, selectedAverages[metric], `(${selectedValues.length} valeurs)`);
-      });
-    }
-
     console.log('=== FIN DEBUG ===');
-    return { chartData, globalAverages, selectedAverages };
+    return { chartData, globalAverages, filteredAverages };
   };
 
   // Sauvegarder les objectifs collectifs
@@ -742,7 +744,7 @@ const AdminPanel = ({
             </h3>
             
             {(() => {
-              const { chartData, globalAverages } = getUnifiedChartData();
+              const { chartData, globalAverages, filteredAverages } = getUnifiedChartData();
               
               if (selectedMetrics.length === 0) {
                 return (
@@ -788,7 +790,7 @@ const AdminPanel = ({
                                     return (
                                       <div key={index} className="flex justify-between items-center">
                                         <span style={{color: entry.color}}>
-                                          {metricInfo?.label} {isGlobal ? '(moyenne globale)' : '(moyenne du jour)'}:
+                                          {metricInfo?.label} {isGlobal ? '(moyenne période)' : '(moyenne du jour)'}:
                                         </span>
                                         <span className="font-medium">{entry.value}/20</span>
                                       </div>
@@ -819,12 +821,12 @@ const AdminPanel = ({
                         );
                       })}
                       
-                      {/* Lignes de moyennes globales - CORRECTION APPLIQUÉE */}
+                      {/* Lignes de moyennes filtrées (période complète) */}
                       {selectedMetrics.map(metric => {
                         const metricInfo = metricsOptions.find(m => m.value === metric);
-                        const globalAvg = globalAverages[metric];
+                        const filteredAvg = filteredAverages[metric];
                         
-                        if (!globalAvg) return null;
+                        if (!filteredAvg) return null;
                         
                         return (
                           <Line
@@ -836,16 +838,17 @@ const AdminPanel = ({
                             strokeDasharray="8 4"
                             dot={false}
                             activeDot={false}
-                            name={`${metricInfo?.label} (moyenne globale)`}
+                            name={`${metricInfo?.label} (moyenne période)`}
                           />
                         );
                       })}
                     </LineChart>
                   </ResponsiveContainer>
 
-                  {/* Légende améliorée */}
+                  {/* Légende améliorée avec toutes les moyennes */}
                   <div className="mt-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      {/* Moyennes quotidiennes */}
                       <div>
                         <h4 className="text-sm font-semibold mb-3 text-gray-700">Moyennes quotidiennes (lignes pleines)</h4>
                         <div className="space-y-2">
@@ -864,12 +867,15 @@ const AdminPanel = ({
                         </div>
                       </div>
 
+                      {/* Moyennes filtrées (joueuses sélectionnées) */}
                       <div>
-                        <h4 className="text-sm font-semibold mb-3 text-gray-700">Moyennes globales (lignes pointillées)</h4>
+                        <h4 className="text-sm font-semibold mb-3 text-gray-700">
+                          Moyennes période {selectedPlayers.length > 0 ? '(joueuses sélectionnées)' : '(toutes joueuses)'} - lignes pointillées
+                        </h4>
                         <div className="space-y-2">
                           {selectedMetrics.map(metric => {
                             const metricInfo = metricsOptions.find(m => m.value === metric);
-                            const globalAvg = globalAverages[metric];
+                            const filteredAvg = filteredAverages[metric];
                             return (
                               <div key={metric} className="flex items-center justify-between text-sm">
                                 <div className="flex items-center space-x-2">
@@ -880,6 +886,33 @@ const AdminPanel = ({
                                   <span>{metricInfo?.label}:</span>
                                 </div>
                                 <span className="font-medium text-gray-600">
+                                  {filteredAvg || 'N/A'}/20
+                                </span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* Moyennes globales (TOUTES les joueuses) */}
+                      <div>
+                        <h4 className="text-sm font-semibold mb-3 text-gray-700">
+                          Moyennes globales (toutes joueuses)
+                        </h4>
+                        <div className="space-y-2">
+                          {selectedMetrics.map(metric => {
+                            const metricInfo = metricsOptions.find(m => m.value === metric);
+                            const globalAvg = globalAverages[metric];
+                            return (
+                              <div key={metric} className="flex items-center justify-between text-sm">
+                                <div className="flex items-center space-x-2">
+                                  <div 
+                                    className="w-3 h-3 rounded-full"
+                                    style={{backgroundColor: metricInfo?.color}}
+                                  ></div>
+                                  <span>{metricInfo?.label}:</span>
+                                </div>
+                                <span className="font-bold text-gray-700">
                                   {globalAvg || 'N/A'}/20
                                 </span>
                               </div>
@@ -889,10 +922,12 @@ const AdminPanel = ({
                       </div>
                     </div>
 
+                    {/* Informations sur les données */}
                     <div className="mt-4 p-3 bg-blue-50 rounded-lg">
                       <p className="text-xs text-blue-800">
-                        <strong>Lecture du graphique:</strong> Les lignes pleines montrent la moyenne quotidienne des joueuses ayant répondu ce jour-là. 
-                        Les lignes pointillées représentent la moyenne globale sur toute la période pour les joueuses sélectionnées.
+                        <strong>Lecture du graphique:</strong> Les <strong>lignes pleines</strong> montrent la moyenne quotidienne des joueuses ayant répondu ce jour-là. 
+                        Les <strong>lignes pointillées</strong> représentent la moyenne sur toute la période pour les joueuses {selectedPlayers.length > 0 ? 'sélectionnées' : '(toutes)'}. 
+                        Les <strong>moyennes globales</strong> (à droite) concernent TOUTES les joueuses de l'équipe, peu importe le filtre.
                       </p>
                     </div>
                   </div>
