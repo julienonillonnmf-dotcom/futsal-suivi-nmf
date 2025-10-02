@@ -93,7 +93,7 @@ const MatchQuestionnaire = ({
           <div className="space-y-6">
             {/* Questions spécifiques aux matchs */}
             <ScaleQuestion
-              question="Comment évaluez-vous votre motivation pour ce match ?"
+              question="A quel point étais-tu motivés pour ce match ?"
               value={matchForm.motivation}
               onChange={(value) => setMatchForm({...matchForm, motivation: value})}
               leftLabel="Très faible"
@@ -102,7 +102,7 @@ const MatchQuestionnaire = ({
             />
 
             <ScaleQuestion
-              question="Comment évaluez-vous votre niveau de confiance ?"
+              question="Comment évalues-tu ton niveau de confiance avant le match?"
               value={matchForm.confiance}
               onChange={(value) => setMatchForm({...matchForm, confiance: value})}
               leftLabel="Très faible"
@@ -111,7 +111,7 @@ const MatchQuestionnaire = ({
             />
 
             <ScaleQuestion
-              question="Comment évaluez-vous votre niveau de stress ?"
+              question="Comment évalues-tu ton niveau de stress avant le match ?"
               value={matchForm.stress}
               onChange={(value) => setMatchForm({...matchForm, stress: value})}
               leftLabel="Très détendue"
@@ -120,7 +120,7 @@ const MatchQuestionnaire = ({
             />
 
             <ScaleQuestion
-              question="Comment évaluez-vous votre niveau de concentration ?"
+              question="Comment évalues-tu ton niveau de concentration avant le match ?"
               value={matchForm.concentration}
               onChange={(value) => setMatchForm({...matchForm, concentration: value})}
               leftLabel="Très faible"
@@ -129,7 +129,7 @@ const MatchQuestionnaire = ({
             />
 
             <ScaleQuestion
-              question="Comment évaluez-vous votre performance durant ce match ?"
+              question="Comment évalues-tu ta performance durant ce match ?"
               value={matchForm.performance_perçue}
               onChange={(value) => setMatchForm({...matchForm, performance_perçue: value})}
               leftLabel="Très mauvaise"
@@ -138,7 +138,7 @@ const MatchQuestionnaire = ({
             />
 
             <ScaleQuestion
-              question="Êtes-vous satisfaite de votre match ?"
+              question="Es-tu satisfaite de ton match ?"
               value={matchForm.satisfaction}
               onChange={(value) => setMatchForm({...matchForm, satisfaction: value})}
               leftLabel="Pas du tout"
