@@ -153,34 +153,47 @@ const AdminPanel = ({
         filteredAverages[metric] = Number((allValues.reduce((sum, v) => sum + v, 0) / allValues.length).toFixed(1));
       }
       
-      console.log(`Moyenne filtrée ${metric}:`, filteredAverages[metric], `(${allValues.length} valeurs)`);
+      console.log(`Moyenne filtrée ${metric}:`, filteredAverages[metric], `(${allValues.length} valeurs, ${playersToAnalyze.length} joueuses)`);
     });
 
     // Calculer les moyennes GLOBALES (TOUTES les joueuses, peu importe le filtre)
+    // Si aucun filtre ou toutes sélectionnées, c'est la même chose que filteredAverages
     const globalAverages = {};
-    selectedMetrics.forEach(metric => {
-      const allValues = [];
-      
-      players.forEach(player => {
-        const responses = player.responses || [];
-        let filteredResponses = responses;
-        if (!selectedQuestionTypes.includes('all')) {
-          filteredResponses = responses.filter(r => selectedQuestionTypes.includes(r.type));
+    const allPlayersCount = players.length;
+    const selectedCount = selectedPlayers.length;
+    
+    // Si toutes les joueuses sont sélectionnées OU aucune sélection, utiliser les mêmes valeurs
+    if (selectedCount === 0 || selectedCount === allPlayersCount) {
+      selectedMetrics.forEach(metric => {
+        globalAverages[metric] = filteredAverages[metric];
+      });
+      console.log('Toutes joueuses sélectionnées: moyennes globales = moyennes filtrées');
+    } else {
+      // Sinon, calculer sur TOUTES les joueuses
+      selectedMetrics.forEach(metric => {
+        const allValues = [];
+        
+        players.forEach(player => {
+          const responses = player.responses || [];
+          let filteredResponses = responses;
+          if (!selectedQuestionTypes.includes('all')) {
+            filteredResponses = responses.filter(r => selectedQuestionTypes.includes(r.type));
+          }
+          
+          filteredResponses.forEach(response => {
+            if (response.data?.[metric] != null && !isNaN(response.data[metric])) {
+              allValues.push(Number(response.data[metric]));
+            }
+          });
+        });
+        
+        if (allValues.length > 0) {
+          globalAverages[metric] = Number((allValues.reduce((sum, v) => sum + v, 0) / allValues.length).toFixed(1));
         }
         
-        filteredResponses.forEach(response => {
-          if (response.data?.[metric] != null && !isNaN(response.data[metric])) {
-            allValues.push(Number(response.data[metric]));
-          }
-        });
+        console.log(`Moyenne globale ${metric}:`, globalAverages[metric], `(${allValues.length} valeurs, ${players.length} joueuses)`);
       });
-      
-      if (allValues.length > 0) {
-        globalAverages[metric] = Number((allValues.reduce((sum, v) => sum + v, 0) / allValues.length).toFixed(1));
-      }
-      
-      console.log(`Moyenne globale ${metric}:`, globalAverages[metric], `(${allValues.length} valeurs)`);
-    });
+    }
 
     // CORRECTION : Intégrer les moyennes filtrées dans chaque point de chartData
     chartData.forEach(point => {
