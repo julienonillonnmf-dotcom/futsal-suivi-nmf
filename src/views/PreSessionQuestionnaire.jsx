@@ -107,7 +107,7 @@ const PreSessionQuestionnaire = ({
               {/* Objectifs Individuels Techniques */}
               {selectedPlayer && objectifsIndividuels[selectedPlayer.id] && (
                 <div className="mb-4">
-                  <h4 className="font-medium text-blue-800 mb-2">Vos objectifs techniques :</h4>
+                  <h4 className="font-medium text-blue-800 mb-2">Vos objectifs personnels :</h4>
                   <div className="bg-white p-3 rounded border-l-4 border-green-400">
                     <p className="text-gray-700 whitespace-pre-wrap">{objectifsIndividuels[selectedPlayer.id]}</p>
                   </div>
@@ -171,7 +171,7 @@ const PreSessionQuestionnaire = ({
             />
 
             <ScaleQuestion
-              question="Comment évaluez-vous la difficulté des objectifs que vous vous fixez pour cette séance ?"
+              question="Comment évaluez-vous la difficulté des objectifs que fixez pour cette séance ?"
               value={preSessionForm.objectif_difficulte}
               onChange={(value) => setPreSessionForm({...preSessionForm, objectif_difficulte: value})}
               leftLabel="Très faciles"
