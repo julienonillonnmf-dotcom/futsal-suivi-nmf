@@ -218,7 +218,7 @@ const PostSessionQuestionnaire = ({
             />
 
             <ScaleQuestion
-              question="Comment évaluez-vous vos progrès tactiques durant cette séance ?"
+              question="Comment vous évaluez-vous tactiquement durant cette séance ?"
               value={postSessionForm.tactique}
               onChange={(value) => setPostSessionForm({...postSessionForm, tactique: value})}
               leftLabel="Aucun progrès"
@@ -226,7 +226,7 @@ const PostSessionQuestionnaire = ({
             />
 
             <ScaleQuestion
-              question="Comment évaluez-vous vos progrès techniques durant cette séance ?"
+              question="Comment vous évaluez-vous techniquement durant cette séance ?"
               value={postSessionForm.technique}
               onChange={(value) => setPostSessionForm({...postSessionForm, technique: value})}
               leftLabel="Aucun progrès"
@@ -234,7 +234,7 @@ const PostSessionQuestionnaire = ({
             />
 
             <ScaleQuestion
-              question="Dans quelle mesure avez-vous eu une influence positive sur le groupe ?"
+              question="Dans quelle mesure pensez-vous avoir eu une influence positive sur le groupe ?"
               value={postSessionForm.influence_positive}
               onChange={(value) => setPostSessionForm({...postSessionForm, influence_positive: value})}
               leftLabel="Aucune influence"
@@ -242,7 +242,7 @@ const PostSessionQuestionnaire = ({
             />
 
             <ScaleQuestion
-              question="Comment vous êtes-vous senti(e) dans le groupe durant cette séance ?"
+              question="Comment vous êtes-vous sentie dans le groupe durant cette séance ?"
               value={postSessionForm.sentiment_groupe}
               onChange={(value) => setPostSessionForm({...postSessionForm, sentiment_groupe: value})}
               leftLabel="Très mal intégré"
