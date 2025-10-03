@@ -195,11 +195,16 @@ const AdminPanel = ({
       });
     }
 
-    // CORRECTION : Intégrer les moyennes filtrées dans chaque point de chartData
+    // CORRECTION : Intégrer les DEUX types de moyennes dans chaque point de chartData
     chartData.forEach(point => {
       selectedMetrics.forEach(metric => {
+        // Moyennes filtrées (joueuses sélectionnées)
         if (filteredAverages[metric] != null) {
-          point[`${metric}_global_avg`] = filteredAverages[metric];
+          point[`${metric}_filtered_avg`] = filteredAverages[metric];
+        }
+        // Moyennes globales (toutes les joueuses)
+        if (globalAverages[metric] != null) {
+          point[`${metric}_global_avg`] = globalAverages[metric];
         }
       });
     });
@@ -797,13 +802,22 @@ const AdminPanel = ({
                                 <h4 className="font-semibold mb-2 text-gray-800">{label}</h4>
                                 <div className="space-y-1 text-sm">
                                   {payload.map((entry, index) => {
-                                    const metricKey = entry.dataKey.replace('_daily_avg', '').replace('_global_avg', '');
+                                    const metricKey = entry.dataKey.replace('_daily_avg', '').replace('_filtered_avg', '').replace('_global_avg', '');
                                     const metricInfo = metricsOptions.find(m => m.value === metricKey);
-                                    const isGlobal = entry.dataKey.includes('_global_avg');
+                                    
+                                    let label = metricInfo?.label || '';
+                                    if (entry.dataKey.includes('_daily_avg')) {
+                                      label += ' (jour)';
+                                    } else if (entry.dataKey.includes('_filtered_avg')) {
+                                      label += ' (moy. sélection)';
+                                    } else if (entry.dataKey.includes('_global_avg')) {
+                                      label += ' (moy. équipe)';
+                                    }
+                                    
                                     return (
-                                      <div key={index} className="flex justify-between items-center">
+                                      <div key={index} className="flex justify-between items-center gap-3">
                                         <span style={{color: entry.color}}>
-                                          {metricInfo?.label} {isGlobal ? '(moyenne période)' : '(moyenne du jour)'}:
+                                          {label}:
                                         </span>
                                         <span className="font-medium">{entry.value}/20</span>
                                       </div>
@@ -834,7 +848,7 @@ const AdminPanel = ({
                         );
                       })}
                       
-                      {/* Lignes de moyennes filtrées (période complète) */}
+                      {/* Lignes de moyennes FILTRÉES (joueuses sélectionnées) - pointillés courts */}
                       {selectedMetrics.map(metric => {
                         const metricInfo = metricsOptions.find(m => m.value === metric);
                         const filteredAvg = filteredAverages[metric];
@@ -843,15 +857,38 @@ const AdminPanel = ({
                         
                         return (
                           <Line
+                            key={`filtered_${metric}`}
+                            type="monotone"
+                            dataKey={`${metric}_filtered_avg`}
+                            stroke={metricInfo?.color || '#1D2945'}
+                            strokeWidth={2}
+                            strokeDasharray="5 5"
+                            dot={false}
+                            activeDot={false}
+                            name={`${metricInfo?.label} (moyenne sélection)`}
+                          />
+                        );
+                      })}
+                      
+                      {/* Lignes de moyennes GLOBALES (toutes joueuses) - tirets longs */}
+                      {(selectedPlayers.length > 0 && selectedPlayers.length < players.length) && selectedMetrics.map(metric => {
+                        const metricInfo = metricsOptions.find(m => m.value === metric);
+                        const globalAvg = globalAverages[metric];
+                        
+                        if (!globalAvg) return null;
+                        
+                        return (
+                          <Line
                             key={`global_${metric}`}
                             type="monotone"
                             dataKey={`${metric}_global_avg`}
                             stroke={metricInfo?.color || '#1D2945'}
-                            strokeWidth={2}
-                            strokeDasharray="8 4"
+                            strokeWidth={2.5}
+                            strokeDasharray="15 5"
                             dot={false}
                             activeDot={false}
-                            name={`${metricInfo?.label} (moyenne période)`}
+                            name={`${metricInfo?.label} (moyenne équipe)`}
+                            opacity={0.7}
                           />
                         );
                       })}
@@ -863,14 +900,16 @@ const AdminPanel = ({
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       {/* Moyennes quotidiennes */}
                       <div>
-                        <h4 className="text-sm font-semibold mb-3 text-gray-700">Moyennes quotidiennes (lignes pleines)</h4>
+                        <h4 className="text-sm font-semibold mb-3 text-gray-700">
+                          📈 Moyennes quotidiennes (lignes pleines épaisses)
+                        </h4>
                         <div className="space-y-2">
                           {selectedMetrics.map(metric => {
                             const metricInfo = metricsOptions.find(m => m.value === metric);
                             return (
                               <div key={metric} className="flex items-center space-x-2 text-sm">
                                 <div 
-                                  className="w-4 h-0.5 rounded"
+                                  className="w-6 h-1 rounded"
                                   style={{backgroundColor: metricInfo?.color}}
                                 ></div>
                                 <span>{metricInfo?.label}</span>
@@ -878,12 +917,15 @@ const AdminPanel = ({
                             );
                           })}
                         </div>
+                        <p className="text-xs text-gray-500 mt-2 italic">
+                          Moyenne du jour pour les joueuses ayant répondu
+                        </p>
                       </div>
 
                       {/* Moyennes filtrées (joueuses sélectionnées) */}
                       <div>
                         <h4 className="text-sm font-semibold mb-3 text-gray-700">
-                          Moyennes période {selectedPlayers.length > 0 ? '(joueuses sélectionnées)' : '(toutes joueuses)'} - lignes pointillées
+                          ⚡ Moyennes période {selectedPlayers.length > 0 && selectedPlayers.length < players.length ? '(sélection)' : '(toutes)'} - pointillés courts
                         </h4>
                         <div className="space-y-2">
                           {selectedMetrics.map(metric => {
@@ -893,24 +935,30 @@ const AdminPanel = ({
                               <div key={metric} className="flex items-center justify-between text-sm">
                                 <div className="flex items-center space-x-2">
                                   <div 
-                                    className="w-4 h-0.5 rounded border-dashed border-2"
-                                    style={{borderColor: metricInfo?.color}}
+                                    className="w-6 h-1 rounded"
+                                    style={{
+                                      borderTop: `2px dashed ${metricInfo?.color}`,
+                                      borderSpacing: '5px'
+                                    }}
                                   ></div>
                                   <span>{metricInfo?.label}:</span>
                                 </div>
-                                <span className="font-medium text-gray-600">
+                                <span className="font-semibold text-gray-700">
                                   {filteredAvg || 'N/A'}/20
                                 </span>
                               </div>
                             );
                           })}
                         </div>
+                        <p className="text-xs text-gray-500 mt-2 italic">
+                          Moyenne sur toute la période des joueuses {selectedPlayers.length > 0 && selectedPlayers.length < players.length ? 'sélectionnées' : ''}
+                        </p>
                       </div>
 
-                      {/* Moyennes globales (TOUTES les joueuses) */}
+                      {/* Moyennes globales (TOUTES les joueuses) - seulement si filtre actif */}
                       <div>
                         <h4 className="text-sm font-semibold mb-3 text-gray-700">
-                          Moyennes globales (toutes joueuses)
+                          🏆 Moyennes globales équipe {selectedPlayers.length > 0 && selectedPlayers.length < players.length ? '- tirets longs' : ''}
                         </h4>
                         <div className="space-y-2">
                           {selectedMetrics.map(metric => {
@@ -919,28 +967,54 @@ const AdminPanel = ({
                             return (
                               <div key={metric} className="flex items-center justify-between text-sm">
                                 <div className="flex items-center space-x-2">
-                                  <div 
-                                    className="w-3 h-3 rounded-full"
-                                    style={{backgroundColor: metricInfo?.color}}
-                                  ></div>
+                                  {selectedPlayers.length > 0 && selectedPlayers.length < players.length ? (
+                                    <div 
+                                      className="w-6 h-1 rounded"
+                                      style={{
+                                        borderTop: `2.5px dashed ${metricInfo?.color}`,
+                                        borderSpacing: '15px'
+                                      }}
+                                    ></div>
+                                  ) : (
+                                    <div 
+                                      className="w-3 h-3 rounded-full"
+                                      style={{backgroundColor: metricInfo?.color}}
+                                    ></div>
+                                  )}
                                   <span>{metricInfo?.label}:</span>
                                 </div>
-                                <span className="font-bold text-gray-700">
+                                <span className="font-bold text-gray-800">
                                   {globalAvg || 'N/A'}/20
                                 </span>
                               </div>
                             );
                           })}
                         </div>
+                        <p className="text-xs text-gray-500 mt-2 italic">
+                          {selectedPlayers.length > 0 && selectedPlayers.length < players.length 
+                            ? `Moyenne des ${players.length} joueuses de l'équipe (référence)` 
+                            : 'Même valeur que moyennes période (toutes sélectionnées)'}
+                        </p>
                       </div>
                     </div>
 
                     {/* Informations sur les données */}
                     <div className="mt-4 p-3 bg-blue-50 rounded-lg">
                       <p className="text-xs text-blue-800">
-                        <strong>Lecture du graphique:</strong> Les <strong>lignes pleines</strong> montrent la moyenne quotidienne des joueuses ayant répondu ce jour-là. 
-                        Les <strong>lignes pointillées</strong> représentent la moyenne sur toute la période pour les joueuses {selectedPlayers.length > 0 ? 'sélectionnées' : '(toutes)'}. 
-                        Les <strong>moyennes globales</strong> (à droite) concernent TOUTES les joueuses de l'équipe, peu importe le filtre.
+                        <strong>📊 Lecture du graphique:</strong> 
+                        {selectedPlayers.length > 0 && selectedPlayers.length < players.length ? (
+                          <>
+                            Les <strong>lignes pleines épaisses</strong> montrent les performances quotidiennes. 
+                            Les <strong>pointillés courts</strong> (─ ─ ─) représentent la moyenne période des {selectedPlayers.length} joueuse(s) sélectionnée(s). 
+                            Les <strong>tirets longs</strong> (━━ ━━) montrent la moyenne de TOUTE l'équipe ({players.length} joueuses) pour comparaison.
+                          </>
+                        ) : (
+                          <>
+                            Les <strong>lignes pleines épaisses</strong> montrent les performances quotidiennes. 
+                            Les <strong>pointillés courts</strong> représentent la moyenne sur toute la période. 
+                            Quand toutes les joueuses sont sélectionnées, les moyennes période et globales sont identiques.
+                          </>
+                        )}
                       </p>
                     </div>
                   </div>
