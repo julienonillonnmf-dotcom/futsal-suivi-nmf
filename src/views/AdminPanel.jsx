@@ -1026,7 +1026,6 @@ const AdminPanel = ({
           </div>
 
           {(() => {
-            // Utiliser les filtres spécifiques aux blessures
             const playersToAnalyze = injurySelectedPlayers.length > 0 
               ? players.filter(p => injurySelectedPlayers.includes(p.id))
               : players;
@@ -1048,7 +1047,6 @@ const AdminPanel = ({
 
               injuryResponses.forEach(response => {
                 const date = new Date(response.created_at).toLocaleDateString('fr-FR');
-                
                 const injuries = response.data?.injuries || [];
                 
                 injuries.forEach(injury => {
@@ -1272,24 +1270,20 @@ const AdminPanel = ({
           })()}
         </div>
 
-        {/* Section Analyse Préventive - Corrélations Blessures */}
+        {/* Section Analyse Préventive */}
         <div className="bg-white rounded-xl shadow-lg p-6 mb-8">
           <h2 className="text-2xl font-bold mb-4 text-orange-600 flex items-center">
             📊 Analyse Préventive - Patterns & Blessures
           </h2>
 
-          {/* Avertissement Important */}
           <div className="bg-orange-50 border-l-4 border-orange-500 p-4 mb-6">
-            <div>
-              <h3 className="text-sm font-bold text-orange-800 mb-2">⚠️ Limites de cette analyse</h3>
-                <ul className="text-xs text-orange-700 space-y-1">
-                  <li>• Cette analyse montre des <strong>corrélations</strong>, pas des <strong>causalités</strong></li>
-                  <li>• Les blessures ont des causes multifactorielles complexes (technique, biomécanique, fatigue, hasard...)</li>
-                  <li>• Ces observations doivent être <strong>discutées avec un professionnel de santé</strong> (médecin, kiné, préparateur physique)</li>
-                  <li>• Ne pas prendre de décisions uniquement basées sur ces patterns</li>
-                </ul>
-              </div>
-            </div>
+            <h3 className="text-sm font-bold text-orange-800 mb-2">⚠️ Limites de cette analyse</h3>
+            <ul className="text-xs text-orange-700 space-y-1">
+              <li>• Cette analyse montre des <strong>corrélations</strong>, pas des <strong>causalités</strong></li>
+              <li>• Les blessures ont des causes multifactorielles complexes (technique, biomécanique, fatigue, hasard...)</li>
+              <li>• Ces observations doivent être <strong>discutées avec un professionnel de santé</strong> (médecin, kiné, préparateur physique)</li>
+              <li>• Ne pas prendre de décisions uniquement basées sur ces patterns</li>
+            </ul>
           </div>
 
           {(() => {
@@ -1546,9 +1540,7 @@ const AdminPanel = ({
                 <div className="bg-green-50 border border-green-200 rounded-lg p-4">
                   <h3 className="text-sm font-bold text-green-800 mb-3">💡 Interprétation prudente</h3>
                   <div className="text-sm text-green-700 space-y-2">
-                    <p>
-                      <strong>Patterns observés à discuter avec votre staff :</strong>
-                    </p>
+                    <p><strong>Patterns observés à discuter avec votre staff :</strong></p>
                     <ul className="list-disc list-inside space-y-1 ml-2">
                       {Math.abs(parseFloat(differences.fatigue)) > 2 && (
                         <li>
