@@ -923,8 +923,9 @@ const AdminPanel = ({
                 const injuries = response.data?.injuries || [];
                 
                 injuries.forEach(injury => {
-                  const zone = injury.zone || injury.location || 'Non spécifiée';
-                  const douleur = injury.douleur || injury.pain || injury.niveau || 0;
+                  // Les vrais noms des champs dans InjuryComponent
+                  const zone = injury.location || injury.zone || 'Non spécifiée';
+                  const douleur = injury.intensity || injury.douleur || 0;
                   const status = injury.status || injury.active || 'unknown';
                   
                   totalInjuries++;
