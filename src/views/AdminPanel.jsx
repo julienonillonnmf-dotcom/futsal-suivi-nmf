@@ -1,7 +1,7 @@
-// views/AdminPanel.jsx - Version corrigée avec moyennes globales fonctionnelles
+// views/AdminPanel.jsx - Version complète avec filtre de période
 import React, { useState } from 'react';
-import { ChevronLeft, Edit3, UserPlus, Download, Camera, Trash2, Filter, TrendingUp, BarChart3, Users } from 'lucide-react';
-import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import { ChevronLeft, Edit3, UserPlus, Download, Trash2, Filter, TrendingUp, BarChart3, Users, Calendar } from 'lucide-react';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { resizeImage } from '../utils/imageUtils';
 
 const AdminPanel = ({ 
@@ -23,13 +23,12 @@ const AdminPanel = ({
 }) => {
   
   const [editingObjectives, setEditingObjectives] = useState(false);
-  const [selectedPlayers, setSelectedPlayers] = useState([]); // Filtre joueuses
-  const [selectedMetrics, setSelectedMetrics] = useState(['motivation']); // Métriques sélectionnées (multiple)
-  const [selectedQuestionTypes, setSelectedQuestionTypes] = useState(['all']); // Types questionnaire (multiple)
-  const [startDate, setStartDate] = useState(''); // Date de début
-  const [endDate, setEndDate] = useState(''); // Date de fin
+  const [selectedPlayers, setSelectedPlayers] = useState([]);
+  const [selectedMetrics, setSelectedMetrics] = useState(['motivation']);
+  const [selectedQuestionTypes, setSelectedQuestionTypes] = useState(['all']);
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
 
-  // Options de métriques disponibles
   const metricsOptions = [
     { value: 'motivation', label: 'Motivation', color: '#2563eb' },
     { value: 'fatigue', label: 'Fatigue', color: '#dc2626' },
@@ -48,49 +47,35 @@ const AdminPanel = ({
     { value: 'injury', label: 'Blessures' }
   ];
 
-  // Fonction pour générer les données du graphique unifié avec moyennes - VERSION CORRIGÉE
   const getUnifiedChartData = () => {
-    console.log('=== DEBUG getUnifiedChartData ===');
-    console.log('selectedMetrics:', selectedMetrics);
-    console.log('players count:', players.length);
-    console.log('selectedPlayers:', selectedPlayers);
-    
     if (selectedMetrics.length === 0) {
-      console.log('Aucune métrique sélectionnée');
       return { chartData: [], globalAverages: {}, filteredAverages: {} };
     }
 
-    // Déterminer les joueuses à analyser : soit les sélectionnées, soit toutes
     const playersToAnalyze = selectedPlayers.length > 0 
       ? players.filter(p => selectedPlayers.includes(p.id))
       : players;
-    
-    console.log('Joueuses analysées:', playersToAnalyze.map(p => p.name));
 
-    // Collecter toutes les dates uniques (pour les joueuses filtrées)
     const allDates = new Set();
-    const dateResponses = {}; // Stocker les réponses par date
+    const dateResponses = {};
     
     playersToAnalyze.forEach(player => {
       const responses = player.responses || [];
-      console.log(`Player ${player.name}: ${responses.length} réponses`);
-      
       let filteredResponses = responses;
+      
       if (!selectedQuestionTypes.includes('all')) {
         filteredResponses = responses.filter(r => selectedQuestionTypes.includes(r.type));
       }
       
       filteredResponses.forEach(response => {
-        const date = new Date(response.created_at).toLocaleDateString('fr-FR');
         const responseDate = new Date(response.created_at);
         
-        // Filtrer par période si dates définies
         if (startDate && new Date(startDate) > responseDate) return;
         if (endDate && new Date(endDate) < responseDate) return;
         
+        const date = responseDate.toLocaleDateString('fr-FR');
         allDates.add(date);
         
-        // Stocker les réponses groupées par date
         if (!dateResponses[date]) {
           dateResponses[date] = [];
         }
@@ -98,19 +83,15 @@ const AdminPanel = ({
       });
     });
 
-    console.log('Dates uniques collectées:', Array.from(allDates));
-
     const sortedDates = Array.from(allDates).sort((a, b) => {
       const dateA = new Date(a.split('/').reverse().join('-'));
       const dateB = new Date(b.split('/').reverse().join('-'));
       return dateA - dateB;
     });
 
-    // Créer les données du graphique avec moyennes quotidiennes
     const chartData = sortedDates.map(date => {
       const dataPoint = { date };
       
-      // Calculer la moyenne pour chaque métrique pour cette date
       selectedMetrics.forEach(metric => {
         const responsesForDate = dateResponses[date] || [];
         const valuesForMetric = responsesForDate
@@ -127,18 +108,12 @@ const AdminPanel = ({
       return dataPoint;
     });
 
-    // Si pas de données, créer un graphique vide mais fonctionnel
     if (chartData.length === 0) {
-      console.log('ATTENTION: chartData vide, création de données par défaut');
       const today = new Date().toLocaleDateString('fr-FR');
       const yesterday = new Date(Date.now() - 24*60*60*1000).toLocaleDateString('fr-FR');
       chartData.push({ date: yesterday }, { date: today });
     }
 
-    console.log('chartData length:', chartData.length);
-    console.log('chartData sample:', chartData[0]);
-
-    // Calculer les moyennes FILTRÉES (joueuses sélectionnées OU toutes)
     const filteredAverages = {};
     selectedMetrics.forEach(metric => {
       const allValues = [];
@@ -146,11 +121,17 @@ const AdminPanel = ({
       playersToAnalyze.forEach(player => {
         const responses = player.responses || [];
         let filteredResponses = responses;
+        
         if (!selectedQuestionTypes.includes('all')) {
           filteredResponses = responses.filter(r => selectedQuestionTypes.includes(r.type));
         }
         
         filteredResponses.forEach(response => {
+          const responseDate = new Date(response.created_at);
+          
+          if (startDate && new Date(startDate) > responseDate) return;
+          if (endDate && new Date(endDate) < responseDate) return;
+          
           if (response.data?.[metric] != null && !isNaN(response.data[metric])) {
             allValues.push(Number(response.data[metric]));
           }
@@ -160,35 +141,34 @@ const AdminPanel = ({
       if (allValues.length > 0) {
         filteredAverages[metric] = Number((allValues.reduce((sum, v) => sum + v, 0) / allValues.length).toFixed(1));
       }
-      
-      console.log(`Moyenne filtrée ${metric}:`, filteredAverages[metric], `(${allValues.length} valeurs, ${playersToAnalyze.length} joueuses)`);
     });
 
-    // Calculer les moyennes GLOBALES (TOUTES les joueuses, peu importe le filtre)
-    // Si aucun filtre ou toutes sélectionnées, c'est la même chose que filteredAverages
     const globalAverages = {};
     const allPlayersCount = players.length;
     const selectedCount = selectedPlayers.length;
     
-    // Si toutes les joueuses sont sélectionnées OU aucune sélection, utiliser les mêmes valeurs
     if (selectedCount === 0 || selectedCount === allPlayersCount) {
       selectedMetrics.forEach(metric => {
         globalAverages[metric] = filteredAverages[metric];
       });
-      console.log('Toutes joueuses sélectionnées: moyennes globales = moyennes filtrées');
     } else {
-      // Sinon, calculer sur TOUTES les joueuses
       selectedMetrics.forEach(metric => {
         const allValues = [];
         
         players.forEach(player => {
           const responses = player.responses || [];
           let filteredResponses = responses;
+          
           if (!selectedQuestionTypes.includes('all')) {
             filteredResponses = responses.filter(r => selectedQuestionTypes.includes(r.type));
           }
           
           filteredResponses.forEach(response => {
+            const responseDate = new Date(response.created_at);
+            
+            if (startDate && new Date(startDate) > responseDate) return;
+            if (endDate && new Date(endDate) < responseDate) return;
+            
             if (response.data?.[metric] != null && !isNaN(response.data[metric])) {
               allValues.push(Number(response.data[metric]));
             }
@@ -198,30 +178,23 @@ const AdminPanel = ({
         if (allValues.length > 0) {
           globalAverages[metric] = Number((allValues.reduce((sum, v) => sum + v, 0) / allValues.length).toFixed(1));
         }
-        
-        console.log(`Moyenne globale ${metric}:`, globalAverages[metric], `(${allValues.length} valeurs, ${players.length} joueuses)`);
       });
     }
 
-    // CORRECTION : Intégrer les DEUX types de moyennes dans chaque point de chartData
     chartData.forEach(point => {
       selectedMetrics.forEach(metric => {
-        // Moyennes filtrées (joueuses sélectionnées)
         if (filteredAverages[metric] != null) {
           point[`${metric}_filtered_avg`] = filteredAverages[metric];
         }
-        // Moyennes globales (toutes les joueuses)
         if (globalAverages[metric] != null) {
           point[`${metric}_global_avg`] = globalAverages[metric];
         }
       });
     });
 
-    console.log('=== FIN DEBUG ===');
     return { chartData, globalAverages, filteredAverages };
   };
 
-  // Sauvegarder les objectifs collectifs
   const saveObjectifsCollectifs = async () => {
     setLoading(true);
     try {
@@ -237,7 +210,6 @@ const AdminPanel = ({
       
       if (error) throw error;
       alert('Objectifs collectifs sauvegardés !');
-      
     } catch (error) {
       console.error('Erreur sauvegarde objectifs collectifs:', error);
       alert('Erreur lors de la sauvegarde: ' + error.message);
@@ -245,7 +217,6 @@ const AdminPanel = ({
     setLoading(false);
   };
 
-  // Sauvegarder les objectifs individuels
   const saveObjectifsIndividuels = async (playerId, objectifs) => {
     setLoading(true);
     try {
@@ -262,7 +233,6 @@ const AdminPanel = ({
       }));
       
       alert('Objectifs individuels sauvegardés !');
-      
     } catch (error) {
       console.error('Erreur sauvegarde objectifs individuels:', error);
       alert('Erreur lors de la sauvegarde: ' + error.message);
@@ -270,7 +240,6 @@ const AdminPanel = ({
     setLoading(false);
   };
 
-  // Sauvegarder les objectifs mentaux
   const saveObjectifsMentaux = async (playerId, objectifs) => {
     setLoading(true);
     try {
@@ -287,7 +256,6 @@ const AdminPanel = ({
       }));
       
       alert('Objectifs mentaux sauvegardés !');
-      
     } catch (error) {
       console.error('Erreur sauvegarde objectifs mentaux:', error);
       alert('Erreur lors de la sauvegarde: ' + error.message);
@@ -295,7 +263,6 @@ const AdminPanel = ({
     setLoading(false);
   };
 
-  // Export des données
   const exportData = async () => {
     try {
       const { data: responses } = await supabase
@@ -337,50 +304,6 @@ const AdminPanel = ({
     }
   };
 
-  // Upload de photo
-  const handlePhotoUpload = async (playerId, file) => {
-    if (!file) return;
-    
-    setLoading(true);
-    try {
-      const resizedFile = await resizeImage(file);
-      
-      const fileExt = 'jpg';
-      const fileName = `${playerId}-${Date.now()}.${fileExt}`;
-      const filePath = `player-photos/${fileName}`;
-
-      const { error: uploadError } = await supabase.storage
-        .from('photos')
-        .upload(filePath, resizedFile, { upsert: true });
-
-      if (uploadError) throw uploadError;
-
-      const { data: publicUrl } = supabase.storage
-        .from('photos')
-        .getPublicUrl(filePath);
-
-      const { error: updateError } = await supabase
-        .from('players')
-        .update({ photo_url: publicUrl.publicUrl })
-        .eq('id', playerId);
-
-      if (updateError) throw updateError;
-
-      setPlayers(prev => prev.map(p => 
-        p.id === playerId 
-          ? { ...p, photo_url: publicUrl.publicUrl }
-          : p
-      ));
-
-      alert('Photo mise à jour avec succès !');
-    } catch (error) {
-      console.error('Erreur upload photo:', error);
-      alert('Erreur lors de l\'upload de la photo');
-    }
-    setLoading(false);
-  };
-
-  // Supprimer un joueur
   const deletePlayer = async (playerId) => {
     if (!confirm('Êtes-vous sûr de vouloir désactiver cette joueuse ?')) return;
     
@@ -395,7 +318,6 @@ const AdminPanel = ({
       
       alert('Joueuse désactivée avec succès');
       await loadPlayers();
-      
     } catch (error) {
       console.error('Erreur suppression:', error);
       alert('Erreur lors de la désactivation');
@@ -403,7 +325,6 @@ const AdminPanel = ({
     setLoading(false);
   };
 
-  // Ajouter un nouveau joueur
   const addNewPlayer = async () => {
     const name = prompt('Nom de la nouvelle joueuse :');
     if (!name) return;
@@ -418,7 +339,6 @@ const AdminPanel = ({
       
       alert('Joueuse ajoutée !');
       await loadPlayers();
-      
     } catch (error) {
       console.error('Erreur ajout joueur:', error);
       alert('Erreur lors de l\'ajout');
@@ -426,13 +346,11 @@ const AdminPanel = ({
     setLoading(false);
   };
 
-  // Données pour les graphiques
-  const { chartData, globalAverages } = getUnifiedChartData();
+  const { chartData, globalAverages, filteredAverages } = getUnifiedChartData();
 
   return (
     <div className="min-h-screen p-4" style={{background: 'linear-gradient(135deg, #f0f4f8 0%, #fef9e7 100%)'}}>
       <div className="max-w-7xl mx-auto">
-        {/* En-tête */}
         <div className="bg-white rounded-xl shadow-lg p-6 mb-8">
           <div className="flex items-center justify-between">
             <div>
@@ -440,26 +358,15 @@ const AdminPanel = ({
               <p className="text-gray-600 mt-1">Panneau d'administration - Mode Entraîneur</p>
             </div>
             <div className="flex items-center space-x-3">
-              <button
-                onClick={addNewPlayer}
-                disabled={loading}
-                className="flex items-center space-x-2 px-4 py-2 text-white rounded-lg font-medium hover:shadow-lg transition-all disabled:opacity-50"
-                style={{background: 'linear-gradient(135deg, #C09D5A 0%, #d4a574 100%)'}}
-              >
+              <button onClick={addNewPlayer} disabled={loading} className="flex items-center space-x-2 px-4 py-2 text-white rounded-lg font-medium hover:shadow-lg transition-all disabled:opacity-50" style={{background: 'linear-gradient(135deg, #C09D5A 0%, #d4a574 100%)'}}>
                 <UserPlus size={16} />
                 <span>Ajouter</span>
               </button>
-              <button
-                onClick={exportData}
-                className="flex items-center space-x-2 px-4 py-2 bg-green-500 text-white rounded-lg font-medium hover:bg-green-600 transition-all"
-              >
+              <button onClick={exportData} className="flex items-center space-x-2 px-4 py-2 bg-green-500 text-white rounded-lg font-medium hover:bg-green-600 transition-all">
                 <Download size={16} />
                 <span>Export CSV</span>
               </button>
-              <button
-                onClick={() => setCurrentView('players')}
-                className="flex items-center space-x-2 px-6 py-3 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-all"
-              >
+              <button onClick={() => setCurrentView('players')} className="flex items-center space-x-2 px-6 py-3 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-all">
                 <ChevronLeft size={20} />
                 <span>Retour</span>
               </button>
@@ -467,7 +374,6 @@ const AdminPanel = ({
           </div>
         </div>
 
-        {/* Section 1: Grille des joueuses */}
         <div className="bg-white rounded-xl shadow-lg p-6 mb-8">
           <h2 className="text-2xl font-bold mb-6" style={{color: '#1D2945'}}>
             <Users className="inline mr-2" size={24} />
@@ -504,16 +410,9 @@ const AdminPanel = ({
                 <div className="p-6 text-center h-full flex flex-col justify-center">
                   <div className="w-20 h-20 rounded-full mx-auto mb-4 overflow-hidden border-2 border-gray-300">
                     {player.photo_url ? (
-                      <img 
-                        src={player.photo_url} 
-                        alt={player.name}
-                        className="w-full h-full object-cover"
-                      />
+                      <img src={player.photo_url} alt={player.name} className="w-full h-full object-cover" />
                     ) : (
-                      <div 
-                        className="w-full h-full flex items-center justify-center text-white text-lg font-bold"
-                        style={{background: 'linear-gradient(135deg, #1D2945 0%, #C09D5A 100%)'}}
-                      >
+                      <div className="w-full h-full flex items-center justify-center text-white text-lg font-bold" style={{background: 'linear-gradient(135deg, #1D2945 0%, #C09D5A 100%)'}}>
                         {player.name.split(' ').map(n => n[0]).join('')}
                       </div>
                     )}
@@ -541,44 +440,75 @@ const AdminPanel = ({
           </div>
         </div>
 
-        {/* Section 2: Statistiques avec filtres */}
         <div className="bg-white rounded-xl shadow-lg p-6 mb-8">
           <h2 className="text-2xl font-bold mb-6" style={{color: '#1D2945'}}>
             <TrendingUp className="inline mr-2" size={24} />
             Statistiques et Analyses
           </h2>
           
-          {/* Filtres */}
           <div className="bg-gray-50 rounded-lg p-6 mb-6">
             <h3 className="text-lg font-semibold mb-4 text-gray-700 flex items-center">
               <Filter size={20} className="mr-2" />
               Filtres d'Analyse
             </h3>
             
-            <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-4 gap-6">
-              {/* Sélection des joueuses */}
+            {/* FILTRE DE PÉRIODE */}
+            <div className="mb-6 pb-6 border-b-2 border-gray-300">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center space-x-2">
+                  <Calendar size={20} className="text-purple-600" />
+                  <label className="text-sm font-semibold text-gray-700">Période d'analyse</label>
+                </div>
+                <button
+                  onClick={() => {
+                    setStartDate('');
+                    setEndDate('');
+                  }}
+                  className="px-3 py-1 bg-purple-100 text-purple-700 text-sm rounded-lg hover:bg-purple-200 transition-all font-medium"
+                >
+                  Toute la période
+                </button>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="bg-white border-2 border-purple-200 rounded-lg p-4">
+                  <label className="block text-xs font-semibold text-purple-700 mb-2">Date de début</label>
+                  <input
+                    type="date"
+                    value={startDate}
+                    onChange={(e) => setStartDate(e.target.value)}
+                    className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                  />
+                </div>
+                <div className="bg-white border-2 border-purple-200 rounded-lg p-4">
+                  <label className="block text-xs font-semibold text-purple-700 mb-2">Date de fin</label>
+                  <input
+                    type="date"
+                    value={endDate}
+                    onChange={(e) => setEndDate(e.target.value)}
+                    min={startDate}
+                    className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                  />
+                </div>
+              </div>
+              
+              {(startDate || endDate) && (
+                <div className="mt-4 p-3 bg-purple-50 border-2 border-purple-300 rounded-lg">
+                  <p className="text-sm text-purple-900 font-medium">
+                    Période sélectionnée : {startDate ? new Date(startDate).toLocaleDateString('fr-FR') : 'Début'} → {endDate ? new Date(endDate).toLocaleDateString('fr-FR') : 'Fin'}
+                  </p>
+                </div>
+              )}
+            </div>
+            
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               <div>
                 <div className="flex items-center justify-between mb-3">
                   <label className="block text-sm font-medium text-gray-700">Joueuses</label>
                   <div className="flex space-x-2">
-                    <button
-                      onClick={() => setSelectedPlayers([])}
-                      className="px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded hover:bg-blue-200 transition-all"
-                    >
-                      Toutes
-                    </button>
-                    <button
-                      onClick={() => setSelectedPlayers(players.map(p => p.id))}
-                      className="px-2 py-1 bg-green-100 text-green-700 text-xs rounded hover:bg-green-200 transition-all"
-                    >
-                      Sélectionner
-                    </button>
-                    <button
-                      onClick={() => setSelectedPlayers([])}
-                      className="px-2 py-1 bg-red-100 text-red-700 text-xs rounded hover:bg-red-200 transition-all"
-                    >
-                      Aucune
-                    </button>
+                    <button onClick={() => setSelectedPlayers([])} className="px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded hover:bg-blue-200 transition-all">Toutes</button>
+                    <button onClick={() => setSelectedPlayers(players.map(p => p.id))} className="px-2 py-1 bg-green-100 text-green-700 text-xs rounded hover:bg-green-200 transition-all">Sélectionner</button>
+                    <button onClick={() => setSelectedPlayers([])} className="px-2 py-1 bg-red-100 text-red-700 text-xs rounded hover:bg-red-200 transition-all">Aucune</button>
                   </div>
                 </div>
                 
@@ -594,11 +524,7 @@ const AdminPanel = ({
                     }}
                   >
                     {players.map(player => (
-                      <option 
-                        key={player.id} 
-                        value={player.id}
-                        className="py-1 px-2 hover:bg-blue-50"
-                      >
+                      <option key={player.id} value={player.id} className="py-1 px-2 hover:bg-blue-50">
                         {player.name}
                       </option>
                     ))}
@@ -607,29 +533,15 @@ const AdminPanel = ({
                   <p className="text-xs text-gray-500 mt-2">
                     {selectedPlayers.length === 0 ? `Toutes sélectionnées (${players.length})` : `${selectedPlayers.length} sélectionnée(s)`}
                   </p>
-                  <p className="text-xs text-gray-400 mt-1">
-                    Maintenez Ctrl/Cmd pour sélectionner plusieurs joueuses
-                  </p>
                 </div>
               </div>
 
-              {/* Sélection des métriques */}
               <div>
                 <div className="flex items-center justify-between mb-3">
                   <label className="block text-sm font-medium text-gray-700">Métriques</label>
                   <div className="flex space-x-2">
-                    <button
-                      onClick={() => setSelectedMetrics(metricsOptions.map(m => m.value))}
-                      className="px-2 py-1 bg-green-100 text-green-700 text-xs rounded hover:bg-green-200 transition-all"
-                    >
-                      Toutes
-                    </button>
-                    <button
-                      onClick={() => setSelectedMetrics([])}
-                      className="px-2 py-1 bg-red-100 text-red-700 text-xs rounded hover:bg-red-200 transition-all"
-                    >
-                      Aucune
-                    </button>
+                    <button onClick={() => setSelectedMetrics(metricsOptions.map(m => m.value))} className="px-2 py-1 bg-green-100 text-green-700 text-xs rounded hover:bg-green-200 transition-all">Toutes</button>
+                    <button onClick={() => setSelectedMetrics([])} className="px-2 py-1 bg-red-100 text-red-700 text-xs rounded hover:bg-red-200 transition-all">Aucune</button>
                   </div>
                 </div>
                 
@@ -650,38 +562,22 @@ const AdminPanel = ({
                           className="w-4 h-4 text-green-600 border-gray-300 rounded focus:ring-green-500"
                         />
                         <div className="flex items-center space-x-2 flex-1">
-                          <div 
-                            className="w-4 h-4 rounded"
-                            style={{backgroundColor: metric.color}}
-                          ></div>
+                          <div className="w-4 h-4 rounded" style={{backgroundColor: metric.color}}></div>
                           <span className="text-sm text-gray-700">{metric.label}</span>
                         </div>
                       </label>
                     ))}
                   </div>
                 </div>
-                <p className="text-xs text-gray-500 mt-2">
-                  {selectedMetrics.length} métrique(s) sélectionnée(s)
-                </p>
+                <p className="text-xs text-gray-500 mt-2">{selectedMetrics.length} métrique(s) sélectionnée(s)</p>
               </div>
 
-              {/* Sélection des types de questionnaires */}
               <div>
                 <div className="flex items-center justify-between mb-3">
                   <label className="block text-sm font-medium text-gray-700">Types questionnaires</label>
                   <div className="flex space-x-2">
-                    <button
-                      onClick={() => setSelectedQuestionTypes(['all'])}
-                      className="px-2 py-1 bg-purple-100 text-purple-700 text-xs rounded hover:bg-purple-200 transition-all"
-                    >
-                      Tous
-                    </button>
-                    <button
-                      onClick={() => setSelectedQuestionTypes([])}
-                      className="px-2 py-1 bg-red-100 text-red-700 text-xs rounded hover:bg-red-200 transition-all"
-                    >
-                      Aucun
-                    </button>
+                    <button onClick={() => setSelectedQuestionTypes(['all'])} className="px-2 py-1 bg-purple-100 text-purple-700 text-xs rounded hover:bg-purple-200 transition-all">Tous</button>
+                    <button onClick={() => setSelectedQuestionTypes([])} className="px-2 py-1 bg-red-100 text-red-700 text-xs rounded hover:bg-red-200 transition-all">Aucun</button>
                   </div>
                 </div>
                 
@@ -728,22 +624,17 @@ const AdminPanel = ({
                   {selectedQuestionTypes.length === 0 ? 'Aucun sélectionné' : 
                    selectedQuestionTypes.includes('all') ? 'Tous les questionnaires' :
                    `${selectedQuestionTypes.length} type(s) sélectionné(s)`}
-                  </p>
+                </p>
               </div>
             </div>
 
-            {/* Résumé des filtres actifs */}
             <div className="mt-4 pt-4 border-t border-gray-200">
-              <div className="flex items-center justify-between text-sm">
+              <div className="flex items-center justify-between text-sm flex-wrap gap-2">
                 <div className="flex items-center space-x-4 flex-wrap gap-2">
-                  <span className="text-gray-600">
-                    <strong>Filtres actifs:</strong>
-                  </span>
+                  <span className="text-gray-600"><strong>Filtres actifs:</strong></span>
                   {(startDate || endDate) && (
                     <span className="bg-purple-100 text-purple-800 px-2 py-1 rounded-full text-xs">
-                      📅 {startDate ? new Date(startDate).toLocaleDateString('fr-FR', {day: '2-digit', month: 'short'}) : '...'} 
-                      {' → '}
-                      {endDate ? new Date(endDate).toLocaleDateString('fr-FR', {day: '2-digit', month: 'short'}) : '...'}
+                      {startDate ? new Date(startDate).toLocaleDateString('fr-FR', {day: '2-digit', month: 'short'}) : '...'} → {endDate ? new Date(endDate).toLocaleDateString('fr-FR', {day: '2-digit', month: 'short'}) : '...'}
                     </span>
                   )}
                   <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs">
@@ -772,349 +663,260 @@ const AdminPanel = ({
             </div>
           </div>
 
-          {/* Graphique unifié avec moyennes - SUITE DANS LE PROCHAIN MESSAGE */}
+          {/* Graphique - suite dans le prochain message si nécessaire */}
           <div className="mb-6">
             <h3 className="text-lg font-semibold mb-4 text-gray-700">
               Évolution Temporelle des Métriques Sélectionnées
             </h3>
             
-            {(() => {
-              const { chartData, globalAverages, filteredAverages } = getUnifiedChartData();
-              
-              if (selectedMetrics.length === 0) {
-                return (
-                  <div className="text-center py-8 text-gray-500">
-                    <BarChart3 size={48} className="mx-auto mb-4" />
-                    <p>Sélectionnez au moins une métrique pour afficher le graphique temporel</p>
-                  </div>
-                );
-              }
-
-              if (chartData.length === 0) {
-                return (
-                  <div className="text-center py-8 text-gray-500">
-                    <p>Aucune donnée disponible pour les filtres sélectionnés</p>
-                  </div>
-                );
-              }
-
-              return (
-                <>
-                  <ResponsiveContainer width="100%" height={400}>
-                    <LineChart data={chartData}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis 
-                        dataKey="date" 
-                        tick={{fontSize: 12}}
-                        angle={-45}
-                        textAnchor="end"
-                        height={60}
-                      />
-                      <YAxis domain={[0, 20]} />
-                      <Tooltip 
-                        content={({ active, payload, label }) => {
-                          if (active && payload && payload.length > 0) {
-                            return (
-                              <div className="bg-white p-4 border border-gray-300 rounded-lg shadow-lg">
-                                <h4 className="font-semibold mb-2 text-gray-800">{label}</h4>
-                                <div className="space-y-1 text-sm">
-                                  {payload.map((entry, index) => {
-                                    const metricKey = entry.dataKey.replace('_daily_avg', '').replace('_filtered_avg', '').replace('_global_avg', '');
-                                    const metricInfo = metricsOptions.find(m => m.value === metricKey);
-                                    
-                                    let label = metricInfo?.label || '';
-                                    if (entry.dataKey.includes('_daily_avg')) {
-                                      label += ' (jour)';
-                                    } else if (entry.dataKey.includes('_filtered_avg')) {
-                                      label += ' (moy. sélection)';
-                                    } else if (entry.dataKey.includes('_global_avg')) {
-                                      label += ' (moy. équipe)';
-                                    }
-                                    
-                                    return (
-                                      <div key={index} className="flex justify-between items-center gap-3">
-                                        <span style={{color: entry.color}}>
-                                          {label}:
-                                        </span>
-                                        <span className="font-medium">{entry.value}/20</span>
-                                      </div>
-                                    );
-                                  })}
-                                </div>
+            {selectedMetrics.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">
+                <BarChart3 size={48} className="mx-auto mb-4" />
+                <p>Sélectionnez au moins une métrique pour afficher le graphique temporel</p>
+              </div>
+            ) : chartData.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">
+                <p>Aucune donnée disponible pour les filtres sélectionnés</p>
+              </div>
+            ) : (
+              <>
+                <ResponsiveContainer width="100%" height={400}>
+                  <LineChart data={chartData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="date" tick={{fontSize: 12}} angle={-45} textAnchor="end" height={60} />
+                    <YAxis domain={[0, 20]} />
+                    <Tooltip 
+                      content={({ active, payload, label }) => {
+                        if (active && payload && payload.length > 0) {
+                          return (
+                            <div className="bg-white p-4 border border-gray-300 rounded-lg shadow-lg">
+                              <h4 className="font-semibold mb-2 text-gray-800">{label}</h4>
+                              <div className="space-y-1 text-sm">
+                                {payload.map((entry, index) => {
+                                  const metricKey = entry.dataKey.replace('_daily_avg', '').replace('_filtered_avg', '').replace('_global_avg', '');
+                                  const metricInfo = metricsOptions.find(m => m.value === metricKey);
+                                  
+                                  let lbl = metricInfo?.label || '';
+                                  if (entry.dataKey.includes('_daily_avg')) {
+                                    lbl += ' (jour)';
+                                  } else if (entry.dataKey.includes('_filtered_avg')) {
+                                    lbl += ' (moy. sélection)';
+                                  } else if (entry.dataKey.includes('_global_avg')) {
+                                    lbl += ' (moy. équipe)';
+                                  }
+                                  
+                                  return (
+                                    <div key={index} className="flex justify-between items-center gap-3">
+                                      <span style={{color: entry.color}}>{lbl}:</span>
+                                      <span className="font-medium">{entry.value}/20</span>
+                                    </div>
+                                  );
+                                })}
                               </div>
-                            );
-                          }
-                          return null;
-                        }}
-                      />
+                            </div>
+                          );
+                        }
+                        return null;
+                      }}
+                    />
+                    
+                    {selectedMetrics.map(metric => {
+                      const metricInfo = metricsOptions.find(m => m.value === metric);
+                      return (
+                        <Line
+                          key={`daily_${metric}`}
+                          type="monotone"
+                          dataKey={`${metric}_daily_avg`}
+                          stroke={metricInfo?.color || '#1D2945'}
+                          strokeWidth={3}
+                          dot={{ fill: metricInfo?.color, strokeWidth: 2, r: 5 }}
+                          activeDot={{ r: 7, stroke: metricInfo?.color, strokeWidth: 2 }}
+                          name={`${metricInfo?.label} (jour)`}
+                        />
+                      );
+                    })}
+                    
+                    {selectedMetrics.map(metric => {
+                      const metricInfo = metricsOptions.find(m => m.value === metric);
+                      const filteredAvg = filteredAverages[metric];
                       
-                      {/* Lignes de moyennes quotidiennes */}
-                      {selectedMetrics.map(metric => {
-                        const metricInfo = metricsOptions.find(m => m.value === metric);
-                        return (
-                          <Line
-                            key={`daily_${metric}`}
-                            type="monotone"
-                            dataKey={`${metric}_daily_avg`}
-                            stroke={metricInfo?.color || '#1D2945'}
-                            strokeWidth={3}
-                            dot={{ fill: metricInfo?.color, strokeWidth: 2, r: 5 }}
-                            activeDot={{ r: 7, stroke: metricInfo?.color, strokeWidth: 2 }}
-                            name={`${metricInfo?.label} (jour)`}
-                          />
-                        );
-                      })}
+                      if (!filteredAvg) return null;
                       
-                      {/* Lignes de moyennes FILTRÉES (joueuses sélectionnées) - pointillés courts */}
-                      {selectedMetrics.map(metric => {
-                        const metricInfo = metricsOptions.find(m => m.value === metric);
-                        const filteredAvg = filteredAverages[metric];
-                        
-                        if (!filteredAvg) return null;
-                        
-                        return (
-                          <Line
-                            key={`filtered_${metric}`}
-                            type="monotone"
-                            dataKey={`${metric}_filtered_avg`}
-                            stroke={metricInfo?.color || '#1D2945'}
-                            strokeWidth={2}
-                            strokeDasharray="5 5"
-                            dot={false}
-                            activeDot={false}
-                            name={`${metricInfo?.label} (moyenne sélection)`}
-                          />
-                        );
-                      })}
+                      return (
+                        <Line
+                          key={`filtered_${metric}`}
+                          type="monotone"
+                          dataKey={`${metric}_filtered_avg`}
+                          stroke={metricInfo?.color || '#1D2945'}
+                          strokeWidth={2}
+                          strokeDasharray="5 5"
+                          dot={false}
+                          activeDot={false}
+                          name={`${metricInfo?.label} (moyenne sélection)`}
+                        />
+                      );
+                    })}
+                    
+                    {(selectedPlayers.length > 0 && selectedPlayers.length < players.length) && selectedMetrics.map(metric => {
+                      const metricInfo = metricsOptions.find(m => m.value === metric);
+                      const globalAvg = globalAverages[metric];
                       
-                      {/* Lignes de moyennes GLOBALES (toutes joueuses) - tirets longs */}
-                      {(selectedPlayers.length > 0 && selectedPlayers.length < players.length) && selectedMetrics.map(metric => {
-                        const metricInfo = metricsOptions.find(m => m.value === metric);
-                        const globalAvg = globalAverages[metric];
-                        
-                        if (!globalAvg) return null;
-                        
-                        return (
-                          <Line
-                            key={`global_${metric}`}
-                            type="monotone"
-                            dataKey={`${metric}_global_avg`}
-                            stroke={metricInfo?.color || '#1D2945'}
-                            strokeWidth={2.5}
-                            strokeDasharray="15 5"
-                            dot={false}
-                            activeDot={false}
-                            name={`${metricInfo?.label} (moyenne équipe)`}
-                            opacity={0.7}
-                          />
-                        );
-                      })}
-                    </LineChart>
-                  </ResponsiveContainer>
+                      if (!globalAvg) return null;
+                      
+                      return (
+                        <Line
+                          key={`global_${metric}`}
+                          type="monotone"
+                          dataKey={`${metric}_global_avg`}
+                          stroke={metricInfo?.color || '#1D2945'}
+                          strokeWidth={2.5}
+                          strokeDasharray="15 5"
+                          dot={false}
+                          activeDot={false}
+                          name={`${metricInfo?.label} (moyenne équipe)`}
+                          opacity={0.7}
+                        />
+                      );
+                    })}
+                  </LineChart>
+                </ResponsiveContainer>
 
-                  {/* Légende améliorée avec toutes les moyennes */}
-                  <div className="mt-6">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      {/* Moyennes quotidiennes */}
-                      <div>
-                        <h4 className="text-sm font-semibold mb-3 text-gray-700">
-                          📈 Moyennes quotidiennes (lignes pleines épaisses)
-                        </h4>
-                        <div className="space-y-2">
-                          {selectedMetrics.map(metric => {
-                            const metricInfo = metricsOptions.find(m => m.value === metric);
-                            return (
-                              <div key={metric} className="flex items-center space-x-2 text-sm">
-                                <div 
-                                  className="w-6 h-1 rounded"
-                                  style={{backgroundColor: metricInfo?.color}}
-                                ></div>
-                                <span>{metricInfo?.label}</span>
-                              </div>
-                            );
-                          })}
-                        </div>
-                        <p className="text-xs text-gray-500 mt-2 italic">
-                          Moyenne du jour pour les joueuses ayant répondu
-                        </p>
+                <div className="mt-6">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <h4 className="text-sm font-semibold mb-3 text-gray-700">Moyennes quotidiennes (lignes pleines épaisses)</h4>
+                      <div className="space-y-2">
+                        {selectedMetrics.map(metric => {
+                          const metricInfo = metricsOptions.find(m => m.value === metric);
+                          return (
+                            <div key={metric} className="flex items-center space-x-2 text-sm">
+                              <div className="w-6 h-1 rounded" style={{backgroundColor: metricInfo?.color}}></div>
+                              <span>{metricInfo?.label}</span>
+                            </div>
+                          );
+                        })}
                       </div>
-
-                      {/* Moyennes filtrées (joueuses sélectionnées) */}
-                      <div>
-                        <h4 className="text-sm font-semibold mb-3 text-gray-700">
-                          ⚡ Moyennes période {selectedPlayers.length > 0 && selectedPlayers.length < players.length ? '(sélection)' : '(toutes)'} - pointillés courts
-                        </h4>
-                        <div className="space-y-2">
-                          {selectedMetrics.map(metric => {
-                            const metricInfo = metricsOptions.find(m => m.value === metric);
-                            const filteredAvg = filteredAverages[metric];
-                            return (
-                              <div key={metric} className="flex items-center justify-between text-sm">
-                                <div className="flex items-center space-x-2">
-                                  <div 
-                                    className="w-6 h-1 rounded"
-                                    style={{
-                                      borderTop: `2px dashed ${metricInfo?.color}`,
-                                      borderSpacing: '5px'
-                                    }}
-                                  ></div>
-                                  <span>{metricInfo?.label}:</span>
-                                </div>
-                                <span className="font-semibold text-gray-700">
-                                  {filteredAvg || 'N/A'}/20
-                                </span>
-                              </div>
-                            );
-                          })}
-                        </div>
-                        <p className="text-xs text-gray-500 mt-2 italic">
-                          Moyenne sur toute la période des joueuses {selectedPlayers.length > 0 && selectedPlayers.length < players.length ? 'sélectionnées' : ''}
-                        </p>
-                      </div>
-
-                      {/* Moyennes globales (TOUTES les joueuses) - seulement si filtre actif */}
-                      <div>
-                        <h4 className="text-sm font-semibold mb-3 text-gray-700">
-                          🏆 Moyennes globales équipe {selectedPlayers.length > 0 && selectedPlayers.length < players.length ? '- tirets longs' : ''}
-                        </h4>
-                        <div className="space-y-2">
-                          {selectedMetrics.map(metric => {
-                            const metricInfo = metricsOptions.find(m => m.value === metric);
-                            const globalAvg = globalAverages[metric];
-                            return (
-                              <div key={metric} className="flex items-center justify-between text-sm">
-                                <div className="flex items-center space-x-2">
-                                  {selectedPlayers.length > 0 && selectedPlayers.length < players.length ? (
-                                    <div 
-                                      className="w-6 h-1 rounded"
-                                      style={{
-                                        borderTop: `2.5px dashed ${metricInfo?.color}`,
-                                        borderSpacing: '15px'
-                                      }}
-                                    ></div>
-                                  ) : (
-                                    <div 
-                                      className="w-3 h-3 rounded-full"
-                                      style={{backgroundColor: metricInfo?.color}}
-                                    ></div>
-                                  )}
-                                  <span>{metricInfo?.label}:</span>
-                                </div>
-                                <span className="font-bold text-gray-800">
-                                  {globalAvg || 'N/A'}/20
-                                </span>
-                              </div>
-                            );
-                          })}
-                        </div>
-                        <p className="text-xs text-gray-500 mt-2 italic">
-                          {selectedPlayers.length > 0 && selectedPlayers.length < players.length 
-                            ? `Moyenne des ${players.length} joueuses de l'équipe (référence)` 
-                            : 'Même valeur que moyennes période (toutes sélectionnées)'}
-                        </p>
-                      </div>
+                      <p className="text-xs text-gray-500 mt-2 italic">Moyenne du jour pour les joueuses ayant répondu</p>
                     </div>
 
-                    {/* Informations sur les données */}
-                    <div className="mt-4 p-3 bg-blue-50 rounded-lg">
-                      <p className="text-xs text-blue-800">
-                        <strong>📊 Lecture du graphique:</strong> 
-                        {selectedPlayers.length > 0 && selectedPlayers.length < players.length ? (
-                          <>
-                            Les <strong>lignes pleines épaisses</strong> montrent les performances quotidiennes. 
-                            Les <strong>pointillés courts</strong> (─ ─ ─) représentent la moyenne période des {selectedPlayers.length} joueuse(s) sélectionnée(s). 
-                            Les <strong>tirets longs</strong> (━━ ━━) montrent la moyenne de TOUTE l'équipe ({players.length} joueuses) pour comparaison.
-                          </>
-                        ) : (
-                          <>
-                            Les <strong>lignes pleines épaisses</strong> montrent les performances quotidiennes. 
-                            Les <strong>pointillés courts</strong> représentent la moyenne sur toute la période. 
-                            Quand toutes les joueuses sont sélectionnées, les moyennes période et globales sont identiques.
-                          </>
-                        )}
+                    <div>
+                      <h4 className="text-sm font-semibold mb-3 text-gray-700">
+                        Moyennes période {selectedPlayers.length > 0 && selectedPlayers.length < players.length ? '(sélection)' : '(toutes)'} - pointillés courts
+                      </h4>
+                      <div className="space-y-2">
+                        {selectedMetrics.map(metric => {
+                          const metricInfo = metricsOptions.find(m => m.value === metric);
+                          const filteredAvg = filteredAverages[metric];
+                          return (
+                            <div key={metric} className="flex items-center justify-between text-sm">
+                              <div className="flex items-center space-x-2">
+                                <div className="w-6 h-1 rounded" style={{borderTop: `2px dashed ${metricInfo?.color}`, borderSpacing: '5px'}}></div>
+                                <span>{metricInfo?.label}:</span>
+                              </div>
+                              <span className="font-semibold text-gray-700">{filteredAvg || 'N/A'}/20</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                      <p className="text-xs text-gray-500 mt-2 italic">
+                        Moyenne sur toute la période des joueuses {selectedPlayers.length > 0 && selectedPlayers.length < players.length ? 'sélectionnées' : ''}
+                      </p>
+                    </div>
+
+                    <div>
+                      <h4 className="text-sm font-semibold mb-3 text-gray-700">
+                        Moyennes globales équipe {selectedPlayers.length > 0 && selectedPlayers.length < players.length ? '- tirets longs' : ''}
+                      </h4>
+                      <div className="space-y-2">
+                        {selectedMetrics.map(metric => {
+                          const metricInfo = metricsOptions.find(m => m.value === metric);
+                          const globalAvg = globalAverages[metric];
+                          return (
+                            <div key={metric} className="flex items-center justify-between text-sm">
+                              <div className="flex items-center space-x-2">
+                                {selectedPlayers.length > 0 && selectedPlayers.length < players.length ? (
+                                  <div className="w-6 h-1 rounded" style={{borderTop: `2.5px dashed ${metricInfo?.color}`, borderSpacing: '15px'}}></div>
+                                ) : (
+                                  <div className="w-3 h-3 rounded-full" style={{backgroundColor: metricInfo?.color}}></div>
+                                )}
+                                <span>{metricInfo?.label}:</span>
+                              </div>
+                              <span className="font-bold text-gray-800">{globalAvg || 'N/A'}/20</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                      <p className="text-xs text-gray-500 mt-2 italic">
+                        {selectedPlayers.length > 0 && selectedPlayers.length < players.length 
+                          ? `Moyenne des ${players.length} joueuses de l'équipe (référence)` 
+                          : 'Même valeur que moyennes période (toutes sélectionnées)'}
                       </p>
                     </div>
                   </div>
-                </>
-              );
-            })()}
+
+                  <div className="mt-4 p-3 bg-blue-50 rounded-lg">
+                    <p className="text-xs text-blue-800">
+                      <strong>Lecture du graphique:</strong> 
+                      {selectedPlayers.length > 0 && selectedPlayers.length < players.length ? (
+                        <span> Les lignes pleines épaisses montrent les performances quotidiennes. Les pointillés courts représentent la moyenne période des {selectedPlayers.length} joueuse(s) sélectionnée(s). Les tirets longs montrent la moyenne de TOUTE l'équipe ({players.length} joueuses) pour comparaison.</span>
+                      ) : (
+                        <span> Les lignes pleines épaisses montrent les performances quotidiennes. Les pointillés courts représentent la moyenne sur toute la période. Quand toutes les joueuses sont sélectionnées, les moyennes période et globales sont identiques.</span>
+                      )}
+                    </p>
+                  </div>
+                </div>
+              </>
+            )}
           </div>
 
-          {/* Statistiques contextuelles */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="p-4 bg-blue-50 rounded-lg text-center">
-              <div className="text-3xl font-bold text-blue-600">
-                {selectedPlayers.length > 0 ? selectedPlayers.length : players.length}
-              </div>
+              <div className="text-3xl font-bold text-blue-600">{selectedPlayers.length > 0 ? selectedPlayers.length : players.length}</div>
               <div className="text-sm text-gray-600">Joueuses analysées</div>
             </div>
             <div className="p-4 bg-green-50 rounded-lg text-center">
-              <div className="text-3xl font-bold text-green-600">
-                {selectedMetrics.length}
-              </div>
+              <div className="text-3xl font-bold text-green-600">{selectedMetrics.length}</div>
               <div className="text-sm text-gray-600">Métriques suivies</div>
             </div>
             <div className="p-4 bg-purple-50 rounded-lg text-center">
-              <div className="text-3xl font-bold text-purple-600">
-                {selectedQuestionTypes.length}
-              </div>
+              <div className="text-3xl font-bold text-purple-600">{selectedQuestionTypes.length}</div>
               <div className="text-sm text-gray-600">Types de questionnaire</div>
             </div>
             <div className="p-4 bg-yellow-50 rounded-lg text-center">
-              <div className="text-3xl font-bold text-yellow-600">
-                {Object.values(playerStats).reduce((sum, stat) => sum + (stat.total_responses || 0), 0)}
-              </div>
+              <div className="text-3xl font-bold text-yellow-600">{Object.values(playerStats).reduce((sum, stat) => sum + (stat.total_responses || 0), 0)}</div>
               <div className="text-sm text-gray-600">Réponses totales</div>
             </div>
           </div>
         </div>
 
-        {/* Section 3: Gestion des objectifs */}
         <div className="bg-white rounded-xl shadow-lg p-6">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-2xl font-bold" style={{color: '#1D2945'}}>
               <BarChart3 className="inline mr-2" size={24} />
               Gestion des Objectifs
             </h2>
-            <button
-              onClick={() => setEditingObjectives(!editingObjectives)}
-              className="flex items-center space-x-2 px-4 py-2 bg-blue-500 text-white rounded-lg font-medium hover:bg-blue-600 transition-all"
-            >
+            <button onClick={() => setEditingObjectives(!editingObjectives)} className="flex items-center space-x-2 px-4 py-2 bg-blue-500 text-white rounded-lg font-medium hover:bg-blue-600 transition-all">
               <Edit3 size={16} />
               <span>{editingObjectives ? 'Terminer' : 'Modifier'}</span>
             </button>
           </div>
 
-          {/* Objectifs collectifs */}
           <div className="mb-8">
             <h3 className="text-lg font-semibold mb-3 text-gray-700">Objectifs Collectifs de l'Équipe</h3>
             {editingObjectives ? (
               <div className="space-y-3">
-                <textarea
-                  value={objectifsCollectifs}
-                  onChange={(e) => setObjectifsCollectifs(e.target.value)}
-                  placeholder="Entrez les objectifs collectifs de l'équipe..."
-                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  rows={4}
-                />
-                <button
-                  onClick={saveObjectifsCollectifs}
-                  disabled={loading}
-                  className="px-4 py-2 bg-green-500 text-white rounded-lg font-medium hover:bg-green-600 transition-all disabled:opacity-50"
-                >
+                <textarea value={objectifsCollectifs} onChange={(e) => setObjectifsCollectifs(e.target.value)} placeholder="Entrez les objectifs collectifs de l'équipe..." className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" rows={4} />
+                <button onClick={saveObjectifsCollectifs} disabled={loading} className="px-4 py-2 bg-green-500 text-white rounded-lg font-medium hover:bg-green-600 transition-all disabled:opacity-50">
                   {loading ? 'Sauvegarde...' : 'Sauvegarder'}
                 </button>
               </div>
             ) : (
               <div className="p-4 bg-gray-50 rounded-lg">
-                <p className="text-gray-700">
-                  {objectifsCollectifs || 'Aucun objectif collectif défini.'}
-                </p>
+                <p className="text-gray-700">{objectifsCollectifs || 'Aucun objectif collectif défini.'}</p>
               </div>
             )}
           </div>
 
-          {/* Objectifs individuels */}
           {editingObjectives && (
             <div>
               <h3 className="text-lg font-semibold mb-4 text-gray-700">Objectifs Individuels</h3>
@@ -1126,8 +928,7 @@ const AdminPanel = ({
                         {player.photo_url ? (
                           <img src={player.photo_url} alt={player.name} className="w-full h-full object-cover" />
                         ) : (
-                          <div className="w-full h-full flex items-center justify-center text-white text-sm font-bold" 
-                               style={{background: 'linear-gradient(135deg, #1D2945 0%, #C09D5A 100%)'}}>
+                          <div className="w-full h-full flex items-center justify-center text-white text-sm font-bold" style={{background: 'linear-gradient(135deg, #1D2945 0%, #C09D5A 100%)'}}>
                             {player.name.split(' ').map(n => n[0]).join('')}
                           </div>
                         )}
@@ -1136,49 +937,15 @@ const AdminPanel = ({
                     </div>
                     
                     <div className="mb-4">
-                      <label className="block text-sm font-medium text-blue-700 mb-2">
-                        Objectifs Techniques
-                      </label>
-                      <textarea
-                        value={objectifsIndividuels[player.id] || ''}
-                        onChange={(e) => setObjectifsIndividuels(prev => ({
-                          ...prev,
-                          [player.id]: e.target.value
-                        }))}
-                        placeholder="Objectifs techniques..."
-                        className="w-full p-2 border border-gray-300 rounded focus:ring-1 focus:ring-blue-500"
-                        rows={3}
-                      />
-                      <button
-                        onClick={() => saveObjectifsIndividuels(player.id, objectifsIndividuels[player.id] || '')}
-                        disabled={loading}
-                        className="mt-2 px-3 py-1 bg-blue-500 text-white text-sm rounded hover:bg-blue-600 transition-colors disabled:opacity-50"
-                      >
-                        Sauvegarder
-                      </button>
+                      <label className="block text-sm font-medium text-blue-700 mb-2">Objectifs Techniques</label>
+                      <textarea value={objectifsIndividuels[player.id] || ''} onChange={(e) => setObjectifsIndividuels(prev => ({...prev, [player.id]: e.target.value}))} placeholder="Objectifs techniques..." className="w-full p-2 border border-gray-300 rounded focus:ring-1 focus:ring-blue-500" rows={3} />
+                      <button onClick={() => saveObjectifsIndividuels(player.id, objectifsIndividuels[player.id] || '')} disabled={loading} className="mt-2 px-3 py-1 bg-blue-500 text-white text-sm rounded hover:bg-blue-600 transition-colors disabled:opacity-50">Sauvegarder</button>
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-green-700 mb-2">
-                        Objectifs Mentaux
-                      </label>
-                      <textarea
-                        value={objectifsMentaux[player.id] || ''}
-                        onChange={(e) => setObjectifsMentaux(prev => ({
-                          ...prev,
-                          [player.id]: e.target.value
-                        }))}
-                        placeholder="Objectifs mentaux..."
-                        className="w-full p-2 border border-gray-300 rounded focus:ring-1 focus:ring-green-500"
-                        rows={3}
-                      />
-                      <button
-                        onClick={() => saveObjectifsMentaux(player.id, objectifsMentaux[player.id] || '')}
-                        disabled={loading}
-                        className="mt-2 px-3 py-1 bg-green-500 text-white text-sm rounded hover:bg-green-600 transition-colors disabled:opacity-50"
-                      >
-                        Sauvegarder
-                      </button>
+                      <label className="block text-sm font-medium text-green-700 mb-2">Objectifs Mentaux</label>
+                      <textarea value={objectifsMentaux[player.id] || ''} onChange={(e) => setObjectifsMentaux(prev => ({...prev, [player.id]: e.target.value}))} placeholder="Objectifs mentaux..." className="w-full p-2 border border-gray-300 rounded focus:ring-1 focus:ring-green-500" rows={3} />
+                      <button onClick={() => saveObjectifsMentaux(player.id, objectifsMentaux[player.id] || '')} disabled={loading} className="mt-2 px-3 py-1 bg-green-500 text-white text-sm rounded hover:bg-green-600 transition-colors disabled:opacity-50">Sauvegarder</button>
                     </div>
                   </div>
                 ))}
