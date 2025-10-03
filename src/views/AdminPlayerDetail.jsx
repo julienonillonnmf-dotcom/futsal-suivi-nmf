@@ -145,17 +145,15 @@ const AdminPlayerDetail = ({
           enriched[`${metric}_avg`] = averages[metric];
         }
         
-        // Ajouter l'EMA pour ce point
-        if (emaData[metric] && emaData[metric][index] != null) {
-          const metricValues = filteredData
-            .slice(0, index + 1)
-            .map(d => d[metric])
-            .filter(v => v != null && !isNaN(v));
-          
-          if (metricValues.length > 0) {
-            const emaForMetric = calculateEMA(metricValues, 7);
-            enriched[`${metric}_ema`] = Number(emaForMetric[emaForMetric.length - 1].toFixed(1));
-          }
+        // Ajouter l'EMA pour ce point - calculer sur toutes les valeurs jusqu'à ce point
+        const metricValues = filteredData
+          .slice(0, index + 1)
+          .map(d => d[metric])
+          .filter(v => v != null && !isNaN(v));
+        
+        if (metricValues.length > 0) {
+          const emaForMetric = calculateEMA(metricValues, 7);
+          enriched[`${metric}_ema`] = Number(emaForMetric[emaForMetric.length - 1].toFixed(1));
         }
       });
       
@@ -1062,7 +1060,48 @@ const AdminPlayerDetail = ({
                   selectedPlayer.responses.slice(0, 8).map((response, index) => (
                     <div 
                       key={index} 
-                      className="p-3 border border-gray-200 rounded-lg hover:border-blue-300 hover:bg-blue-50 transition-all"
+                      className="p-3 border border-gray-200 rounded-lg hover:border-blue-300 hover:bg-blue-50 cursor-pointer transition-all group"
+                      onClick={() => {
+                        // Créer une popup/modal avec le détail complet
+                        const modalContent = `
+                          DÉTAIL DE LA RÉPONSE
+                          ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+                          
+                          📅 Date: ${new Date(response.created_at).toLocaleDateString('fr-FR')} à ${new Date(response.created_at).toLocaleTimeString('fr-FR', {hour: '2-digit', minute: '2-digit'})}
+                          👤 Joueuse: ${selectedPlayer.name}
+                          📋 Type: ${response.type === 'pre' ? 'Pré-séance' : response.type === 'post' ? 'Post-séance' : response.type === 'match' ? 'Match' : 'Suivi blessure'}
+                          
+                          ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+                          
+                          DONNÉES COLLECTÉES:
+                          ${Object.entries(response.data || {})
+                            .filter(([key, value]) => value !== null && value !== undefined && value !== '')
+                            .map(([key, value]) => {
+                              const labels = {
+                                motivation: '🔥 Motivation',
+                                fatigue: '😴 Fatigue',
+                                intensite_rpe: '💪 Intensité RPE',
+                                plaisir: '😊 Plaisir',
+                                plaisir_seance: '😊 Plaisir séance',
+                                confiance: '💪 Confiance',
+                                technique: '⚽ Technique',
+                                tactique: '🎯 Tactique',
+                                blessure_actuelle: '🚨 Blessure actuelle',
+                                douleur_niveau: '😣 Niveau douleur',
+                                zone_blessure: '📍 Zone blessée',
+                                commentaires_libres: '💭 Commentaires',
+                                objectifs_atteints: '✅ Objectifs atteints',
+                                difficultes_rencontrees: '⚠️ Difficultés'
+                              };
+                              return `${labels[key] || key}: ${value}${typeof value === 'number' && key !== 'douleur_niveau' ? '/20' : ''}`;
+                            })
+                            .join('\n')}
+                          
+                          ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+                        `;
+                        
+                        alert(modalContent);
+                      }}
                     >
                       <div className="flex justify-between items-center mb-2">
                         <span className={`px-2 py-1 rounded-full text-xs font-medium ${
@@ -1075,9 +1114,14 @@ const AdminPlayerDetail = ({
                            response.type === 'post' ? 'Post-séance' :
                            response.type === 'match' ? 'Match' : 'Blessure'}
                         </span>
-                        <span className="text-xs text-gray-500">
-                          {new Date(response.created_at).toLocaleDateString('fr-FR')}
-                        </span>
+                        <div className="flex items-center space-x-2">
+                          <span className="text-xs text-gray-500">
+                            {new Date(response.created_at).toLocaleDateString('fr-FR')}
+                          </span>
+                          <span className="text-xs text-blue-500 opacity-0 group-hover:opacity-100 transition-opacity">
+                            👁️ Voir détail
+                          </span>
+                        </div>
                       </div>
                       <div className="text-sm space-y-1">
                         {response.data?.motivation && (
@@ -1086,8 +1130,30 @@ const AdminPlayerDetail = ({
                         {response.data?.fatigue && (
                           <p><span className="font-medium">Fatigue:</span> {response.data.fatigue}/20</p>
                         )}
+                        {response.data?.intensite_rpe && (
+                          <p><span className="font-medium">RPE:</span> {response.data.intensite_rpe}/20</p>
+                        )}
+                        {response.data?.plaisir && (
+                          <p><span className="font-medium">Plaisir:</span> {response.data.plaisir}/20</p>
+                        )}
+                        {response.data?.plaisir_seance && (
+                          <p><span className="font-medium">Plaisir:</span> {response.data.plaisir_seance}/20</p>
+                        )}
                         {response.data?.commentaires_libres && (
                           <p className="text-gray-600 italic">"{response.data.commentaires_libres}"</p>
+                        )}
+                        {response.data?.blessure_actuelle === 'oui' && (
+                          <p className="text-red-600 font-medium">⚠️ Blessure signalée</p>
+                        )}
+                        {(response.data?.technique || response.data?.tactique) && (
+                          <div className="flex space-x-4">
+                            {response.data?.technique && (
+                              <p><span className="font-medium">Tech:</span> {response.data.technique}/20</p>
+                            )}
+                            {response.data?.tactique && (
+                              <p><span className="font-medium">Tact:</span> {response.data.tactique}/20</p>
+                            )}
+                          </div>
                         )}
                       </div>
                     </div>
@@ -1098,6 +1164,24 @@ const AdminPlayerDetail = ({
                   </p>
                 )}
               </div>
+              
+              {selectedPlayer.responses && selectedPlayer.responses.length > 8 && (
+                <div className="text-center mt-4">
+                  <button
+                    onClick={() => {
+                      // Afficher toutes les réponses dans une popup
+                      const allResponses = selectedPlayer.responses.map((response, index) => 
+                        `${index + 1}. ${response.type === 'pre' ? 'Pré-séance' : response.type === 'post' ? 'Post-séance' : response.type === 'match' ? 'Match' : 'Blessure'} - ${new Date(response.created_at).toLocaleDateString('fr-FR')}`
+                      ).join('\n');
+                      
+                      alert(`TOUTES LES RÉPONSES (${selectedPlayer.responses.length})\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n${allResponses}\n\n💡 Cliquez sur une réponse individuelle pour voir le détail complet.`);
+                    }}
+                    className="text-sm text-blue-600 hover:text-blue-800 underline"
+                  >
+                    Voir toutes les réponses ({selectedPlayer.responses.length})
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </div>
