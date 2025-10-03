@@ -26,6 +26,8 @@ const AdminPanel = ({
   const [selectedPlayers, setSelectedPlayers] = useState([]); // Filtre joueuses
   const [selectedMetrics, setSelectedMetrics] = useState(['motivation']); // Métriques sélectionnées (multiple)
   const [selectedQuestionTypes, setSelectedQuestionTypes] = useState(['all']); // Types questionnaire (multiple)
+  const [startDate, setStartDate] = useState(''); // Date de début
+  const [endDate, setEndDate] = useState(''); // Date de fin
 
   // Options de métriques disponibles
   const metricsOptions = [
@@ -80,6 +82,12 @@ const AdminPanel = ({
       
       filteredResponses.forEach(response => {
         const date = new Date(response.created_at).toLocaleDateString('fr-FR');
+        const responseDate = new Date(response.created_at);
+        
+        // Filtrer par période si dates définies
+        if (startDate && new Date(startDate) > responseDate) return;
+        if (endDate && new Date(endDate) < responseDate) return;
+        
         allDates.add(date);
         
         // Stocker les réponses groupées par date
@@ -727,10 +735,17 @@ const AdminPanel = ({
             {/* Résumé des filtres actifs */}
             <div className="mt-4 pt-4 border-t border-gray-200">
               <div className="flex items-center justify-between text-sm">
-                <div className="flex items-center space-x-4">
+                <div className="flex items-center space-x-4 flex-wrap gap-2">
                   <span className="text-gray-600">
                     <strong>Filtres actifs:</strong>
                   </span>
+                  {(startDate || endDate) && (
+                    <span className="bg-purple-100 text-purple-800 px-2 py-1 rounded-full text-xs">
+                      📅 {startDate ? new Date(startDate).toLocaleDateString('fr-FR', {day: '2-digit', month: 'short'}) : '...'} 
+                      {' → '}
+                      {endDate ? new Date(endDate).toLocaleDateString('fr-FR', {day: '2-digit', month: 'short'}) : '...'}
+                    </span>
+                  )}
                   <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs">
                     {selectedPlayers.length === 0 ? `${players.length} joueuses` : `${selectedPlayers.length} joueuses`}
                   </span>
@@ -746,6 +761,8 @@ const AdminPanel = ({
                     setSelectedPlayers([]);
                     setSelectedMetrics(['motivation']);
                     setSelectedQuestionTypes(['all']);
+                    setStartDate('');
+                    setEndDate('');
                   }}
                   className="text-gray-500 hover:text-gray-700 text-xs underline"
                 >
