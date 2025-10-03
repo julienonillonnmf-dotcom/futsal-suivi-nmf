@@ -1,4 +1,4 @@
-// views/AdminPanel.jsx - Version complète avec filtre de période
+// views/AdminPanel.jsx - Version complète avec filtres modernes
 import React, { useState } from 'react';
 import { ChevronLeft, Edit3, UserPlus, Download, Trash2, Filter, TrendingUp, BarChart3, Users, Calendar } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
@@ -451,17 +451,31 @@ const AdminPanel = ({
             Statistiques et Analyses
           </h2>
           
-          <div className="bg-gray-50 rounded-lg p-6 mb-6">
-            <h3 className="text-lg font-semibold mb-4 text-gray-700 flex items-center">
-              <Filter size={20} className="mr-2" />
-              Filtres d'Analyse
-            </h3>
+          <div className="bg-gradient-to-br from-gray-50 to-blue-50 rounded-lg p-6 mb-6 border border-gray-200">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-lg font-semibold text-gray-800 flex items-center">
+                <Filter size={20} className="mr-2 text-blue-600" />
+                Filtres d'Analyse
+              </h3>
+              <button
+                onClick={() => {
+                  setSelectedPlayers([]);
+                  setSelectedMetrics(['motivation']);
+                  setSelectedQuestionTypes(['all']);
+                  setStartDate('');
+                  setEndDate('');
+                }}
+                className="px-3 py-1.5 bg-gray-100 text-gray-700 text-xs rounded-lg hover:bg-gray-200 transition-all font-medium"
+              >
+                Réinitialiser tous
+              </button>
+            </div>
             
             {/* FILTRE DE PÉRIODE */}
-            <div className="mb-6 pb-6 border-b-2 border-gray-300">
-              <div className="flex items-center justify-between mb-4">
+            <div className="bg-white rounded-lg p-4 mb-4 border-2 border-purple-200 shadow-sm">
+              <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center space-x-2">
-                  <Calendar size={20} className="text-purple-600" />
+                  <Calendar size={18} className="text-purple-600" />
                   <label className="text-sm font-semibold text-gray-700">Période d'analyse</label>
                 </div>
                 <button
@@ -469,91 +483,110 @@ const AdminPanel = ({
                     setStartDate('');
                     setEndDate('');
                   }}
-                  className="px-3 py-1 bg-purple-100 text-purple-700 text-sm rounded-lg hover:bg-purple-200 transition-all font-medium"
+                  className="px-2 py-1 bg-purple-100 text-purple-700 text-xs rounded hover:bg-purple-200 transition-all font-medium"
                 >
-                  Toute la période
+                  Tout
                 </button>
               </div>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="bg-white border-2 border-purple-200 rounded-lg p-4">
-                  <label className="block text-xs font-semibold text-purple-700 mb-2">Date de début</label>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Date de début</label>
                   <input
                     type="date"
                     value={startDate}
                     onChange={(e) => setStartDate(e.target.value)}
-                    className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                    className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
                   />
                 </div>
-                <div className="bg-white border-2 border-purple-200 rounded-lg p-4">
-                  <label className="block text-xs font-semibold text-purple-700 mb-2">Date de fin</label>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Date de fin</label>
                   <input
                     type="date"
                     value={endDate}
                     onChange={(e) => setEndDate(e.target.value)}
                     min={startDate}
-                    className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                    className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
                   />
                 </div>
               </div>
               
               {(startDate || endDate) && (
-                <div className="mt-4 p-3 bg-purple-50 border-2 border-purple-300 rounded-lg">
-                  <p className="text-sm text-purple-900 font-medium">
-                    Période sélectionnée : {startDate ? new Date(startDate).toLocaleDateString('fr-FR') : 'Début'} → {endDate ? new Date(endDate).toLocaleDateString('fr-FR') : 'Fin'}
+                <div className="mt-3 p-2 bg-purple-50 border border-purple-300 rounded">
+                  <p className="text-xs text-purple-900 font-medium">
+                    📅 {startDate ? new Date(startDate).toLocaleDateString('fr-FR') : '...'} → {endDate ? new Date(endDate).toLocaleDateString('fr-FR') : '...'}
                   </p>
                 </div>
               )}
             </div>
             
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              <div>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+              {/* Filtre Joueuses */}
+              <div className="bg-white rounded-lg p-4 border-2 border-blue-200 shadow-sm">
                 <div className="flex items-center justify-between mb-3">
-                  <label className="block text-sm font-medium text-gray-700">Joueuses</label>
-                  <div className="flex space-x-2">
-                    <button onClick={() => setSelectedPlayers([])} className="px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded hover:bg-blue-200 transition-all">Toutes</button>
-                    <button onClick={() => setSelectedPlayers(players.map(p => p.id))} className="px-2 py-1 bg-green-100 text-green-700 text-xs rounded hover:bg-green-200 transition-all">Sélectionner</button>
-                    <button onClick={() => setSelectedPlayers([])} className="px-2 py-1 bg-red-100 text-red-700 text-xs rounded hover:bg-red-200 transition-all">Aucune</button>
+                  <label className="block text-sm font-semibold text-gray-700">Joueuses</label>
+                  <div className="flex space-x-1">
+                    <button 
+                      onClick={() => setSelectedPlayers([])} 
+                      className="px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded hover:bg-blue-200 transition-all"
+                    >
+                      Toutes
+                    </button>
+                    <button 
+                      onClick={() => setSelectedPlayers(players.map(p => p.id))} 
+                      className="px-2 py-1 bg-green-100 text-green-700 text-xs rounded hover:bg-green-200 transition-all"
+                    >
+                      Sélectionner
+                    </button>
                   </div>
                 </div>
                 
-                <div className="relative">
-                  <select 
-                    multiple
-                    size="6"
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-sm"
-                    value={selectedPlayers}
-                    onChange={(e) => {
-                      const values = Array.from(e.target.selectedOptions, option => option.value);
-                      setSelectedPlayers(values);
-                    }}
-                  >
-                    {players.map(player => (
-                      <option key={player.id} value={player.id} className="py-1 px-2 hover:bg-blue-50">
-                        {player.name}
-                      </option>
-                    ))}
-                  </select>
-                  
-                  <p className="text-xs text-gray-500 mt-2">
-                    {selectedPlayers.length === 0 ? `Toutes sélectionnées (${players.length})` : `${selectedPlayers.length} sélectionnée(s)`}
-                  </p>
-                </div>
+                <select 
+                  multiple
+                  size="6"
+                  className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-sm"
+                  value={selectedPlayers}
+                  onChange={(e) => {
+                    const values = Array.from(e.target.selectedOptions, option => option.value);
+                    setSelectedPlayers(values);
+                  }}
+                >
+                  {players.map(player => (
+                    <option key={player.id} value={player.id} className="py-1 px-2 hover:bg-blue-50">
+                      {player.name}
+                    </option>
+                  ))}
+                </select>
+                
+                <p className="text-xs text-gray-600 mt-2">
+                  {selectedPlayers.length === 0 ? `Toutes (${players.length})` : `${selectedPlayers.length} sélectionnée(s)`}
+                </p>
               </div>
 
-              <div>
+              {/* Filtre Métriques */}
+              <div className="bg-white rounded-lg p-4 border-2 border-green-200 shadow-sm">
                 <div className="flex items-center justify-between mb-3">
-                  <label className="block text-sm font-medium text-gray-700">Métriques</label>
-                  <div className="flex space-x-2">
-                    <button onClick={() => setSelectedMetrics(metricsOptions.map(m => m.value))} className="px-2 py-1 bg-green-100 text-green-700 text-xs rounded hover:bg-green-200 transition-all">Toutes</button>
-                    <button onClick={() => setSelectedMetrics([])} className="px-2 py-1 bg-red-100 text-red-700 text-xs rounded hover:bg-red-200 transition-all">Aucune</button>
+                  <label className="block text-sm font-semibold text-gray-700">Métriques</label>
+                  <div className="flex space-x-1">
+                    <button 
+                      onClick={() => setSelectedMetrics(metricsOptions.map(m => m.value))} 
+                      className="px-2 py-1 bg-green-100 text-green-700 text-xs rounded hover:bg-green-200 transition-all"
+                    >
+                      Toutes
+                    </button>
+                    <button 
+                      onClick={() => setSelectedMetrics([])} 
+                      className="px-2 py-1 bg-red-100 text-red-700 text-xs rounded hover:bg-red-200 transition-all"
+                    >
+                      Aucune
+                    </button>
                   </div>
                 </div>
                 
-                <div className="bg-white border border-gray-200 rounded-lg p-3 max-h-60 overflow-y-auto">
+                <div className="max-h-48 overflow-y-auto pr-1">
                   <div className="space-y-2">
                     {metricsOptions.map(metric => (
-                      <label key={metric.value} className="flex items-center space-x-3 p-2 rounded hover:bg-gray-50 cursor-pointer transition-colors">
+                      <label key={metric.value} className="flex items-center space-x-2 p-2 rounded hover:bg-gray-50 cursor-pointer transition-colors">
                         <input
                           type="checkbox"
                           checked={selectedMetrics.includes(metric.value)}
@@ -567,65 +600,76 @@ const AdminPanel = ({
                           className="w-4 h-4 text-green-600 border-gray-300 rounded focus:ring-green-500"
                         />
                         <div className="flex items-center space-x-2 flex-1">
-                          <div className="w-4 h-4 rounded" style={{backgroundColor: metric.color}}></div>
+                          <div className="w-3 h-3 rounded" style={{backgroundColor: metric.color}}></div>
                           <span className="text-sm text-gray-700">{metric.label}</span>
                         </div>
                       </label>
                     ))}
                   </div>
                 </div>
-                <p className="text-xs text-gray-500 mt-2">{selectedMetrics.length} métrique(s) sélectionnée(s)</p>
+                
+                <p className="text-xs text-gray-600 mt-2">{selectedMetrics.length} métrique(s) sélectionnée(s)</p>
               </div>
 
-              <div>
+              {/* Filtre Types questionnaires */}
+              <div className="bg-white rounded-lg p-4 border-2 border-purple-200 shadow-sm">
                 <div className="flex items-center justify-between mb-3">
-                  <label className="block text-sm font-medium text-gray-700">Types questionnaires</label>
-                  <div className="flex space-x-2">
-                    <button onClick={() => setSelectedQuestionTypes(['all'])} className="px-2 py-1 bg-purple-100 text-purple-700 text-xs rounded hover:bg-purple-200 transition-all">Tous</button>
-                    <button onClick={() => setSelectedQuestionTypes([])} className="px-2 py-1 bg-red-100 text-red-700 text-xs rounded hover:bg-red-200 transition-all">Aucun</button>
+                  <label className="block text-sm font-semibold text-gray-700">Types questionnaires</label>
+                  <div className="flex space-x-1">
+                    <button 
+                      onClick={() => setSelectedQuestionTypes(['all'])} 
+                      className="px-2 py-1 bg-purple-100 text-purple-700 text-xs rounded hover:bg-purple-200 transition-all"
+                    >
+                      Tous
+                    </button>
+                    <button 
+                      onClick={() => setSelectedQuestionTypes([])} 
+                      className="px-2 py-1 bg-red-100 text-red-700 text-xs rounded hover:bg-red-200 transition-all"
+                    >
+                      Aucun
+                    </button>
                   </div>
                 </div>
                 
-                <div className="bg-white border border-gray-200 rounded-lg p-3 max-h-60 overflow-y-auto">
-                  <div className="space-y-2">
-                    {questionTypeOptions.map(type => (
-                      <label key={type.value} className="flex items-center space-x-3 p-2 rounded hover:bg-gray-50 cursor-pointer transition-colors">
-                        <input
-                          type="checkbox"
-                          checked={selectedQuestionTypes.includes(type.value)}
-                          onChange={() => {
-                            if (type.value === 'all') {
-                              if (selectedQuestionTypes.includes('all')) {
-                                setSelectedQuestionTypes([]);
-                              } else {
-                                setSelectedQuestionTypes(['all']);
-                              }
+                <div className="space-y-2">
+                  {questionTypeOptions.map(type => (
+                    <label key={type.value} className="flex items-center space-x-2 p-2 rounded hover:bg-gray-50 cursor-pointer transition-colors">
+                      <input
+                        type="checkbox"
+                        checked={selectedQuestionTypes.includes(type.value)}
+                        onChange={() => {
+                          if (type.value === 'all') {
+                            if (selectedQuestionTypes.includes('all')) {
+                              setSelectedQuestionTypes([]);
                             } else {
-                              const newTypes = selectedQuestionTypes.filter(t => t !== 'all');
-                              if (selectedQuestionTypes.includes(type.value)) {
-                                setSelectedQuestionTypes(newTypes.filter(t => t !== type.value));
-                              } else {
-                                setSelectedQuestionTypes([...newTypes, type.value]);
-                              }
+                              setSelectedQuestionTypes(['all']);
                             }
-                          }}
-                          className="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
-                        />
-                        <div className="flex items-center space-x-2 flex-1">
-                          <div className={`w-3 h-3 rounded-full ${
-                            type.value === 'all' ? 'bg-gray-500' :
-                            type.value === 'pre' ? 'bg-blue-500' :
-                            type.value === 'post' ? 'bg-green-500' :
-                            type.value === 'match' ? 'bg-purple-500' :
-                            'bg-yellow-500'
-                          }`}></div>
-                          <span className="text-sm text-gray-700">{type.label}</span>
-                        </div>
-                      </label>
-                    ))}
-                  </div>
+                          } else {
+                            const newTypes = selectedQuestionTypes.filter(t => t !== 'all');
+                            if (selectedQuestionTypes.includes(type.value)) {
+                              setSelectedQuestionTypes(newTypes.filter(t => t !== type.value));
+                            } else {
+                              setSelectedQuestionTypes([...newTypes, type.value]);
+                            }
+                          }
+                        }}
+                        className="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
+                      />
+                      <div className="flex items-center space-x-2 flex-1">
+                        <div className={`w-3 h-3 rounded-full ${
+                          type.value === 'all' ? 'bg-gray-500' :
+                          type.value === 'pre' ? 'bg-blue-500' :
+                          type.value === 'post' ? 'bg-green-500' :
+                          type.value === 'match' ? 'bg-purple-500' :
+                          'bg-yellow-500'
+                        }`}></div>
+                        <span className="text-sm text-gray-700">{type.label}</span>
+                      </div>
+                    </label>
+                  ))}
                 </div>
-                <p className="text-xs text-gray-500 mt-2">
+                
+                <p className="text-xs text-gray-600 mt-2">
                   {selectedQuestionTypes.length === 0 ? 'Aucun sélectionné' : 
                    selectedQuestionTypes.includes('all') ? 'Tous les questionnaires' :
                    `${selectedQuestionTypes.length} type(s) sélectionné(s)`}
@@ -633,42 +677,30 @@ const AdminPanel = ({
               </div>
             </div>
 
-            <div className="mt-4 pt-4 border-t border-gray-200">
+            {/* Résumé des filtres actifs */}
+            <div className="mt-4 p-3 bg-white rounded-lg border border-gray-200">
               <div className="flex items-center justify-between text-sm flex-wrap gap-2">
-                <div className="flex items-center space-x-4 flex-wrap gap-2">
-                  <span className="text-gray-600"><strong>Filtres actifs:</strong></span>
+                <div className="flex items-center space-x-3 flex-wrap gap-2">
+                  <span className="text-gray-700 font-medium">Filtres actifs:</span>
                   {(startDate || endDate) && (
-                    <span className="bg-purple-100 text-purple-800 px-2 py-1 rounded-full text-xs">
-                      {startDate ? new Date(startDate).toLocaleDateString('fr-FR', {day: '2-digit', month: 'short'}) : '...'} → {endDate ? new Date(endDate).toLocaleDateString('fr-FR', {day: '2-digit', month: 'short'}) : '...'}
+                    <span className="bg-purple-100 text-purple-800 px-2 py-1 rounded-full text-xs font-medium">
+                      📅 {startDate ? new Date(startDate).toLocaleDateString('fr-FR', {day: '2-digit', month: 'short'}) : '...'} → {endDate ? new Date(endDate).toLocaleDateString('fr-FR', {day: '2-digit', month: 'short'}) : '...'}
                     </span>
                   )}
-                  <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs">
-                    {selectedPlayers.length === 0 ? `${players.length} joueuses` : `${selectedPlayers.length} joueuses`}
+                  <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs font-medium">
+                    👤 {selectedPlayers.length === 0 ? `${players.length} joueuses` : `${selectedPlayers.length} joueuses`}
                   </span>
-                  <span className="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs">
-                    {selectedMetrics.length} métriques
+                  <span className="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs font-medium">
+                    📊 {selectedMetrics.length} métriques
                   </span>
-                  <span className="bg-purple-100 text-purple-800 px-2 py-1 rounded-full text-xs">
-                    {selectedQuestionTypes.includes('all') ? 'Tous types' : `${selectedQuestionTypes.length} types`}
+                  <span className="bg-purple-100 text-purple-800 px-2 py-1 rounded-full text-xs font-medium">
+                    📋 {selectedQuestionTypes.includes('all') ? 'Tous types' : `${selectedQuestionTypes.length} types`}
                   </span>
                 </div>
-                <button
-                  onClick={() => {
-                    setSelectedPlayers([]);
-                    setSelectedMetrics(['motivation']);
-                    setSelectedQuestionTypes(['all']);
-                    setStartDate('');
-                    setEndDate('');
-                  }}
-                  className="text-gray-500 hover:text-gray-700 text-xs underline"
-                >
-                  Réinitialiser filtres
-                </button>
               </div>
             </div>
           </div>
 
-          {/* Graphique - suite dans le prochain message si nécessaire */}
           <div className="mb-6">
             <h3 className="text-lg font-semibold mb-4 text-gray-700">
               Évolution Temporelle des Métriques Sélectionnées
@@ -737,6 +769,7 @@ const AdminPanel = ({
                           dot={{ fill: metricInfo?.color, strokeWidth: 2, r: 5 }}
                           activeDot={{ r: 7, stroke: metricInfo?.color, strokeWidth: 2 }}
                           name={`${metricInfo?.label} (jour)`}
+                          connectNulls
                         />
                       );
                     })}
@@ -901,7 +934,7 @@ const AdminPanel = ({
           </h2>
 
           {/* Filtres spécifiques aux blessures */}
-          <div className="bg-red-50 rounded-lg p-4 mb-6 border-2 border-red-200">
+          <div className="bg-red-50 rounded-lg p-4 mb-6 border-2 border-red-200 shadow-sm">
             <h3 className="text-sm font-semibold mb-3 text-red-800 flex items-center">
               <Filter size={16} className="mr-2" />
               Filtres du graphique blessures
@@ -1007,29 +1040,24 @@ const AdminPanel = ({
               const responses = player.responses || [];
               const injuryResponses = responses.filter(r => {
                 const responseDate = new Date(r.created_at);
-                // Utiliser les filtres spécifiques aux blessures
                 if (injuryStartDate && new Date(injuryStartDate) > responseDate) return false;
                 if (injuryEndDate && new Date(injuryEndDate) < responseDate) return false;
                 
-                // Vérifier si c'est un questionnaire de type injury OU s'il y a des blessures dans le tableau injuries
                 return r.type === 'injury' || (r.data?.injuries && r.data.injuries.length > 0);
               });
 
               injuryResponses.forEach(response => {
                 const date = new Date(response.created_at).toLocaleDateString('fr-FR');
                 
-                // Les blessures sont dans un tableau injuries
                 const injuries = response.data?.injuries || [];
                 
                 injuries.forEach(injury => {
-                  // Les vrais noms des champs dans InjuryComponent
                   const zone = injury.location || injury.zone || 'Non spécifiée';
                   const douleur = injury.intensity || injury.douleur || 0;
                   const status = injury.status || injury.active || 'unknown';
                   
                   totalInjuries++;
                   
-                  // Vérifier si la blessure est active
                   if (status === 'active' || status === 'oui' || injury.active === true) {
                     activeInjuries++;
                   }
@@ -1155,6 +1183,7 @@ const AdminPanel = ({
                             strokeWidth={3}
                             dot={{ fill: '#dc2626', strokeWidth: 2, r: 5 }}
                             name="Nombre de blessures"
+                            connectNulls
                           />
                           <Line 
                             type="monotone" 
@@ -1164,6 +1193,7 @@ const AdminPanel = ({
                             strokeDasharray="5 5"
                             dot={{ fill: '#f59e0b', strokeWidth: 2, r: 4 }}
                             name="Douleur moyenne"
+                            connectNulls
                           />
                         </LineChart>
                       </ResponsiveContainer>
@@ -1267,12 +1297,10 @@ const AdminPanel = ({
           </div>
 
           {(() => {
-            // Filtrer les joueuses pour l'analyse
             const playersToAnalyze = injurySelectedPlayers.length > 0 
               ? players.filter(p => injurySelectedPlayers.includes(p.id))
               : players;
 
-            // Collecter toutes les blessures avec leurs dates
             const injuriesWithDates = [];
             playersToAnalyze.forEach(player => {
               const responses = player.responses || [];
@@ -1302,14 +1330,12 @@ const AdminPanel = ({
               );
             }
 
-            // Pour chaque blessure, récupérer les métriques des 7 jours précédents
             const metricsBeforeInjury = [];
             const metricsNormalPeriods = [];
 
             playersToAnalyze.forEach(player => {
               const responses = player.responses || [];
               
-              // Dates de blessures pour ce joueur
               const playerInjuryDates = injuriesWithDates
                 .filter(i => i.playerId === player.id)
                 .map(i => i.date.getTime());
@@ -1320,7 +1346,6 @@ const AdminPanel = ({
                 const responseDate = new Date(response.created_at);
                 const responseTime = responseDate.getTime();
                 
-                // Chercher si une blessure survient dans les 7 jours suivants
                 const hasInjuryWithin7Days = playerInjuryDates.some(injuryTime => {
                   const daysDiff = (injuryTime - responseTime) / (1000 * 60 * 60 * 24);
                   return daysDiff >= 0 && daysDiff <= 7;
@@ -1342,7 +1367,6 @@ const AdminPanel = ({
               });
             });
 
-            // Calculer les moyennes
             const calculateAvg = (arr, key) => {
               const values = arr.map(m => m[key]).filter(v => v > 0);
               return values.length > 0 ? (values.reduce((a, b) => a + b, 0) / values.length).toFixed(1) : 0;
@@ -1364,7 +1388,6 @@ const AdminPanel = ({
               confiance: calculateAvg(metricsNormalPeriods, 'confiance')
             };
 
-            // Calculer les différences
             const differences = {
               motivation: (avgBeforeInjury.motivation - avgNormal.motivation).toFixed(1),
               fatigue: (avgBeforeInjury.fatigue - avgNormal.fatigue).toFixed(1),
@@ -1391,7 +1414,6 @@ const AdminPanel = ({
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {/* Motivation */}
                     <div className="border-2 border-blue-200 rounded-lg p-4 bg-gradient-to-br from-blue-50 to-white">
                       <h4 className="text-sm font-semibold text-blue-800 mb-3">💪 Motivation</h4>
                       <div className="space-y-2 text-sm">
@@ -1414,7 +1436,6 @@ const AdminPanel = ({
                       </div>
                     </div>
 
-                    {/* Fatigue */}
                     <div className="border-2 border-red-200 rounded-lg p-4 bg-gradient-to-br from-red-50 to-white">
                       <h4 className="text-sm font-semibold text-red-800 mb-3">😴 Fatigue</h4>
                       <div className="space-y-2 text-sm">
@@ -1438,7 +1459,6 @@ const AdminPanel = ({
                       <p className="text-xs text-gray-500 mt-2 italic">Note: Échelle inversée (20 = en forme)</p>
                     </div>
 
-                    {/* RPE */}
                     <div className="border-2 border-orange-200 rounded-lg p-4 bg-gradient-to-br from-orange-50 to-white">
                       <h4 className="text-sm font-semibold text-orange-800 mb-3">💥 Intensité RPE</h4>
                       <div className="space-y-2 text-sm">
@@ -1461,7 +1481,6 @@ const AdminPanel = ({
                       </div>
                     </div>
 
-                    {/* Plaisir */}
                     <div className="border-2 border-green-200 rounded-lg p-4 bg-gradient-to-br from-green-50 to-white">
                       <h4 className="text-sm font-semibold text-green-800 mb-3">😊 Plaisir</h4>
                       <div className="space-y-2 text-sm">
@@ -1484,7 +1503,6 @@ const AdminPanel = ({
                       </div>
                     </div>
 
-                    {/* Confiance */}
                     <div className="border-2 border-purple-200 rounded-lg p-4 bg-gradient-to-br from-purple-50 to-white">
                       <h4 className="text-sm font-semibold text-purple-800 mb-3">💪 Confiance</h4>
                       <div className="space-y-2 text-sm">
@@ -1507,7 +1525,6 @@ const AdminPanel = ({
                       </div>
                     </div>
 
-                    {/* Nombre de blessures */}
                     <div className="border-2 border-gray-200 rounded-lg p-4 bg-gradient-to-br from-gray-50 to-white">
                       <h4 className="text-sm font-semibold text-gray-800 mb-3">📊 Échantillon</h4>
                       <div className="space-y-2 text-sm">
@@ -1530,7 +1547,6 @@ const AdminPanel = ({
                   </div>
                 </div>
 
-                {/* Interprétation et recommandations */}
                 <div className="bg-green-50 border border-green-200 rounded-lg p-4">
                   <h3 className="text-sm font-bold text-green-800 mb-3">💡 Interprétation prudente</h3>
                   <div className="text-sm text-green-700 space-y-2">
