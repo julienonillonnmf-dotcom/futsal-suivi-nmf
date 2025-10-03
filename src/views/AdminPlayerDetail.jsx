@@ -1,5 +1,5 @@
-// views/AdminPlayerDetail.jsx - Version avec suivi des blessures par joueuse
-import React, { useState, useRef } from 'react';
+// views/AdminPlayerDetail.jsx - Version complète avec filtres et moyennes
+import React, { useState, useRef, useMemo } from 'react';
 import { 
   ChevronLeft, 
   Camera, 
@@ -12,7 +12,8 @@ import {
   Brain,
   Calendar,
   BarChart3,
-  MessageSquare
+  MessageSquare,
+  Filter
 } from 'lucide-react';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { resizeImage } from '../utils/imageUtils';
@@ -43,10 +44,126 @@ const AdminPlayerDetail = ({
   // Filtres pour les blessures
   const [injuryStartDate, setInjuryStartDate] = useState('');
   const [injuryEndDate, setInjuryEndDate] = useState('');
+  
+  // Filtres pour les métriques
+  const [metricsStartDate, setMetricsStartDate] = useState('');
+  const [metricsEndDate, setMetricsEndDate] = useState('');
+  const [selectedMetricsToDisplay, setSelectedMetricsToDisplay] = useState(['motivation', 'fatigue', 'intensite_rpe', 'plaisir']);
 
   if (!selectedPlayer) return null;
 
   const stats = playerStats[selectedPlayer.id] || {};
+
+  // Options de métriques disponibles
+  const availableMetrics = [
+    { value: 'motivation', label: 'Motivation', color: '#2563eb' },
+    { value: 'fatigue', label: 'Fatigue', color: '#dc2626' },
+    { value: 'intensite_rpe', label: 'RPE', color: '#f59e0b' },
+    { value: 'plaisir', label: 'Plaisir', color: '#10b981' },
+    { value: 'plaisir_seance', label: 'Plaisir séance', color: '#059669' },
+    { value: 'confiance', label: 'Confiance', color: '#8b5cf6' },
+    { value: 'technique', label: 'Technique', color: '#ec4899' },
+    { value: 'tactique', label: 'Tactique', color: '#6366f1' }
+  ];
+
+  // Calcul de la moyenne mobile exponentielle (EMA)
+  const calculateEMA = (data, period = 7) => {
+    if (data.length === 0) return [];
+    
+    const multiplier = 2 / (period + 1);
+    const ema = [];
+    
+    // Premier point = valeur réelle
+    ema.push(data[0]);
+    
+    // Calcul EMA pour les points suivants
+    for (let i = 1; i < data.length; i++) {
+      const emaValue = (data[i] - ema[i - 1]) * multiplier + ema[i - 1];
+      ema.push(emaValue);
+    }
+    
+    return ema;
+  };
+
+  // Traitement des données du graphique avec tri et filtres
+  const processedChartData = useMemo(() => {
+    if (!stats.chartData || stats.chartData.length === 0) return { chartData: [], averages: {}, emaData: {} };
+    
+    // Filtrer par date
+    let filteredData = stats.chartData.filter(item => {
+      const [day, month, year] = item.date.split('/');
+      const itemDate = new Date(year, month - 1, day);
+      
+      if (metricsStartDate) {
+        const startDate = new Date(metricsStartDate);
+        if (itemDate < startDate) return false;
+      }
+      
+      if (metricsEndDate) {
+        const endDate = new Date(metricsEndDate);
+        if (itemDate > endDate) return false;
+      }
+      
+      return true;
+    });
+    
+    // Trier chronologiquement
+    filteredData.sort((a, b) => {
+      const [dayA, monthA, yearA] = a.date.split('/');
+      const [dayB, monthB, yearB] = b.date.split('/');
+      const dateA = new Date(yearA, monthA - 1, dayA);
+      const dateB = new Date(yearB, monthB - 1, dayB);
+      return dateA - dateB;
+    });
+    
+    // Calculer les moyennes sur la période pour chaque métrique
+    const averages = {};
+    const emaData = {};
+    
+    selectedMetricsToDisplay.forEach(metric => {
+      const values = filteredData
+        .map(item => item[metric])
+        .filter(val => val != null && !isNaN(val))
+        .map(val => Number(val));
+      
+      if (values.length > 0) {
+        const avg = values.reduce((sum, val) => sum + val, 0) / values.length;
+        averages[metric] = Number(avg.toFixed(1));
+        
+        // Calculer l'EMA
+        const emaValues = calculateEMA(values, 7);
+        emaData[metric] = emaValues;
+      }
+    });
+    
+    // Ajouter les moyennes et EMA aux données du graphique
+    const enrichedData = filteredData.map((item, index) => {
+      const enriched = { ...item };
+      
+      selectedMetricsToDisplay.forEach(metric => {
+        if (averages[metric] != null) {
+          enriched[`${metric}_avg`] = averages[metric];
+        }
+        
+        // Ajouter l'EMA pour ce point
+        if (emaData[metric] && emaData[metric][index] != null) {
+          const metricValues = filteredData
+            .slice(0, index + 1)
+            .map(d => d[metric])
+            .filter(v => v != null && !isNaN(v));
+          
+          if (metricValues.length > 0) {
+            const emaForMetric = calculateEMA(metricValues, 7);
+            enriched[`${metric}_ema`] = Number(emaForMetric[emaForMetric.length - 1].toFixed(1));
+          }
+        }
+      });
+      
+      return enriched;
+    });
+    
+    return { chartData: enrichedData, averages, emaData };
+  }, [stats.chartData, metricsStartDate, metricsEndDate, selectedMetricsToDisplay]);
 
   // Initialiser les objectifs temporaires
   React.useEffect(() => {
@@ -54,42 +171,37 @@ const AdminPlayerDetail = ({
     setTempMentalObjectives(objectifsMentaux[selectedPlayer.id] || '');
   }, [selectedPlayer.id, objectifsIndividuels, objectifsMentaux]);
 
-  // Upload de photo amélioré
+  // Upload de photo
   const handlePhotoUpload = async (file) => {
     if (!file) return;
     
     setLoading(true);
     try {
-      // Valider le fichier
       if (!file.type.startsWith('image/')) {
         alert('Veuillez sélectionner un fichier image valide.');
         return;
       }
 
-      if (file.size > 5 * 1024 * 1024) { // 5MB max
+      if (file.size > 5 * 1024 * 1024) {
         alert('Le fichier est trop volumineux. Maximum 5MB.');
         return;
       }
 
       const resizedFile = await resizeImage(file);
-      
       const fileExt = 'jpg';
       const fileName = `${selectedPlayer.id}-${Date.now()}.${fileExt}`;
       const filePath = `player-photos/${fileName}`;
 
-      // Upload vers Supabase Storage
       const { error: uploadError } = await supabase.storage
         .from('photos')
         .upload(filePath, resizedFile, { upsert: true });
 
       if (uploadError) throw uploadError;
 
-      // Obtenir l'URL publique
       const { data: publicUrl } = supabase.storage
         .from('photos')
         .getPublicUrl(filePath);
 
-      // Mettre à jour la base de données
       const { error: updateError } = await supabase
         .from('players')
         .update({ photo_url: publicUrl.publicUrl })
@@ -97,7 +209,6 @@ const AdminPlayerDetail = ({
 
       if (updateError) throw updateError;
 
-      // Mettre à jour l'état local
       const updatedPlayer = { ...selectedPlayer, photo_url: publicUrl.publicUrl };
       setSelectedPlayer(updatedPlayer);
       setPlayers(prev => prev.map(p => 
@@ -193,7 +304,7 @@ const AdminPlayerDetail = ({
           <div className="space-y-6">
             
             {/* Section Photo de Profil */}
-            <div className="bg-white rounded-xl shadow-lg p-4" style={{maxHeight: '200px'}}>
+            <div className="bg-white rounded-xl shadow-lg p-4">
               <div className="flex items-center justify-between mb-3">
                 <h2 className="text-base font-semibold" style={{color: '#1D2945'}}>
                   <User className="inline mr-2" size={16} />
@@ -429,124 +540,252 @@ const AdminPlayerDetail = ({
           {/* Colonne 3: Historique et Graphiques */}
           <div className="space-y-6">
             
-            {/* Graphique d'évolution */}
+            {/* Graphique d'évolution avec filtres */}
             {stats.chartData && stats.chartData.length > 0 && (
               <div className="bg-white rounded-xl shadow-lg p-6">
                 <h3 className="text-lg font-bold mb-4" style={{color: '#1D2945'}}>
                   <Calendar className="inline mr-2" size={20} />
                   Évolution des Métriques
                 </h3>
-                <ResponsiveContainer width="100%" height={300}>
-                  <LineChart data={stats.chartData.slice(-10)}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="date" />
-                    <YAxis domain={[0, 20]} />
-                    <Tooltip 
-                      content={({ active, payload, label }) => {
-                        if (active && payload && payload.length > 0) {
-                          const responseData = stats.chartData.find(item => item.date === label);
-                          
-                          return (
-                            <div className="bg-white p-4 border border-gray-300 rounded-lg shadow-lg max-w-sm">
-                              <h4 className="font-semibold mb-3 text-gray-800">
-                                {label} - {responseData?.type === 'pre' ? 'Pré-séance' : 
-                                         responseData?.type === 'post' ? 'Post-séance' : 
-                                         responseData?.type === 'match' ? 'Match' : 'Blessure'}
-                              </h4>
-                              
-                              <div className="space-y-2 text-sm">
-                                {responseData?.motivation && (
-                                  <div className="flex justify-between">
-                                    <span className="text-blue-600">Motivation:</span>
-                                    <span className="font-medium">{responseData.motivation}/20</span>
-                                  </div>
-                                )}
-                                
-                                {responseData?.fatigue && (
-                                  <div className="flex justify-between">
-                                    <span className="text-red-600">Fatigue:</span>
-                                    <span className="font-medium">{responseData.fatigue}/20</span>
-                                  </div>
-                                )}
-                                
-                                {responseData?.intensite_rpe && (
-                                  <div className="flex justify-between">
-                                    <span className="text-orange-600">RPE:</span>
-                                    <span className="font-medium">{responseData.intensite_rpe}/20</span>
-                                  </div>
-                                )}
-                                
-                                {responseData?.plaisir && (
-                                  <div className="flex justify-between">
-                                    <span className="text-green-600">Plaisir:</span>
-                                    <span className="font-medium">{responseData.plaisir}/20</span>
-                                  </div>
-                                )}
-                                
-                                {responseData?.commentaires_libres && (
-                                  <div className="pt-2 border-t border-gray-200">
-                                    <p className="text-gray-700 text-sm italic">
-                                      "{responseData.commentaires_libres}"
-                                    </p>
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                          );
-                        }
-                        return null;
-                      }}
-                    />
-                    
-                    <Line 
-                      type="monotone" 
-                      dataKey="motivation" 
-                      stroke="#2563eb" 
-                      strokeWidth={2}
-                      dot={{ fill: '#2563eb', strokeWidth: 2, r: 4 }}
-                    />
-                    <Line 
-                      type="monotone" 
-                      dataKey="fatigue" 
-                      stroke="#dc2626" 
-                      strokeWidth={2}
-                      dot={{ fill: '#dc2626', strokeWidth: 2, r: 4 }}
-                    />
-                    <Line 
-                      type="monotone" 
-                      dataKey="intensite_rpe" 
-                      stroke="#f59e0b" 
-                      strokeWidth={2}
-                      dot={{ fill: '#f59e0b', strokeWidth: 2, r: 4 }}
-                    />
-                    <Line 
-                      type="monotone" 
-                      dataKey="plaisir" 
-                      stroke="#10b981" 
-                      strokeWidth={2}
-                      dot={{ fill: '#10b981', strokeWidth: 2, r: 4 }}
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
                 
-                <div className="mt-4 flex flex-wrap gap-4 text-xs">
-                  <div className="flex items-center space-x-1">
-                    <div className="w-3 h-3 bg-blue-600 rounded"></div>
-                    <span>Motivation</span>
+                {/* Filtres */}
+                <div className="bg-gray-50 rounded-lg p-4 mb-6 border border-gray-200">
+                  <div className="flex items-center justify-between mb-3">
+                    <h4 className="text-sm font-semibold text-gray-700 flex items-center">
+                      <Filter size={16} className="mr-2" />
+                      Filtres
+                    </h4>
+                    <button
+                      onClick={() => {
+                        setMetricsStartDate('');
+                        setMetricsEndDate('');
+                        setSelectedMetricsToDisplay(['motivation', 'fatigue', 'intensite_rpe', 'plaisir']);
+                      }}
+                      className="px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded hover:bg-blue-200 transition-all"
+                    >
+                      Réinitialiser
+                    </button>
                   </div>
-                  <div className="flex items-center space-x-1">
-                    <div className="w-3 h-3 bg-red-600 rounded"></div>
-                    <span>Fatigue</span>
+                  
+                  {/* Filtre de période */}
+                  <div className="mb-4">
+                    <label className="block text-xs font-medium text-gray-700 mb-2">Période</label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <input
+                        type="date"
+                        value={metricsStartDate}
+                        onChange={(e) => setMetricsStartDate(e.target.value)}
+                        className="w-full px-2 py-1 border border-gray-300 rounded text-xs focus:ring-2 focus:ring-blue-500"
+                      />
+                      <input
+                        type="date"
+                        value={metricsEndDate}
+                        onChange={(e) => setMetricsEndDate(e.target.value)}
+                        min={metricsStartDate}
+                        className="w-full px-2 py-1 border border-gray-300 rounded text-xs focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
                   </div>
-                  <div className="flex items-center space-x-1">
-                    <div className="w-3 h-3 bg-orange-500 rounded"></div>
-                    <span>RPE</span>
-                  </div>
-                  <div className="flex items-center space-x-1">
-                    <div className="w-3 h-3 bg-green-600 rounded"></div>
-                    <span>Plaisir</span>
+                  
+                  {/* Sélection des métriques */}
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-2">Métriques à afficher</label>
+                    <div className="space-y-1">
+                      {availableMetrics.map(metric => (
+                        <label key={metric.value} className="flex items-center space-x-2 text-xs cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={selectedMetricsToDisplay.includes(metric.value)}
+                            onChange={() => {
+                              if (selectedMetricsToDisplay.includes(metric.value)) {
+                                setSelectedMetricsToDisplay(prev => prev.filter(m => m !== metric.value));
+                              } else {
+                                setSelectedMetricsToDisplay(prev => [...prev, metric.value]);
+                              }
+                            }}
+                            className="w-3 h-3 rounded"
+                          />
+                          <div className="w-3 h-3 rounded" style={{backgroundColor: metric.color}}></div>
+                          <span>{metric.label}</span>
+                        </label>
+                      ))}
+                    </div>
                   </div>
                 </div>
+
+                {/* Moyennes sur la période */}
+                {processedChartData.averages && Object.keys(processedChartData.averages).length > 0 && (
+                  <div className="bg-blue-50 rounded-lg p-3 mb-4 border border-blue-200">
+                    <h4 className="text-sm font-semibold text-blue-800 mb-2">Moyennes sur la période</h4>
+                    <div className="grid grid-cols-2 gap-2 text-xs">
+                      {selectedMetricsToDisplay.map(metric => {
+                        const metricInfo = availableMetrics.find(m => m.value === metric);
+                        const avg = processedChartData.averages[metric];
+                        if (!avg) return null;
+                        
+                        return (
+                          <div key={metric} className="flex items-center justify-between">
+                            <div className="flex items-center space-x-1">
+                              <div className="w-2 h-2 rounded" style={{backgroundColor: metricInfo?.color}}></div>
+                              <span className="text-gray-700">{metricInfo?.label}:</span>
+                            </div>
+                            <span className="font-semibold">{avg}/20</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Graphique */}
+                {processedChartData.chartData.length > 0 ? (
+                  <>
+                    <ResponsiveContainer width="100%" height={350}>
+                      <LineChart data={processedChartData.chartData}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis 
+                          dataKey="date" 
+                          tick={{fontSize: 10}} 
+                          angle={-45} 
+                          textAnchor="end" 
+                          height={70}
+                        />
+                        <YAxis domain={[0, 20]} />
+                        <Tooltip 
+                          content={({ active, payload, label }) => {
+                            if (active && payload && payload.length > 0) {
+                              const responseData = processedChartData.chartData.find(item => item.date === label);
+                              
+                              return (
+                                <div className="bg-white p-3 border border-gray-300 rounded-lg shadow-lg max-w-xs">
+                                  <h4 className="font-semibold mb-2 text-gray-800 text-sm">
+                                    {label}
+                                  </h4>
+                                  
+                                  <div className="space-y-1 text-xs">
+                                    {selectedMetricsToDisplay.map(metric => {
+                                      const metricInfo = availableMetrics.find(m => m.value === metric);
+                                      const value = responseData?.[metric];
+                                      const ema = responseData?.[`${metric}_ema`];
+                                      const avg = responseData?.[`${metric}_avg`];
+                                      
+                                      if (value == null) return null;
+                                      
+                                      return (
+                                        <div key={metric}>
+                                          <div className="flex justify-between items-center">
+                                            <span style={{color: metricInfo?.color}} className="font-medium">
+                                              {metricInfo?.label}:
+                                            </span>
+                                            <span className="font-semibold">{value}/20</span>
+                                          </div>
+                                          {ema && (
+                                            <div className="flex justify-between items-center pl-2">
+                                              <span className="text-gray-500 italic">EMA-7:</span>
+                                              <span className="text-gray-600">{ema}/20</span>
+                                            </div>
+                                          )}
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
+                              );
+                            }
+                            return null;
+                          }}
+                        />
+                        
+                        {/* Lignes des valeurs réelles */}
+                        {selectedMetricsToDisplay.map(metric => {
+                          const metricInfo = availableMetrics.find(m => m.value === metric);
+                          return (
+                            <Line 
+                              key={metric}
+                              type="monotone" 
+                              dataKey={metric} 
+                              stroke={metricInfo?.color} 
+                              strokeWidth={2}
+                              dot={{ fill: metricInfo?.color, strokeWidth: 2, r: 4 }}
+                              activeDot={{ r: 6 }}
+                              connectNulls
+                            />
+                          );
+                        })}
+                        
+                        {/* Lignes de moyenne (pointillés) */}
+                        {selectedMetricsToDisplay.map(metric => {
+                          const metricInfo = availableMetrics.find(m => m.value === metric);
+                          if (!processedChartData.averages[metric]) return null;
+                          
+                          return (
+                            <Line 
+                              key={`${metric}_avg`}
+                              type="monotone" 
+                              dataKey={`${metric}_avg`} 
+                              stroke={metricInfo?.color} 
+                              strokeWidth={1.5}
+                              strokeDasharray="5 5"
+                              dot={false}
+                              activeDot={false}
+                              opacity={0.5}
+                            />
+                          );
+                        })}
+                        
+                        {/* Lignes EMA (tirets longs) */}
+                        {selectedMetricsToDisplay.map(metric => {
+                          const metricInfo = availableMetrics.find(m => m.value === metric);
+                          return (
+                            <Line 
+                              key={`${metric}_ema`}
+                              type="monotone" 
+                              dataKey={`${metric}_ema`} 
+                              stroke={metricInfo?.color} 
+                              strokeWidth={2}
+                              strokeDasharray="10 3"
+                              dot={false}
+                              activeDot={false}
+                              opacity={0.7}
+                            />
+                          );
+                        })}
+                      </LineChart>
+                    </ResponsiveContainer>
+                    
+                    {/* Légende */}
+                    <div className="mt-4 space-y-3">
+                      <div>
+                        <h5 className="text-xs font-semibold text-gray-700 mb-2">Valeurs réelles (lignes pleines)</h5>
+                        <div className="flex flex-wrap gap-3 text-xs">
+                          {selectedMetricsToDisplay.map(metric => {
+                            const metricInfo = availableMetrics.find(m => m.value === metric);
+                            return (
+                              <div key={metric} className="flex items-center space-x-1">
+                                <div className="w-4 h-1 rounded" style={{backgroundColor: metricInfo?.color}}></div>
+                                <span>{metricInfo?.label}</span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                      
+                      <div>
+                        <h5 className="text-xs font-semibold text-gray-700 mb-2">Moyenne période (pointillés courts)</h5>
+                        <p className="text-xs text-gray-600">Moyenne simple sur toute la période affichée</p>
+                      </div>
+                      
+                      <div>
+                        <h5 className="text-xs font-semibold text-gray-700 mb-2">EMA-7 jours (tirets longs)</h5>
+                        <p className="text-xs text-gray-600">Moyenne mobile exponentielle sur 7 jours (tendance récente)</p>
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <div className="text-center py-8 text-gray-500">
+                    <p>Aucune donnée pour les filtres sélectionnés</p>
+                  </div>
+                )}
               </div>
             )}
 
@@ -728,6 +967,7 @@ const AdminPlayerDetail = ({
                               stroke="#dc2626" 
                               strokeWidth={3}
                               dot={{ fill: '#dc2626', strokeWidth: 2, r: 5 }}
+                              connectNulls
                             />
                             <Line 
                               type="monotone" 
@@ -736,6 +976,7 @@ const AdminPlayerDetail = ({
                               strokeWidth={2}
                               strokeDasharray="5 5"
                               dot={{ fill: '#f59e0b', strokeWidth: 2, r: 4 }}
+                              connectNulls
                             />
                           </LineChart>
                         </ResponsiveContainer>
