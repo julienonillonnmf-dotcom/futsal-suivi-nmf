@@ -1063,6 +1063,53 @@ const AdminPlayerDetail = ({
                       className="p-3 border border-gray-200 rounded-lg hover:border-blue-300 hover:bg-blue-50 cursor-pointer transition-all group"
                       onClick={() => {
                         // Créer une popup/modal avec le détail complet
+                        // Préparer les données formatées
+                        let dataText = '';
+                        
+                        // Gérer spécialement le tableau injuries
+                        if (response.data?.injuries && Array.isArray(response.data.injuries)) {
+                          dataText += '🚑 BLESSURES:\n';
+                          response.data.injuries.forEach((injury, idx) => {
+                            dataText += `\n  Blessure ${idx + 1}:\n`;
+                            dataText += `  • Zone: ${injury.location || injury.zone || 'Non spécifiée'}\n`;
+                            dataText += `  • Douleur: ${injury.intensity || injury.douleur || 0}/10\n`;
+                            dataText += `  • Statut: ${injury.status === 'active' || injury.active ? 'Active' : 'Inactive'}\n`;
+                            if (injury.description) dataText += `  • Description: ${injury.description}\n`;
+                          });
+                          dataText += '\n';
+                        }
+                        
+                        // Ajouter les autres données
+                        const otherData = Object.entries(response.data || {})
+                          .filter(([key, value]) => {
+                            if (key === 'injuries') return false; // Déjà traité
+                            return value !== null && value !== undefined && value !== '';
+                          })
+                          .map(([key, value]) => {
+                            const labels = {
+                              motivation: '🔥 Motivation',
+                              fatigue: '😴 Fatigue',
+                              intensite_rpe: '💪 Intensité RPE',
+                              plaisir: '😊 Plaisir',
+                              plaisir_seance: '😊 Plaisir séance',
+                              confiance: '💪 Confiance',
+                              technique: '⚽ Technique',
+                              tactique: '🎯 Tactique',
+                              blessure_actuelle: '🚨 Blessure actuelle',
+                              douleur_niveau: '😣 Niveau douleur',
+                              zone_blessure: '📍 Zone blessée',
+                              commentaires_libres: '💭 Commentaires',
+                              objectifs_atteints: '✅ Objectifs atteints',
+                              difficultes_rencontrees: '⚠️ Difficultés'
+                            };
+                            return `${labels[key] || key}: ${value}${typeof value === 'number' && key !== 'douleur_niveau' ? '/20' : ''}`;
+                          })
+                          .join('\n');
+                        
+                        if (otherData) {
+                          dataText += otherData;
+                        }
+                        
                         const modalContent = `
                           DÉTAIL DE LA RÉPONSE
                           ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -1074,28 +1121,7 @@ const AdminPlayerDetail = ({
                           ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
                           
                           DONNÉES COLLECTÉES:
-                          ${Object.entries(response.data || {})
-                            .filter(([key, value]) => value !== null && value !== undefined && value !== '')
-                            .map(([key, value]) => {
-                              const labels = {
-                                motivation: '🔥 Motivation',
-                                fatigue: '😴 Fatigue',
-                                intensite_rpe: '💪 Intensité RPE',
-                                plaisir: '😊 Plaisir',
-                                plaisir_seance: '😊 Plaisir séance',
-                                confiance: '💪 Confiance',
-                                technique: '⚽ Technique',
-                                tactique: '🎯 Tactique',
-                                blessure_actuelle: '🚨 Blessure actuelle',
-                                douleur_niveau: '😣 Niveau douleur',
-                                zone_blessure: '📍 Zone blessée',
-                                commentaires_libres: '💭 Commentaires',
-                                objectifs_atteints: '✅ Objectifs atteints',
-                                difficultes_rencontrees: '⚠️ Difficultés'
-                              };
-                              return `${labels[key] || key}: ${value}${typeof value === 'number' && key !== 'douleur_niveau' ? '/20' : ''}`;
-                            })
-                            .join('\n')}
+                          ${dataText || 'Aucune donnée'}
                           
                           ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
                         `;
