@@ -28,6 +28,11 @@ const AdminPanel = ({
   const [selectedQuestionTypes, setSelectedQuestionTypes] = useState(['all']);
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  
+  // Filtres spécifiques pour les blessures
+  const [injurySelectedPlayers, setInjurySelectedPlayers] = useState([]);
+  const [injuryStartDate, setInjuryStartDate] = useState('');
+  const [injuryEndDate, setInjuryEndDate] = useState('');
 
   const metricsOptions = [
     { value: 'motivation', label: 'Motivation', color: '#2563eb' },
@@ -895,9 +900,102 @@ const AdminPanel = ({
             🚑 Suivi des Blessures
           </h2>
 
+          {/* Filtres spécifiques aux blessures */}
+          <div className="bg-red-50 rounded-lg p-4 mb-6 border-2 border-red-200">
+            <h3 className="text-sm font-semibold mb-3 text-red-800 flex items-center">
+              <Filter size={16} className="mr-2" />
+              Filtres du graphique blessures
+            </h3>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Filtre joueuses */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-xs font-medium text-red-700">Joueuses</label>
+                  <div className="flex space-x-2">
+                    <button
+                      onClick={() => setInjurySelectedPlayers([])}
+                      className="px-2 py-0.5 bg-red-100 text-red-700 text-xs rounded hover:bg-red-200 transition-all"
+                    >
+                      Toutes
+                    </button>
+                    <button
+                      onClick={() => setInjurySelectedPlayers([])}
+                      className="px-2 py-0.5 bg-gray-100 text-gray-700 text-xs rounded hover:bg-gray-200 transition-all"
+                    >
+                      Aucune
+                    </button>
+                  </div>
+                </div>
+                <select 
+                  multiple
+                  size="4"
+                  className="w-full p-2 border-2 border-red-200 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent bg-white text-sm"
+                  value={injurySelectedPlayers}
+                  onChange={(e) => {
+                    const values = Array.from(e.target.selectedOptions, option => option.value);
+                    setInjurySelectedPlayers(values);
+                  }}
+                >
+                  {players.map(player => (
+                    <option key={player.id} value={player.id} className="py-1 px-2 hover:bg-red-50">
+                      {player.name}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-xs text-gray-600 mt-1">
+                  {injurySelectedPlayers.length === 0 ? `Toutes (${players.length})` : `${injurySelectedPlayers.length} sélectionnée(s)`}
+                </p>
+              </div>
+
+              {/* Filtre période */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-xs font-medium text-red-700">Période</label>
+                  <button
+                    onClick={() => {
+                      setInjuryStartDate('');
+                      setInjuryEndDate('');
+                    }}
+                    className="px-2 py-0.5 bg-red-100 text-red-700 text-xs rounded hover:bg-red-200 transition-all"
+                  >
+                    Réinitialiser
+                  </button>
+                </div>
+                <div className="space-y-2">
+                  <div>
+                    <label className="block text-xs text-gray-600 mb-1">Du</label>
+                    <input
+                      type="date"
+                      value={injuryStartDate}
+                      onChange={(e) => setInjuryStartDate(e.target.value)}
+                      className="w-full px-2 py-1 border-2 border-red-200 rounded text-sm focus:ring-2 focus:ring-red-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-600 mb-1">Au</label>
+                    <input
+                      type="date"
+                      value={injuryEndDate}
+                      onChange={(e) => setInjuryEndDate(e.target.value)}
+                      min={injuryStartDate}
+                      className="w-full px-2 py-1 border-2 border-red-200 rounded text-sm focus:ring-2 focus:ring-red-500"
+                    />
+                  </div>
+                </div>
+                {(injuryStartDate || injuryEndDate) && (
+                  <p className="text-xs text-red-700 mt-2 font-medium">
+                    📅 {injuryStartDate ? new Date(injuryStartDate).toLocaleDateString('fr-FR') : '...'} → {injuryEndDate ? new Date(injuryEndDate).toLocaleDateString('fr-FR') : '...'}
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+
           {(() => {
-            const playersToAnalyze = selectedPlayers.length > 0 
-              ? players.filter(p => selectedPlayers.includes(p.id))
+            // Utiliser les filtres spécifiques aux blessures
+            const playersToAnalyze = injurySelectedPlayers.length > 0 
+              ? players.filter(p => injurySelectedPlayers.includes(p.id))
               : players;
 
             const injuryData = [];
@@ -909,8 +1007,9 @@ const AdminPanel = ({
               const responses = player.responses || [];
               const injuryResponses = responses.filter(r => {
                 const responseDate = new Date(r.created_at);
-                if (startDate && new Date(startDate) > responseDate) return false;
-                if (endDate && new Date(endDate) < responseDate) return false;
+                // Utiliser les filtres spécifiques aux blessures
+                if (injuryStartDate && new Date(injuryStartDate) > responseDate) return false;
+                if (injuryEndDate && new Date(injuryEndDate) < responseDate) return false;
                 
                 // Vérifier si c'est un questionnaire de type injury OU s'il y a des blessures dans le tableau injuries
                 return r.type === 'injury' || (r.data?.injuries && r.data.injuries.length > 0);
