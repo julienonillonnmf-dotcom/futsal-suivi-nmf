@@ -892,10 +892,7 @@ const AdminPanel = ({
         {/* Section Blessures */}
         <div className="bg-white rounded-xl shadow-lg p-6 mb-8">
           <h2 className="text-2xl font-bold mb-6 text-red-600 flex items-center">
-            <svg className="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-            </svg>
-            Suivi des Blessures
+            🚑 Suivi des Blessures
           </h2>
 
           {(() => {
@@ -967,10 +964,7 @@ const AdminPanel = ({
 
             return totalInjuries === 0 ? (
               <div className="text-center py-12 text-gray-500">
-                <svg className="w-16 h-16 mx-auto mb-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                <p className="text-lg font-medium">Aucune blessure signalée</p>
+                <p className="text-lg font-medium">✅ Aucune blessure signalée</p>
                 <p className="text-sm mt-2">C'est une excellente nouvelle pour l'équipe</p>
               </div>
             ) : (
@@ -1112,23 +1106,7 @@ const AdminPanel = ({
                   </div>
                 </div>
 
-                <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded">
-                  <div className="flex">
-                    <svg className="w-5 h-5 text-yellow-400 mr-3 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                    </svg>
-                    <div>
-                      <h3 className="text-sm font-medium text-yellow-800">Recommandations</h3>
-                      <p className="text-sm text-yellow-700 mt-1">
-                        {activeInjuries > 0 && `${activeInjuries} joueuse(s) actuellement blessée(s). `}
-                        Assurez-vous d'un suivi médical approprié et adaptez les entraînements en conséquence. 
-                        Encouragez les joueuses à signaler rapidement toute douleur ou gêne.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                <details className="mt-4">
+                <details className="mt-6">
                   <summary className="cursor-pointer text-sm font-medium text-gray-700 hover:text-gray-900 py-2">
                     Voir le détail des blessures récentes ({injuryData.slice(0, 10).length} dernières)
                   </summary>
