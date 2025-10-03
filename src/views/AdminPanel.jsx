@@ -555,7 +555,7 @@ const AdminPanel = ({
               Filtres d'Analyse
             </h3>
             
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-4 gap-6">
               {/* Sélection des joueuses */}
               <div>
                 <div className="flex items-center justify-between mb-3">
