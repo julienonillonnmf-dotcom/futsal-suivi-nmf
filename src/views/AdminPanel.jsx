@@ -889,6 +889,271 @@ const AdminPanel = ({
           </div>
         </div>
 
+        {/* Section Blessures */}
+        <div className="bg-white rounded-xl shadow-lg p-6 mb-8">
+          <h2 className="text-2xl font-bold mb-6 text-red-600 flex items-center">
+            <svg className="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+            Suivi des Blessures
+          </h2>
+
+          {(() => {
+            const playersToAnalyze = selectedPlayers.length > 0 
+              ? players.filter(p => selectedPlayers.includes(p.id))
+              : players;
+
+            const injuryData = [];
+            const injuryByZone = {};
+            let totalInjuries = 0;
+            let activeInjuries = 0;
+
+            playersToAnalyze.forEach(player => {
+              const responses = player.responses || [];
+              const injuryResponses = responses.filter(r => {
+                const responseDate = new Date(r.created_at);
+                if (startDate && new Date(startDate) > responseDate) return false;
+                if (endDate && new Date(endDate) < responseDate) return false;
+                return r.type === 'injury' || r.data?.blessure_actuelle === 'oui';
+              });
+
+              injuryResponses.forEach(response => {
+                const date = new Date(response.created_at).toLocaleDateString('fr-FR');
+                const zone = response.data?.zone_blessure || 'Non spécifiée';
+                const douleur = response.data?.douleur_niveau || 0;
+                
+                totalInjuries++;
+                
+                if (response.data?.blessure_actuelle === 'oui') {
+                  activeInjuries++;
+                }
+
+                injuryData.push({
+                  date,
+                  player: player.name,
+                  zone,
+                  douleur: Number(douleur),
+                  status: response.data?.blessure_actuelle
+                });
+
+                injuryByZone[zone] = (injuryByZone[zone] || 0) + 1;
+              });
+            });
+
+            const injuryTimeline = injuryData.reduce((acc, injury) => {
+              const existing = acc.find(item => item.date === injury.date);
+              if (existing) {
+                existing.count++;
+                existing.avgDouleur = ((existing.avgDouleur * (existing.count - 1)) + injury.douleur) / existing.count;
+              } else {
+                acc.push({
+                  date: injury.date,
+                  count: 1,
+                  avgDouleur: injury.douleur
+                });
+              }
+              return acc;
+            }, []);
+
+            injuryTimeline.sort((a, b) => {
+              const dateA = new Date(a.date.split('/').reverse().join('-'));
+              const dateB = new Date(b.date.split('/').reverse().join('-'));
+              return dateA - dateB;
+            });
+
+            const zonesSorted = Object.entries(injuryByZone)
+              .sort((a, b) => b[1] - a[1])
+              .slice(0, 5);
+
+            return totalInjuries === 0 ? (
+              <div className="text-center py-12 text-gray-500">
+                <svg className="w-16 h-16 mx-auto mb-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <p className="text-lg font-medium">Aucune blessure signalée</p>
+                <p className="text-sm mt-2">C'est une excellente nouvelle pour l'équipe</p>
+              </div>
+            ) : (
+              <>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                  <div className="p-4 bg-red-50 border-2 border-red-200 rounded-lg">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-red-600 font-medium">Blessures totales</p>
+                        <p className="text-3xl font-bold text-red-700 mt-1">{totalInjuries}</p>
+                      </div>
+                      <svg className="w-12 h-12 text-red-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                    </div>
+                  </div>
+
+                  <div className="p-4 bg-orange-50 border-2 border-orange-200 rounded-lg">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-orange-600 font-medium">Blessures actives</p>
+                        <p className="text-3xl font-bold text-orange-700 mt-1">{activeInjuries}</p>
+                      </div>
+                      <svg className="w-12 h-12 text-orange-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                      </svg>
+                    </div>
+                  </div>
+
+                  <div className="p-4 bg-green-50 border-2 border-green-200 rounded-lg">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-green-600 font-medium">Joueuses affectées</p>
+                        <p className="text-3xl font-bold text-green-700 mt-1">
+                          {[...new Set(injuryData.map(i => i.player))].length}
+                        </p>
+                      </div>
+                      <svg className="w-12 h-12 text-green-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                      </svg>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                  <div>
+                    <h3 className="text-lg font-semibold mb-4 text-gray-700">Évolution temporelle des blessures</h3>
+                    {injuryTimeline.length > 0 ? (
+                      <ResponsiveContainer width="100%" height={250}>
+                        <LineChart data={injuryTimeline}>
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis dataKey="date" tick={{fontSize: 11}} angle={-45} textAnchor="end" height={70} />
+                          <YAxis />
+                          <Tooltip 
+                            content={({ active, payload, label }) => {
+                              if (active && payload && payload.length > 0) {
+                                return (
+                                  <div className="bg-white p-3 border-2 border-red-300 rounded-lg shadow-lg">
+                                    <p className="font-semibold text-gray-800 mb-2">{label}</p>
+                                    <p className="text-sm text-red-600">
+                                      <strong>Blessures signalées:</strong> {payload[0].value}
+                                    </p>
+                                    {payload[1] && (
+                                      <p className="text-sm text-orange-600">
+                                        <strong>Douleur moyenne:</strong> {payload[1].value.toFixed(1)}/10
+                                      </p>
+                                    )}
+                                  </div>
+                                );
+                              }
+                              return null;
+                            }}
+                          />
+                          <Line 
+                            type="monotone" 
+                            dataKey="count" 
+                            stroke="#dc2626" 
+                            strokeWidth={3}
+                            dot={{ fill: '#dc2626', strokeWidth: 2, r: 5 }}
+                            name="Nombre de blessures"
+                          />
+                          <Line 
+                            type="monotone" 
+                            dataKey="avgDouleur" 
+                            stroke="#f59e0b" 
+                            strokeWidth={2}
+                            strokeDasharray="5 5"
+                            dot={{ fill: '#f59e0b', strokeWidth: 2, r: 4 }}
+                            name="Douleur moyenne"
+                          />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    ) : (
+                      <p className="text-gray-500 text-center py-8">Aucune donnée temporelle</p>
+                    )}
+                    <div className="mt-3 flex items-center space-x-6 text-xs">
+                      <div className="flex items-center space-x-2">
+                        <div className="w-6 h-1 bg-red-600 rounded"></div>
+                        <span className="text-gray-600">Nombre de blessures</span>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <div className="w-6 h-1 bg-orange-500 rounded" style={{borderTop: '2px dashed #f59e0b'}}></div>
+                        <span className="text-gray-600">Douleur moyenne (/10)</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <h3 className="text-lg font-semibold mb-4 text-gray-700">Zones les plus touchées</h3>
+                    {zonesSorted.length > 0 ? (
+                      <div className="space-y-3">
+                        {zonesSorted.map(([zone, count], index) => {
+                          const percentage = (count / totalInjuries) * 100;
+                          return (
+                            <div key={zone} className="relative">
+                              <div className="flex items-center justify-between mb-1">
+                                <span className="text-sm font-medium text-gray-700">{zone}</span>
+                                <span className="text-sm font-semibold text-red-600">{count} ({percentage.toFixed(0)}%)</span>
+                              </div>
+                              <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+                                <div 
+                                  className="h-full rounded-full transition-all duration-500"
+                                  style={{
+                                    width: `${percentage}%`,
+                                    background: index === 0 ? 'linear-gradient(90deg, #dc2626 0%, #ef4444 100%)' :
+                                               index === 1 ? 'linear-gradient(90deg, #ea580c 0%, #f97316 100%)' :
+                                               index === 2 ? 'linear-gradient(90deg, #f59e0b 0%, #fbbf24 100%)' :
+                                               'linear-gradient(90deg, #84cc16 0%, #a3e635 100%)'
+                                  }}
+                                ></div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <p className="text-gray-500 text-center py-8">Aucune zone identifiée</p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded">
+                  <div className="flex">
+                    <svg className="w-5 h-5 text-yellow-400 mr-3 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                    </svg>
+                    <div>
+                      <h3 className="text-sm font-medium text-yellow-800">Recommandations</h3>
+                      <p className="text-sm text-yellow-700 mt-1">
+                        {activeInjuries > 0 && `${activeInjuries} joueuse(s) actuellement blessée(s). `}
+                        Assurez-vous d'un suivi médical approprié et adaptez les entraînements en conséquence. 
+                        Encouragez les joueuses à signaler rapidement toute douleur ou gêne.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <details className="mt-4">
+                  <summary className="cursor-pointer text-sm font-medium text-gray-700 hover:text-gray-900 py-2">
+                    Voir le détail des blessures récentes ({injuryData.slice(0, 10).length} dernières)
+                  </summary>
+                  <div className="mt-3 space-y-2">
+                    {injuryData.slice(-10).reverse().map((injury, index) => (
+                      <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200">
+                        <div className="flex-1">
+                          <p className="text-sm font-medium text-gray-900">{injury.player}</p>
+                          <p className="text-xs text-gray-600">{injury.zone} - Douleur: {injury.douleur}/10</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-xs text-gray-500">{injury.date}</p>
+                          {injury.status === 'oui' && (
+                            <span className="inline-block mt-1 px-2 py-0.5 bg-red-100 text-red-700 text-xs rounded-full">Active</span>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </details>
+              </>
+            );
+          })()}
+        </div>
+
         <div className="bg-white rounded-xl shadow-lg p-6">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-2xl font-bold" style={{color: '#1D2945'}}>
