@@ -911,29 +911,39 @@ const AdminPanel = ({
                 const responseDate = new Date(r.created_at);
                 if (startDate && new Date(startDate) > responseDate) return false;
                 if (endDate && new Date(endDate) < responseDate) return false;
-                return r.type === 'injury' || r.data?.blessure_actuelle === 'oui';
+                
+                // Vérifier si c'est un questionnaire de type injury OU s'il y a des blessures dans le tableau injuries
+                return r.type === 'injury' || (r.data?.injuries && r.data.injuries.length > 0);
               });
 
               injuryResponses.forEach(response => {
                 const date = new Date(response.created_at).toLocaleDateString('fr-FR');
-                const zone = response.data?.zone_blessure || 'Non spécifiée';
-                const douleur = response.data?.douleur_niveau || 0;
                 
-                totalInjuries++;
+                // Les blessures sont dans un tableau injuries
+                const injuries = response.data?.injuries || [];
                 
-                if (response.data?.blessure_actuelle === 'oui') {
-                  activeInjuries++;
-                }
+                injuries.forEach(injury => {
+                  const zone = injury.zone || injury.location || 'Non spécifiée';
+                  const douleur = injury.douleur || injury.pain || injury.niveau || 0;
+                  const status = injury.status || injury.active || 'unknown';
+                  
+                  totalInjuries++;
+                  
+                  // Vérifier si la blessure est active
+                  if (status === 'active' || status === 'oui' || injury.active === true) {
+                    activeInjuries++;
+                  }
 
-                injuryData.push({
-                  date,
-                  player: player.name,
-                  zone,
-                  douleur: Number(douleur),
-                  status: response.data?.blessure_actuelle
+                  injuryData.push({
+                    date,
+                    player: player.name,
+                    zone,
+                    douleur: Number(douleur),
+                    status
+                  });
+
+                  injuryByZone[zone] = (injuryByZone[zone] || 0) + 1;
                 });
-
-                injuryByZone[zone] = (injuryByZone[zone] || 0) + 1;
               });
             });
 
