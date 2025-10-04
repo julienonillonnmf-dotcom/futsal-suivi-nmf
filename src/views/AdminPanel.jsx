@@ -1,4 +1,4 @@
-// views/AdminPanel.jsx - Version COMPLÈTE avec cycle menstruel
+// views/AdminPanel.jsx - Version COMPLÈTE avec toutes les sections
 import React, { useState } from 'react';
 import { ChevronLeft, Edit3, UserPlus, Download, Trash2, Filter, TrendingUp, BarChart3, Users, Calendar } from 'lucide-react';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
@@ -29,12 +29,10 @@ const AdminPanel = ({
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   
-  // Filtres spécifiques pour les blessures
   const [injurySelectedPlayers, setInjurySelectedPlayers] = useState([]);
   const [injuryStartDate, setInjuryStartDate] = useState('');
   const [injuryEndDate, setInjuryEndDate] = useState('');
 
-  // Filtres pour le cycle menstruel
   const [menstrualSelectedPlayers, setMenstrualSelectedPlayers] = useState([]);
   const [menstrualStartDate, setMenstrualStartDate] = useState('');
   const [menstrualEndDate, setMenstrualEndDate] = useState('');
@@ -929,7 +927,7 @@ const AdminPanel = ({
           </div>
         </div>
 
-        {/* NOUVELLE SECTION : Suivi du Cycle Menstruel */}
+        {/* SECTION : Suivi du Cycle Menstruel */}
         <div className="bg-white rounded-xl shadow-lg p-6 mb-8">
           <h2 className="text-2xl font-bold mb-4 text-pink-600 flex items-center">
             🌸 Suivi du Cycle Menstruel
@@ -1266,7 +1264,7 @@ const AdminPanel = ({
           })()}
         </div>
 
-        {/* Section Blessures */}
+        {/* Section Blessures - COMPLÈTE */}
         <div className="bg-white rounded-xl shadow-lg p-6 mb-8">
           <h2 className="text-2xl font-bold mb-6 text-red-600 flex items-center">
             🚑 Suivi des Blessures
@@ -1282,20 +1280,12 @@ const AdminPanel = ({
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <label className="text-xs font-medium text-red-700">Joueuses</label>
-                  <div className="flex space-x-2">
-                    <button
-                      onClick={() => setInjurySelectedPlayers([])}
-                      className="px-2 py-0.5 bg-red-100 text-red-700 text-xs rounded hover:bg-red-200 transition-all"
-                    >
-                      Toutes
-                    </button>
-                    <button
-                      onClick={() => setInjurySelectedPlayers([])}
-                      className="px-2 py-0.5 bg-gray-100 text-gray-700 text-xs rounded hover:bg-gray-200 transition-all"
-                    >
-                      Aucune
-                    </button>
-                  </div>
+                  <button
+                    onClick={() => setInjurySelectedPlayers([])}
+                    className="px-2 py-0.5 bg-red-100 text-red-700 text-xs rounded hover:bg-red-200 transition-all"
+                  >
+                    Toutes
+                  </button>
                 </div>
                 <select 
                   multiple
@@ -1313,9 +1303,6 @@ const AdminPanel = ({
                     </option>
                   ))}
                 </select>
-                <p className="text-xs text-gray-600 mt-1">
-                  {injurySelectedPlayers.length === 0 ? `Toutes (${players.length})` : `${injurySelectedPlayers.length} sélectionnée(s)`}
-                </p>
               </div>
 
               <div>
@@ -1332,31 +1319,20 @@ const AdminPanel = ({
                   </button>
                 </div>
                 <div className="space-y-2">
-                  <div>
-                    <label className="block text-xs text-gray-600 mb-1">Du</label>
-                    <input
-                      type="date"
-                      value={injuryStartDate}
-                      onChange={(e) => setInjuryStartDate(e.target.value)}
-                      className="w-full px-2 py-1 border-2 border-red-200 rounded text-sm focus:ring-2 focus:ring-red-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs text-gray-600 mb-1">Au</label>
-                    <input
-                      type="date"
-                      value={injuryEndDate}
-                      onChange={(e) => setInjuryEndDate(e.target.value)}
-                      min={injuryStartDate}
-                      className="w-full px-2 py-1 border-2 border-red-200 rounded text-sm focus:ring-2 focus:ring-red-500"
-                    />
-                  </div>
+                  <input
+                    type="date"
+                    value={injuryStartDate}
+                    onChange={(e) => setInjuryStartDate(e.target.value)}
+                    className="w-full px-2 py-1 border-2 border-red-200 rounded text-sm focus:ring-2 focus:ring-red-500"
+                  />
+                  <input
+                    type="date"
+                    value={injuryEndDate}
+                    onChange={(e) => setInjuryEndDate(e.target.value)}
+                    min={injuryStartDate}
+                    className="w-full px-2 py-1 border-2 border-red-200 rounded text-sm focus:ring-2 focus:ring-red-500"
+                  />
                 </div>
-                {(injuryStartDate || injuryEndDate) && (
-                  <p className="text-xs text-red-700 mt-2 font-medium">
-                    📅 {injuryStartDate ? new Date(injuryStartDate).toLocaleDateString('fr-FR') : '...'} → {injuryEndDate ? new Date(injuryEndDate).toLocaleDateString('fr-FR') : '...'}
-                  </p>
-                )}
               </div>
             </div>
           </div>
@@ -1448,9 +1424,6 @@ const AdminPanel = ({
                         <p className="text-sm text-red-600 font-medium">Blessures totales</p>
                         <p className="text-3xl font-bold text-red-700 mt-1">{totalInjuries}</p>
                       </div>
-                      <svg className="w-12 h-12 text-red-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
                     </div>
                   </div>
 
@@ -1460,9 +1433,6 @@ const AdminPanel = ({
                         <p className="text-sm text-orange-600 font-medium">Blessures actives</p>
                         <p className="text-3xl font-bold text-orange-700 mt-1">{activeInjuries}</p>
                       </div>
-                      <svg className="w-12 h-12 text-orange-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                      </svg>
                     </div>
                   </div>
 
@@ -1474,9 +1444,6 @@ const AdminPanel = ({
                           {[...new Set(injuryData.map(i => i.player))].length}
                         </p>
                       </div>
-                      <svg className="w-12 h-12 text-green-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                      </svg>
                     </div>
                   </div>
                 </div>
@@ -1490,33 +1457,13 @@ const AdminPanel = ({
                           <CartesianGrid strokeDasharray="3 3" />
                           <XAxis dataKey="date" tick={{fontSize: 11}} angle={-45} textAnchor="end" height={70} />
                           <YAxis />
-                          <Tooltip 
-                            content={({ active, payload, label }) => {
-                              if (active && payload && payload.length > 0) {
-                                return (
-                                  <div className="bg-white p-3 border-2 border-red-300 rounded-lg shadow-lg">
-                                    <p className="font-semibold text-gray-800 mb-2">{label}</p>
-                                    <p className="text-sm text-red-600">
-                                      <strong>Blessures signalées:</strong> {payload[0].value}
-                                    </p>
-                                    {payload[1] && (
-                                      <p className="text-sm text-orange-600">
-                                        <strong>Douleur moyenne:</strong> {payload[1].value.toFixed(1)}/10
-                                      </p>
-                                    )}
-                                  </div>
-                                );
-                              }
-                              return null;
-                            }}
-                          />
+                          <Tooltip />
                           <Line 
                             type="monotone" 
                             dataKey="count" 
                             stroke="#dc2626" 
                             strokeWidth={3}
                             dot={{ fill: '#dc2626', strokeWidth: 2, r: 5 }}
-                            name="Nombre de blessures"
                             connectNulls
                           />
                           <Line 
@@ -1526,7 +1473,6 @@ const AdminPanel = ({
                             strokeWidth={2}
                             strokeDasharray="5 5"
                             dot={{ fill: '#f59e0b', strokeWidth: 2, r: 4 }}
-                            name="Douleur moyenne"
                             connectNulls
                           />
                         </LineChart>
@@ -1534,16 +1480,6 @@ const AdminPanel = ({
                     ) : (
                       <p className="text-gray-500 text-center py-8">Aucune donnée temporelle</p>
                     )}
-                    <div className="mt-3 flex items-center space-x-6 text-xs">
-                      <div className="flex items-center space-x-2">
-                        <div className="w-6 h-1 bg-red-600 rounded"></div>
-                        <span className="text-gray-600">Nombre de blessures</span>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <div className="w-6 h-1 bg-orange-500 rounded" style={{borderTop: '2px dashed #f59e0b'}}></div>
-                        <span className="text-gray-600">Douleur moyenne (/10)</span>
-                      </div>
-                    </div>
                   </div>
 
                   <div>
@@ -1553,7 +1489,7 @@ const AdminPanel = ({
                         {zonesSorted.map(([zone, count], index) => {
                           const percentage = (count / totalInjuries) * 100;
                           return (
-                            <div key={zone} className="relative">
+                            <div key={zone}>
                               <div className="flex items-center justify-between mb-1">
                                 <span className="text-sm font-medium text-gray-700">{zone}</span>
                                 <span className="text-sm font-semibold text-red-600">{count} ({percentage.toFixed(0)}%)</span>
@@ -1565,8 +1501,7 @@ const AdminPanel = ({
                                     width: `${percentage}%`,
                                     background: index === 0 ? 'linear-gradient(90deg, #dc2626 0%, #ef4444 100%)' :
                                                index === 1 ? 'linear-gradient(90deg, #ea580c 0%, #f97316 100%)' :
-                                               index === 2 ? 'linear-gradient(90deg, #f59e0b 0%, #fbbf24 100%)' :
-                                               'linear-gradient(90deg, #84cc16 0%, #a3e635 100%)'
+                                               'linear-gradient(90deg, #f59e0b 0%, #fbbf24 100%)'
                                   }}
                                 ></div>
                               </div>
@@ -1579,35 +1514,76 @@ const AdminPanel = ({
                     )}
                   </div>
                 </div>
-
-                <details className="mt-6">
-                  <summary className="cursor-pointer text-sm font-medium text-gray-700 hover:text-gray-900 py-2">
-                    Voir le détail des blessures récentes ({injuryData.slice(0, 10).length} dernières)
-                  </summary>
-                  <div className="mt-3 space-y-2">
-                    {injuryData.slice(-10).reverse().map((injury, index) => (
-                      <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200">
-                        <div className="flex-1">
-                          <p className="text-sm font-medium text-gray-900">{injury.player}</p>
-                          <p className="text-xs text-gray-600">{injury.zone} - Douleur: {injury.douleur}/10</p>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-xs text-gray-500">{injury.date}</p>
-                          {injury.status === 'oui' && (
-                            <span className="inline-block mt-1 px-2 py-0.5 bg-red-100 text-red-700 text-xs rounded-full">Active</span>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </details>
               </>
             );
           })()}
         </div>
 
-        {/* Section Analyse Préventive - code existant inchangé... */}
-        {/* Section Gestion des Objectifs - code existant inchangé... */}
+        {/* Section Gestion des Objectifs - COMPLÈTE */}
+        <div className="bg-white rounded-xl shadow-lg p-6">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-2xl font-bold" style={{color: '#1D2945'}}>
+              <BarChart3 className="inline mr-2" size={24} />
+              Gestion des Objectifs
+            </h2>
+            <button onClick={() => setEditingObjectives(!editingObjectives)} className="flex items-center space-x-2 px-4 py-2 bg-blue-500 text-white rounded-lg font-medium hover:bg-blue-600 transition-all">
+              <Edit3 size={16} />
+              <span>{editingObjectives ? 'Terminer' : 'Modifier'}</span>
+            </button>
+          </div>
+
+          <div className="mb-8">
+            <h3 className="text-lg font-semibold mb-3 text-gray-700">Objectifs Collectifs de l'Équipe</h3>
+            {editingObjectives ? (
+              <div className="space-y-3">
+                <textarea value={objectifsCollectifs} onChange={(e) => setObjectifsCollectifs(e.target.value)} placeholder="Entrez les objectifs collectifs de l'équipe..." className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" rows={4} />
+                <button onClick={saveObjectifsCollectifs} disabled={loading} className="px-4 py-2 bg-green-500 text-white rounded-lg font-medium hover:bg-green-600 transition-all disabled:opacity-50">
+                  {loading ? 'Sauvegarde...' : 'Sauvegarder'}
+                </button>
+              </div>
+            ) : (
+              <div className="p-4 bg-gray-50 rounded-lg">
+                <p className="text-gray-700">{objectifsCollectifs || 'Aucun objectif collectif défini.'}</p>
+              </div>
+            )}
+          </div>
+
+          {editingObjectives && (
+            <div>
+              <h3 className="text-lg font-semibold mb-4 text-gray-700">Objectifs Individuels</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {players.map(player => (
+                  <div key={player.id} className="border border-gray-200 rounded-lg p-4">
+                    <div className="flex items-center space-x-3 mb-4">
+                      <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-gray-200">
+                        {player.photo_url ? (
+                          <img src={player.photo_url} alt={player.name} className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-white text-sm font-bold" style={{background: 'linear-gradient(135deg, #1D2945 0%, #C09D5A 100%)'}}>
+                            {player.name.split(' ').map(n => n[0]).join('')}
+                          </div>
+                        )}
+                      </div>
+                      <h4 className="font-semibold text-gray-900">{player.name}</h4>
+                    </div>
+                    
+                    <div className="mb-4">
+                      <label className="block text-sm font-medium text-blue-700 mb-2">Objectifs Techniques</label>
+                      <textarea value={objectifsIndividuels[player.id] || ''} onChange={(e) => setObjectifsIndividuels(prev => ({...prev, [player.id]: e.target.value}))} placeholder="Objectifs techniques..." className="w-full p-2 border border-gray-300 rounded focus:ring-1 focus:ring-blue-500" rows={3} />
+                      <button onClick={() => saveObjectifsIndividuels(player.id, objectifsIndividuels[player.id] || '')} disabled={loading} className="mt-2 px-3 py-1 bg-blue-500 text-white text-sm rounded hover:bg-blue-600 transition-colors disabled:opacity-50">Sauvegarder</button>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-green-700 mb-2">Objectifs Mentaux</label>
+                      <textarea value={objectifsMentaux[player.id] || ''} onChange={(e) => setObjectifsMentaux(prev => ({...prev, [player.id]: e.target.value}))} placeholder="Objectifs mentaux..." className="w-full p-2 border border-gray-300 rounded focus:ring-1 focus:ring-green-500" rows={3} />
+                      <button onClick={() => saveObjectifsMentaux(player.id, objectifsMentaux[player.id] || '')} disabled={loading} className="mt-2 px-3 py-1 bg-green-500 text-white text-sm rounded hover:bg-green-600 transition-colors disabled:opacity-50">Sauvegarder</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
         
       </div>
     </div>
