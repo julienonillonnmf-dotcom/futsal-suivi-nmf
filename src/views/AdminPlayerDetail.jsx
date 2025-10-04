@@ -1,4 +1,4 @@
-// views/AdminPlayerDetail.jsx - Version COMPLÈTE avec cycle menstruel
+// views/AdminPlayerDetail.jsx - Version COMPLÈTE avec influence_groupe
 import React, { useState, useRef, useMemo } from 'react';
 import { 
   ChevronLeft, 
@@ -58,7 +58,7 @@ const AdminPlayerDetail = ({
 
   const stats = playerStats[selectedPlayer.id] || {};
 
-  // Options de métriques disponibles
+  // Options de métriques disponibles - AJOUT DE influence_groupe
   const availableMetrics = [
     { value: 'motivation', label: 'Motivation', color: '#2563eb' },
     { value: 'fatigue', label: 'Fatigue', color: '#dc2626' },
@@ -68,7 +68,8 @@ const AdminPlayerDetail = ({
     { value: 'confiance', label: 'Confiance', color: '#8b5cf6' },
     { value: 'technique', label: 'Technique', color: '#ec4899' },
     { value: 'tactique', label: 'Tactique', color: '#6366f1' },
-    { value: 'atteinte_objectifs', label: 'Atteinte objectifs', color: '#f97316' }
+    { value: 'atteinte_objectifs', label: 'Atteinte objectifs', color: '#f97316' },
+    { value: 'influence_groupe', label: 'Influence groupe', color: '#14b8a6' }
   ];
 
   // Calcul de la moyenne mobile exponentielle (EMA)
@@ -779,7 +780,7 @@ const AdminPlayerDetail = ({
               </div>
             )}
 
-            {/* NOUVELLE SECTION : Cycle menstruel */}
+            {/* Section Cycle menstruel */}
             <div className="bg-white rounded-xl shadow-lg p-6">
               <h2 className="text-xl font-bold mb-4 text-pink-600 flex items-center">
                 🌸 Suivi Cycle Menstruel
@@ -1296,6 +1297,7 @@ const AdminPlayerDetail = ({
                               confiance: '💪 Confiance',
                               technique: '⚽ Technique',
                               tactique: '🎯 Tactique',
+                              influence_groupe: '👥 Influence groupe',
                               cycle_phase: '🌸 Phase cycle',
                               cycle_impact: '🌸 Impact cycle',
                               blessure_actuelle: '🚨 Blessure actuelle',
@@ -1364,6 +1366,9 @@ const AdminPlayerDetail = ({
                         )}
                         {response.data?.plaisir && (
                           <p><span className="font-medium">Plaisir:</span> {response.data.plaisir}/20</p>
+                        )}
+                        {response.data?.influence_groupe && (
+                          <p><span className="font-medium">Influence groupe:</span> {response.data.influence_groupe}/20</p>
                         )}
                         {response.data?.cycle_phase && (
                           <p className="text-pink-600 font-medium">🌸 Cycle: {response.data.cycle_phase}</p>
