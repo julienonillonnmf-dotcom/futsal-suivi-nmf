@@ -1,12 +1,15 @@
-// views/PostSessionQuestionnaire.jsx
+// src/views/PostSessionQuestionnaire.jsx
+
 import React, { useState, useEffect } from 'react';
-import { ChevronLeft, Target, Clock } from 'lucide-react';
+import { ChevronLeft } from 'lucide-react';
 import ScaleQuestion from '../components/ScaleQuestion';
-import InjuryComponent from '../components/InjuryComponent';
 
 const PostSessionQuestionnaire = ({ 
   selectedPlayer,
   setCurrentView,
+  objectifsCollectifs,
+  objectifsIndividuels,
+  objectifsMentaux,
   loading,
   setLoading,
   supabase,
@@ -14,60 +17,50 @@ const PostSessionQuestionnaire = ({
 }) => {
   
   const [postSessionForm, setPostSessionForm] = useState({
-    objectifs_repondu: 10,
     intensite_rpe: 10,
     plaisir_seance: 10,
-    tactique: 10,
-    technique: 10,
-    influence_positive: 10,
-    sentiment_groupe: 10,
-    commentaires_libres: '',
-    injuries: [],
-    new_injury: false
+    confiance: 10,
+    objectifs_atteints: '',
+    difficultes_rencontrees: '',
+    commentaires_libres: ''
   });
 
-  const [preSessionObjectives, setPreSessionObjectives] = useState(null);
-  const [loadingObjectives, setLoadingObjectives] = useState(true);
+  const [preSessionObjectives, setPreSessionObjectives] = useState({
+    motivation: null,
+    fatigue: null,
+    objectifs_personnels: ''
+  });
 
-  // Récupérer les objectifs définis en pré-séance du jour
+  // Récupérer la dernière réponse pré-séance pour afficher les objectifs personnels
   useEffect(() => {
-    const loadPreSessionObjectives = async () => {
+    const fetchLastPreSession = async () => {
       if (!selectedPlayer) return;
       
-      setLoadingObjectives(true);
-      
       try {
-        const today = new Date();
-        const startOfDay = new Date(today.setHours(0, 0, 0, 0)).toISOString();
-        const endOfDay = new Date(today.setHours(23, 59, 59, 999)).toISOString();
-
         const { data, error } = await supabase
           .from('responses')
           .select('*')
           .eq('player_id', selectedPlayer.id)
           .eq('type', 'pre')
-          .gte('created_at', startOfDay)
-          .lte('created_at', endOfDay)
           .order('created_at', { ascending: false })
           .limit(1);
-
+        
         if (error) throw error;
-
+        
         if (data && data.length > 0) {
-          setPreSessionObjectives(data[0].data);
-        } else {
-          setPreSessionObjectives(null);
+          const lastPreSession = data[0];
+          setPreSessionObjectives({
+            motivation: lastPreSession.data?.motivation || null,
+            fatigue: lastPreSession.data?.fatigue || null,
+            objectifs_personnels: lastPreSession.data?.objectifs_personnels || ''
+          });
         }
-
       } catch (error) {
-        console.error('Erreur chargement objectifs pré-séance:', error);
-        setPreSessionObjectives(null);
+        console.error('Erreur récupération pré-séance:', error);
       }
-      
-      setLoadingObjectives(false);
     };
-
-    loadPreSessionObjectives();
+    
+    fetchLastPreSession();
   }, [selectedPlayer, supabase]);
 
   const saveQuestionnaire = async () => {
@@ -90,16 +83,12 @@ const PostSessionQuestionnaire = ({
       
       // Réinitialiser le formulaire
       setPostSessionForm({
-        objectifs_repondu: 10,
         intensite_rpe: 10,
         plaisir_seance: 10,
-        tactique: 10,
-        technique: 10,
-        influence_positive: 10,
-        sentiment_groupe: 10,
-        commentaires_libres: '',
-        injuries: [],
-        new_injury: false
+        confiance: 10,
+        objectifs_atteints: '',
+        difficultes_rencontrees: '',
+        commentaires_libres: ''
       });
       
       // Recharger les données
@@ -133,80 +122,89 @@ const PostSessionQuestionnaire = ({
             </button>
           </div>
 
-          {/* Rappel des objectifs de pré-séance */}
-          <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
-            <div className="flex items-center mb-3">
-              <Target className="text-green-600 mr-2" size={20} />
-              <h3 className="text-lg font-semibold" style={{color: '#1D2945'}}>
-                Rappel de vos objectifs du début de séance
-              </h3>
-            </div>
-            
-            {loadingObjectives ? (
-              <div className="flex items-center text-gray-600">
-                <Clock className="mr-2" size={16} />
-                <span>Chargement de vos objectifs...</span>
-              </div>
-            ) : preSessionObjectives ? (
-              <div className="space-y-3">
-                {/* Objectifs personnels définis en pré-séance */}
-                {preSessionObjectives.objectifs_personnels && (
-                  <div>
-                    <h4 className="font-medium text-green-800 mb-2">Vos objectifs personnels :</h4>
-                    <div className="bg-white p-3 rounded border-l-4 border-green-400">
-                      <p className="text-gray-700 whitespace-pre-wrap">{preSessionObjectives.objectifs_personnels}</p>
-                    </div>
-                  </div>
-                )}
-
-                {/* Informations contextuelles de pré-séance */}
-                <div className="grid grid-cols-2 gap-4 mt-4">
-                  {preSessionObjectives.motivation && (
-                    <div className="bg-white p-3 rounded">
-                      <p className="text-sm text-gray-600">Motivation initiale</p>
-                      <p className="font-medium text-blue-600">{preSessionObjectives.motivation}/20</p>
-                    </div>
-                  )}
-                  {preSessionObjectives.fatigue && (
-                    <div className="bg-white p-3 rounded">
-                      <p className="text-sm text-gray-600">Niveau de forme initial</p>
-                      <p className="font-medium text-green-600">{preSessionObjectives.fatigue}/20</p>
-                    </div>
-                  )}
-                </div>
-
-                {/* Commentaires de pré-séance */}
-                {preSessionObjectives.commentaires_libres && (
-                  <div className="mt-4">
-                    <h4 className="font-medium text-green-800 mb-2">Vos commentaires du début de séance :</h4>
-                    <div className="bg-white p-3 rounded border-l-4 border-blue-400">
-                      <p className="text-gray-700 italic">"{preSessionObjectives.commentaires_libres}"</p>
-                    </div>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <div className="text-gray-600 italic">
-                Aucun questionnaire pré-séance trouvé pour aujourd'hui. Vous pouvez tout de même remplir ce questionnaire post-séance.
-              </div>
-            )}
-          </div>
-
           <div className="space-y-6">
-            <ScaleQuestion
-              question="Dans quelle mesure vos objectifs ont-ils été atteints durant cette séance ?"
-              value={postSessionForm.objectifs_repondu}
-              onChange={(value) => setPostSessionForm({...postSessionForm, objectifs_repondu: value})}
-              leftLabel="Pas du tout"
-              rightLabel="Complètement"
-            />
+            {/* Rappel de TOUS les objectifs du début de séance */}
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+              <h3 className="text-lg font-semibold mb-3" style={{color: '#1D2945'}}>
+                🎯 Rappel de vos objectifs du début de séance
+              </h3>
+              
+              {/* Objectifs Collectifs */}
+              {objectifsCollectifs && (
+                <div className="mb-4">
+                  <h4 className="font-medium text-blue-800 mb-2">Objectifs de l'équipe :</h4>
+                  <div className="bg-white p-3 rounded border-l-4 border-blue-400">
+                    <p className="text-gray-700 whitespace-pre-wrap">{objectifsCollectifs}</p>
+                  </div>
+                </div>
+              )}
+              
+              {/* Objectifs Individuels Techniques */}
+              {selectedPlayer && objectifsIndividuels[selectedPlayer.id] && (
+                <div className="mb-4">
+                  <h4 className="font-medium text-blue-800 mb-2">Vos objectifs techniques :</h4>
+                  <div className="bg-white p-3 rounded border-l-4 border-green-400">
+                    <p className="text-gray-700 whitespace-pre-wrap">{objectifsIndividuels[selectedPlayer.id]}</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Objectifs Mentaux */}
+              {selectedPlayer && objectifsMentaux[selectedPlayer.id] && (
+                <div className="mb-4">
+                  <h4 className="font-medium text-blue-800 mb-2">Vos objectifs mentaux :</h4>
+                  <div className="bg-white p-3 rounded border-l-4 border-purple-400">
+                    <p className="text-gray-700 whitespace-pre-wrap">{objectifsMentaux[selectedPlayer.id]}</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Objectifs Personnels saisis dans le pré-séance */}
+              {preSessionObjectives.objectifs_personnels && (
+                <div className="mb-4">
+                  <h4 className="font-medium text-blue-800 mb-2">Vos objectifs personnels :</h4>
+                  <div className="bg-white p-3 rounded border-l-4 border-yellow-400">
+                    <p className="text-gray-700 whitespace-pre-wrap">{preSessionObjectives.objectifs_personnels}</p>
+                  </div>
+                </div>
+              )}
+
+              {/* État initial (motivation et forme) */}
+              {(preSessionObjectives.motivation || preSessionObjectives.fatigue) && (
+                <div className="mb-2">
+                  <h4 className="font-medium text-blue-800 mb-2">Votre état en début de séance :</h4>
+                  <div className="bg-white p-3 rounded border-l-4 border-gray-400">
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      {preSessionObjectives.motivation && (
+                        <p className="text-gray-700">
+                          <span className="font-semibold">Motivation initiale :</span> {preSessionObjectives.motivation}/20
+                        </p>
+                      )}
+                      {preSessionObjectives.fatigue && (
+                        <p className="text-gray-700">
+                          <span className="font-semibold">Niveau de forme initial :</span> {preSessionObjectives.fatigue}/20
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+              
+              {!objectifsCollectifs && 
+               (!selectedPlayer || !objectifsIndividuels[selectedPlayer.id]) && 
+               (!selectedPlayer || !objectifsMentaux[selectedPlayer.id]) && 
+               !preSessionObjectives.objectifs_personnels && (
+                <p className="text-gray-600 italic">Aucun objectif n'avait été défini pour cette séance.</p>
+              )}
+            </div>
 
             <ScaleQuestion
-              question="Comment évaluez-vous l'intensité de cette séance ? (RPE)"
+              question="Comment évaluez-vous l'intensité de la séance ? (RPE - Rating of Perceived Exertion)"
               value={postSessionForm.intensite_rpe}
               onChange={(value) => setPostSessionForm({...postSessionForm, intensite_rpe: value})}
-              leftLabel="Très facile"
-              rightLabel="Très difficile"
+              leftLabel="Très faible"
+              rightLabel="Très intense"
+              showValue={false}
             />
 
             <ScaleQuestion
@@ -215,56 +213,57 @@ const PostSessionQuestionnaire = ({
               onChange={(value) => setPostSessionForm({...postSessionForm, plaisir_seance: value})}
               leftLabel="Aucun plaisir"
               rightLabel="Énormément de plaisir"
+              showValue={false}
             />
 
             <ScaleQuestion
-              question="Comment vous évaluez-vous tactiquement durant cette séance ?"
-              value={postSessionForm.tactique}
-              onChange={(value) => setPostSessionForm({...postSessionForm, tactique: value})}
-              leftLabel="Aucun progrès"
-              rightLabel="Énormes progrès"
+              question="Comment évaluez-vous votre niveau de confiance après cette séance ?"
+              value={postSessionForm.confiance}
+              onChange={(value) => setPostSessionForm({...postSessionForm, confiance: value})}
+              leftLabel="Très faible"
+              rightLabel="Très élevé"
+              showValue={false}
             />
 
-            <ScaleQuestion
-              question="Comment vous évaluez-vous techniquement durant cette séance ?"
-              value={postSessionForm.technique}
-              onChange={(value) => setPostSessionForm({...postSessionForm, technique: value})}
-              leftLabel="Aucun progrès"
-              rightLabel="Énormes progrès"
-            />
-
-            <ScaleQuestion
-              question="Dans quelle mesure pensez-vous avoir eu une influence positive sur le groupe ?"
-              value={postSessionForm.influence_positive}
-              onChange={(value) => setPostSessionForm({...postSessionForm, influence_positive: value})}
-              leftLabel="Aucune influence"
-              rightLabel="Très positive"
-            />
-
-            <ScaleQuestion
-              question="Comment vous êtes-vous sentie dans le groupe durant cette séance ?"
-              value={postSessionForm.sentiment_groupe}
-              onChange={(value) => setPostSessionForm({...postSessionForm, sentiment_groupe: value})}
-              leftLabel="Très mal intégré"
-              rightLabel="Parfaitement intégré"
-            />
-
-            <InjuryComponent
-              injuries={postSessionForm.injuries}
-              onChange={(injuries) => setPostSessionForm({...postSessionForm, injuries})}
-              showNewInjury={true}
-            />
-
+            {/* Objectifs atteints */}
             <div className="mb-6">
               <label className="block text-sm font-semibold text-gray-700 mb-3">
-                Commentaires libres (optionnel)
+                ✅ Avez-vous atteint vos objectifs pour cette séance ?
+              </label>
+              <textarea
+                value={postSessionForm.objectifs_atteints}
+                onChange={(e) => setPostSessionForm({...postSessionForm, objectifs_atteints: e.target.value})}
+                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:border-transparent"
+                rows="3"
+                placeholder="Décrivez dans quelle mesure vous avez atteint vos objectifs (ex: j'ai réussi à améliorer mes passes courtes, j'ai été plus vocale...)"
+              />
+            </div>
+
+            {/* Difficultés rencontrées */}
+            <div className="mb-6">
+              <label className="block text-sm font-semibold text-gray-700 mb-3">
+                ⚠️ Quelles difficultés avez-vous rencontrées ?
+              </label>
+              <textarea
+                value={postSessionForm.difficultes_rencontrees}
+                onChange={(e) => setPostSessionForm({...postSessionForm, difficultes_rencontrees: e.target.value})}
+                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:border-transparent"
+                rows="3"
+                placeholder="Décrivez les difficultés rencontrées pendant la séance (techniques, tactiques, mentales, physiques...)"
+              />
+            </div>
+
+            {/* Commentaires libres */}
+            <div className="mb-6">
+              <label className="block text-sm font-semibold text-gray-700 mb-3">
+                💭 Commentaires libres (optionnel)
               </label>
               <textarea
                 value={postSessionForm.commentaires_libres}
                 onChange={(e) => setPostSessionForm({...postSessionForm, commentaires_libres: e.target.value})}
                 className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:border-transparent"
                 rows="4"
-                placeholder="Partagez vos impressions, suggestions ou remarques sur cette séance..."
+                placeholder="Partagez vos ressentis généraux, remarques ou questions sur cette séance..."
               />
             </div>
           </div>
@@ -273,7 +272,7 @@ const PostSessionQuestionnaire = ({
             onClick={saveQuestionnaire}
             disabled={loading}
             className="w-full mt-8 py-4 text-white rounded-lg font-semibold text-lg hover:shadow-lg transform hover:scale-105 transition-all disabled:opacity-50"
-            style={{background: 'linear-gradient(135deg, #1D2945 0%, #2563eb 100%)'}}
+            style={{background: 'linear-gradient(135deg, #C09D5A 0%, #d4a574 100%)'}}
           >
             {loading ? 'Sauvegarde...' : 'Sauvegarder'}
           </button>
