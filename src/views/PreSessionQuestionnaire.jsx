@@ -24,7 +24,10 @@ const PreSessionQuestionnaire = ({
     objectif_difficulte: 10,
     objectifs_personnels: '',
     commentaires_libres: '',
-    injuries: []
+    injuries: [],
+    // Nouveaux champs pour le cycle menstruel
+    cycle_phase: '',
+    cycle_impact: 10
   });
 
   const saveQuestionnaire = async () => {
@@ -53,7 +56,9 @@ const PreSessionQuestionnaire = ({
         objectif_difficulte: 10,
         objectifs_personnels: '',
         commentaires_libres: '',
-        injuries: []
+        injuries: [],
+        cycle_phase: '',
+        cycle_impact: 10
       });
       
       // Recharger les données
@@ -179,13 +184,57 @@ const PreSessionQuestionnaire = ({
               showValue={false}
             />
 
+            {/* NOUVELLE SECTION : Cycle menstruel */}
+            <div className="bg-pink-50 border border-pink-200 rounded-lg p-4 mb-6">
+              <h3 className="text-sm font-semibold text-pink-800 mb-4">
+                🌸 Suivi du cycle menstruel (optionnel et confidentiel)
+              </h3>
+              
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Phase actuelle du cycle
+                </label>
+                <select
+                  value={preSessionForm.cycle_phase}
+                  onChange={(e) => setPreSessionForm({...preSessionForm, cycle_phase: e.target.value})}
+                  className="w-full p-3 border border-pink-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent bg-white"
+                >
+                  <option value="">Je ne souhaite pas répondre</option>
+                  <option value="menstruations">Menstruations (règles)</option>
+                  <option value="folliculaire">Phase folliculaire (après règles, avant ovulation)</option>
+                  <option value="ovulation">Ovulation (milieu de cycle)</option>
+                  <option value="luteale">Phase lutéale (après ovulation, avant règles)</option>
+                  <option value="contraception">Sous contraception hormonale</option>
+                </select>
+                <p className="text-xs text-gray-500 mt-2 italic">
+                  Cette information aide le staff à adapter l'entraînement à votre physiologie
+                </p>
+              </div>
+
+              {preSessionForm.cycle_phase && preSessionForm.cycle_phase !== '' && (
+                <div>
+                  <ScaleQuestion
+                    question="Impact perçu du cycle sur votre état physique aujourd'hui"
+                    value={preSessionForm.cycle_impact}
+                    onChange={(value) => setPreSessionForm({...preSessionForm, cycle_impact: value})}
+                    leftLabel="Impact très négatif"
+                    rightLabel="Aucun impact / positif"
+                    showValue={false}
+                  />
+                  <p className="text-xs text-gray-500 mt-2 italic">
+                    10 = neutre (ni impact positif ni négatif)
+                  </p>
+                </div>
+              )}
+            </div>
+
             {/* Suivi des blessures */}
             <InjuryComponent
               injuries={preSessionForm.injuries}
               onChange={(injuries) => setPreSessionForm({...preSessionForm, injuries})}
             />
 
-            {/* Zone de commentaires libres ajoutée */}
+            {/* Zone de commentaires libres */}
             <div className="mb-6">
               <label className="block text-sm font-semibold text-gray-700 mb-3">
                 💭 Commentaires libres (optionnel)
