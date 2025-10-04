@@ -23,8 +23,8 @@ const PostSessionQuestionnaire = ({
     technique: 10,
     tactique: 10,
     atteinte_objectifs: 10,
+    influence_groupe: 10,
     objectifs_atteints: '',
-    influence_groupe: '',
     commentaires_libres: ''
   });
 
@@ -92,8 +92,8 @@ const PostSessionQuestionnaire = ({
         technique: 10,
         tactique: 10,
         atteinte_objectifs: 10,
+        influence_groupe: 10,
         objectifs_atteints: '',
-        influence_groupe: '',
         commentaires_libres: ''
       });
       
@@ -258,6 +258,15 @@ const PostSessionQuestionnaire = ({
               showValue={false}
             />
 
+            <ScaleQuestion
+              question="À quel point penses-tu avoir influencé positivement le groupe sur cette séance ?"
+              value={postSessionForm.influence_groupe}
+              onChange={(value) => setPostSessionForm({...postSessionForm, influence_groupe: value})}
+              leftLabel="Aucune influence"
+              rightLabel="Très forte influence"
+              showValue={false}
+            />
+
             {/* Objectifs atteints - description */}
             <div className="mb-6">
               <label className="block text-sm font-semibold text-gray-700 mb-3">
@@ -269,20 +278,6 @@ const PostSessionQuestionnaire = ({
                 className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:border-transparent"
                 rows="3"
                 placeholder="Décrivez dans quelle mesure vous avez atteint vos objectifs (ex: j'ai réussi à améliorer mes passes courtes, j'ai été plus vocale...)"
-              />
-            </div>
-
-            {/* Influence positive sur le groupe */}
-            <div className="mb-6">
-              <label className="block text-sm font-semibold text-gray-700 mb-3">
-                👥 Comment penses-tu avoir influencé positivement le groupe sur la séance ?
-              </label>
-              <textarea
-                value={postSessionForm.influence_groupe}
-                onChange={(e) => setPostSessionForm({...postSessionForm, influence_groupe: e.target.value})}
-                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:border-transparent"
-                rows="3"
-                placeholder="Décrivez votre contribution positive au groupe (ex: j'ai encouragé mes coéquipières, j'ai apporté de l'énergie, j'ai communiqué tactiquement...)"
               />
             </div>
 
