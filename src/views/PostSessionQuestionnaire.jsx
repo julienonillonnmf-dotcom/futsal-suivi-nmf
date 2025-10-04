@@ -22,8 +22,8 @@ const PostSessionQuestionnaire = ({
     confiance: 10,
     technique: 10,
     tactique: 10,
+    atteinte_objectifs: 10,
     objectifs_atteints: '',
-    difficultes_rencontrees: '',
     commentaires_libres: ''
   });
 
@@ -90,8 +90,8 @@ const PostSessionQuestionnaire = ({
         confiance: 10,
         technique: 10,
         tactique: 10,
+        atteinte_objectifs: 10,
         objectifs_atteints: '',
-        difficultes_rencontrees: '',
         commentaires_libres: ''
       });
       
@@ -247,10 +247,19 @@ const PostSessionQuestionnaire = ({
               showValue={false}
             />
 
-            {/* Objectifs atteints */}
+            <ScaleQuestion
+              question="Pensez-vous avoir atteint vos objectifs pour cette séance ?"
+              value={postSessionForm.atteinte_objectifs}
+              onChange={(value) => setPostSessionForm({...postSessionForm, atteinte_objectifs: value})}
+              leftLabel="Pas du tout"
+              rightLabel="Totalement"
+              showValue={false}
+            />
+
+            {/* Objectifs atteints - description */}
             <div className="mb-6">
               <label className="block text-sm font-semibold text-gray-700 mb-3">
-                ✅ Avez-vous atteint vos objectifs pour cette séance ?
+                ✅ Détaillez l'atteinte de vos objectifs (optionnel)
               </label>
               <textarea
                 value={postSessionForm.objectifs_atteints}
@@ -258,20 +267,6 @@ const PostSessionQuestionnaire = ({
                 className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:border-transparent"
                 rows="3"
                 placeholder="Décrivez dans quelle mesure vous avez atteint vos objectifs (ex: j'ai réussi à améliorer mes passes courtes, j'ai été plus vocale...)"
-              />
-            </div>
-
-            {/* Difficultés rencontrées */}
-            <div className="mb-6">
-              <label className="block text-sm font-semibold text-gray-700 mb-3">
-                ⚠️ Quelles difficultés avez-vous rencontrées ?
-              </label>
-              <textarea
-                value={postSessionForm.difficultes_rencontrees}
-                onChange={(e) => setPostSessionForm({...postSessionForm, difficultes_rencontrees: e.target.value})}
-                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:border-transparent"
-                rows="3"
-                placeholder="Décrivez les difficultés rencontrées pendant la séance (techniques, tactiques, mentales, physiques...)"
               />
             </div>
 
