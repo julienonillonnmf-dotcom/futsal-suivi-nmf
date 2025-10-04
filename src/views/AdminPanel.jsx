@@ -44,7 +44,8 @@ const AdminPanel = ({
     { value: 'plaisir', label: 'Plaisir', color: '#10b981' },
     { value: 'confiance', label: 'Confiance', color: '#8b5cf6' },
     { value: 'technique', label: 'Technique', color: '#ec4899' },
-    { value: 'tactique', label: 'Tactique', color: '#6366f1' }
+    { value: 'tactique', label: 'Tactique', color: '#6366f1' },
+    { value: 'atteinte_objectifs', label: 'Atteinte objectifs', color: '#f97316' }
   ];
 
   const questionTypeOptions = [
