@@ -20,6 +20,8 @@ const PostSessionQuestionnaire = ({
     intensite_rpe: 10,
     plaisir_seance: 10,
     confiance: 10,
+    technique: 10,
+    tactique: 10,
     objectifs_atteints: '',
     difficultes_rencontrees: '',
     commentaires_libres: ''
@@ -86,6 +88,8 @@ const PostSessionQuestionnaire = ({
         intensite_rpe: 10,
         plaisir_seance: 10,
         confiance: 10,
+        technique: 10,
+        tactique: 10,
         objectifs_atteints: '',
         difficultes_rencontrees: '',
         commentaires_libres: ''
@@ -222,6 +226,24 @@ const PostSessionQuestionnaire = ({
               onChange={(value) => setPostSessionForm({...postSessionForm, confiance: value})}
               leftLabel="Très faible"
               rightLabel="Très élevé"
+              showValue={false}
+            />
+
+            <ScaleQuestion
+              question="Comment évaluez-vous votre performance technique durant cette séance ?"
+              value={postSessionForm.technique}
+              onChange={(value) => setPostSessionForm({...postSessionForm, technique: value})}
+              leftLabel="Très faible"
+              rightLabel="Excellente"
+              showValue={false}
+            />
+
+            <ScaleQuestion
+              question="Comment évaluez-vous votre performance tactique durant cette séance ?"
+              value={postSessionForm.tactique}
+              onChange={(value) => setPostSessionForm({...postSessionForm, tactique: value})}
+              leftLabel="Très faible"
+              rightLabel="Excellente"
               showValue={false}
             />
 
