@@ -1,8 +1,7 @@
-// views/AdminPanel.jsx - Version COMPLÈTE avec analyse préventive et cycle menstruel
+// views/AdminPanel.jsx - Version MISE À JOUR avec cycle menstruel simplifié (Oui/Non)
 import React, { useState } from 'react';
 import { ChevronLeft, Edit3, UserPlus, Download, Trash2, Filter, TrendingUp, BarChart3, Users, Calendar } from 'lucide-react';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
-import { resizeImage } from '../utils/imageUtils';
 
 const AdminPanel = ({ 
   players,
@@ -37,7 +36,6 @@ const AdminPanel = ({
   const [menstrualStartDate, setMenstrualStartDate] = useState('');
   const [menstrualEndDate, setMenstrualEndDate] = useState('');
 
-  // AJOUT DE influence_groupe dans les options
   const metricsOptions = [
     { value: 'motivation', label: 'Motivation', color: '#2563eb' },
     { value: 'fatigue', label: 'Fatigue', color: '#dc2626' },
@@ -285,7 +283,7 @@ const AdminPanel = ({
         .order('created_at', { ascending: false });
 
       const csvContent = [
-        ['Date', 'Joueuse', 'Type', 'Motivation', 'Fatigue', 'Plaisir', 'RPE', 'Tactique', 'Technique', 'Influence', 'Cycle Phase', 'Cycle Impact', 'Commentaires'].join(','),
+        ['Date', 'Joueuse', 'Type', 'Motivation', 'Fatigue', 'Plaisir', 'RPE', 'Tactique', 'Technique', 'Influence', 'Règles', 'Cycle Impact', 'Commentaires'].join(','),
         ...responses.map(r => [
           new Date(r.created_at).toLocaleDateString('fr-FR'),
           `"${r.players?.name || ''}"`,
@@ -931,7 +929,7 @@ const AdminPanel = ({
           </div>
         </div>
 
-        {/* SECTION : Suivi du Cycle Menstruel */}
+        {/* SECTION : Suivi du Cycle Menstruel - VERSION SIMPLIFIÉE (Oui/Non) */}
         <div className="bg-white rounded-xl shadow-lg p-6 mb-8">
           <h2 className="text-2xl font-bold mb-4 text-pink-600 flex items-center">
             🌸 Suivi du Cycle Menstruel
@@ -1011,11 +1009,9 @@ const AdminPanel = ({
 
             const menstrualData = [];
             const phaseCount = {
-              'menstruations': 0,
-              'folliculaire': 0,
-              'ovulation': 0,
-              'luteale': 0,
-              'contraception': 0
+              'oui': 0,
+              'non': 0,
+              '': 0
             };
             let totalResponses = 0;
             let responsesWithCycle = 0;
@@ -1036,21 +1032,26 @@ const AdminPanel = ({
               preResponses.forEach(response => {
                 totalResponses++;
                 
-                if (response.data?.cycle_phase && response.data.cycle_phase !== '') {
-                  responsesWithCycle++;
-                  const phase = response.data.cycle_phase;
-                  phaseCount[phase] = (phaseCount[phase] || 0) + 1;
+                if (response.data?.cycle_phase !== undefined) {
+                  const phase = response.data.cycle_phase || '';
                   
-                  if (response.data.cycle_impact != null) {
-                    impactValues.push(Number(response.data.cycle_impact));
-                  }
+                  if (phase !== '') {
+                    responsesWithCycle++;
+                    phaseCount[phase] = (phaseCount[phase] || 0) + 1;
+                    
+                    if (response.data.cycle_impact != null) {
+                      impactValues.push(Number(response.data.cycle_impact));
+                    }
 
-                  menstrualData.push({
-                    date: new Date(response.created_at).toLocaleDateString('fr-FR'),
-                    player: player.name,
-                    phase: phase,
-                    impact: response.data.cycle_impact || 10
-                  });
+                    menstrualData.push({
+                      date: new Date(response.created_at).toLocaleDateString('fr-FR'),
+                      player: player.name,
+                      phase: phase,
+                      impact: response.data.cycle_impact || 10
+                    });
+                  } else {
+                    phaseCount[''] = (phaseCount[''] || 0) + 1;
+                  }
                 }
               });
             });
@@ -1060,19 +1061,15 @@ const AdminPanel = ({
               : 0;
 
             const phaseLabels = {
-              'menstruations': 'Menstruations',
-              'folliculaire': 'Phase folliculaire',
-              'ovulation': 'Ovulation',
-              'luteale': 'Phase lutéale',
-              'contraception': 'Contraception'
+              'oui': 'Oui (règles)',
+              'non': 'Non (pas de règles)',
+              '': 'Non renseigné'
             };
 
             const phaseColors = {
-              'menstruations': '#dc2626',
-              'folliculaire': '#f59e0b',
-              'ovulation': '#10b981',
-              'luteale': '#8b5cf6',
-              'contraception': '#6366f1'
+              'oui': '#dc2626',
+              'non': '#10b981',
+              '': '#9ca3af'
             };
 
             const pieData = Object.entries(phaseCount)
@@ -1130,7 +1127,7 @@ const AdminPanel = ({
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
                   <div>
-                    <h3 className="text-lg font-semibold mb-4 text-gray-700">Distribution des phases</h3>
+                    <h3 className="text-lg font-semibold mb-4 text-gray-700">Distribution des réponses</h3>
                     {pieData.length > 0 ? (
                       <>
                         <ResponsiveContainer width="100%" height={250}>
@@ -1159,7 +1156,7 @@ const AdminPanel = ({
                                 <div className="w-4 h-4 rounded" style={{backgroundColor: entry.color}}></div>
                                 <span>{entry.name}</span>
                               </div>
-                              <span className="font-semibold">{entry.value} ({((entry.value / responsesWithCycle) * 100).toFixed(0)}%)</span>
+                              <span className="font-semibold">{entry.value} ({((entry.value / (responsesWithCycle + phaseCount[''])) * 100).toFixed(0)}%)</span>
                             </div>
                           ))}
                         </div>
@@ -1170,7 +1167,7 @@ const AdminPanel = ({
                   </div>
 
                   <div>
-                    <h3 className="text-lg font-semibold mb-4 text-gray-700">Impact moyen par phase</h3>
+                    <h3 className="text-lg font-semibold mb-4 text-gray-700">Impact moyen par statut</h3>
                     {(() => {
                       const impactByPhase = {};
                       menstrualData.forEach(d => {
@@ -1268,7 +1265,7 @@ const AdminPanel = ({
           })()}
         </div>
 
-        {/* SECTION Blessures - COMPLÈTE */}
+        {/* SECTION Blessures */}
         <div className="bg-white rounded-xl shadow-lg p-6 mb-8">
           <h2 className="text-2xl font-bold mb-6 text-red-600 flex items-center">
             🚑 Suivi des Blessures
@@ -1523,7 +1520,7 @@ const AdminPanel = ({
           })()}
         </div>
 
-        {/* SECTION ANALYSE PRÉVENTIVE avec cycle menstruel */}
+        {/* SECTION ANALYSE PRÉVENTIVE avec cycle menstruel simplifié */}
         <div className="bg-white rounded-xl shadow-lg p-6 mb-8">
           <h2 className="text-2xl font-bold mb-4 text-orange-600 flex items-center">
             📊 Analyse Préventive - Patterns & Blessures
@@ -1604,7 +1601,7 @@ const AdminPanel = ({
                   confiance: response.data?.confiance || 0
                 };
 
-                // Données cycle menstruel
+                // Données cycle menstruel simplifié
                 if (response.type === 'pre' && response.data?.cycle_phase && response.data.cycle_phase !== '') {
                   const cycleInfo = {
                     phase: response.data.cycle_phase,
@@ -1655,7 +1652,7 @@ const AdminPanel = ({
               confiance: (avgBeforeInjury.confiance - avgNormal.confiance).toFixed(1)
             };
 
-            // Analyse du cycle menstruel en lien avec les blessures
+            // Analyse du cycle menstruel simplifié en lien avec les blessures
             const phaseCountBeforeInjury = {};
             const phaseCountNormal = {};
             const avgImpactBeforeInjury = cycleDataBeforeInjury.length > 0
@@ -1672,6 +1669,11 @@ const AdminPanel = ({
             cycleDataNormal.forEach(d => {
               phaseCountNormal[d.phase] = (phaseCountNormal[d.phase] || 0) + 1;
             });
+
+            const phaseLabels = {
+              'oui': 'Oui (règles)',
+              'non': 'Non (pas de règles)'
+            };
 
             return (
               <>
@@ -1824,7 +1826,7 @@ const AdminPanel = ({
                   </div>
                 </div>
 
-                {/* Analyse du cycle menstruel */}
+                {/* Analyse du cycle menstruel simplifié */}
                 {(cycleDataBeforeInjury.length > 0 || cycleDataNormal.length > 0) && (
                   <div className="mb-6">
                     <h3 className="text-lg font-semibold mb-4 text-gray-700">
@@ -1833,7 +1835,7 @@ const AdminPanel = ({
 
                     <div className="bg-pink-50 border border-pink-200 rounded-lg p-4 mb-4">
                       <p className="text-sm text-pink-800">
-                        <strong>Analyse exploratoire :</strong> Comparaison des phases du cycle menstruel et de l'impact perçu 
+                        <strong>Analyse exploratoire :</strong> Comparaison du statut menstruel (règles ou non) et de l'impact perçu 
                         dans les 7 jours précédant une blessure vs périodes normales.
                       </p>
                       <p className="text-xs text-pink-700 mt-2">
@@ -1853,7 +1855,7 @@ const AdminPanel = ({
                             <div className="mt-4 space-y-1 text-xs">
                               {Object.entries(phaseCountBeforeInjury).map(([phase, count]) => (
                                 <div key={phase} className="flex justify-between">
-                                  <span className="text-gray-600 capitalize">{phase}:</span>
+                                  <span className="text-gray-600">{phaseLabels[phase]}:</span>
                                   <span className="font-semibold">{count} ({((count/cycleDataBeforeInjury.length)*100).toFixed(0)}%)</span>
                                 </div>
                               ))}
@@ -1869,7 +1871,7 @@ const AdminPanel = ({
                             <div className="mt-4 space-y-1 text-xs">
                               {Object.entries(phaseCountNormal).map(([phase, count]) => (
                                 <div key={phase} className="flex justify-between">
-                                  <span className="text-gray-600 capitalize">{phase}:</span>
+                                  <span className="text-gray-600">{phaseLabels[phase]}:</span>
                                   <span className="font-semibold">{count} ({((count/cycleDataNormal.length)*100).toFixed(0)}%)</span>
                                 </div>
                               ))}
