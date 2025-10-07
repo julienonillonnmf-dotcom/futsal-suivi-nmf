@@ -15,3 +15,6 @@ The React Compiler is not enabled on this template. To add it, see [this documen
 
 If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
 "Test webhook"
+📝 Résumé des mots de passe :
+FonctionMot de passeAccès siteNMF2026Mode CoachcoachNmf_2026Suppressionsadmin_supp
+Le système est maintenant ultra-sécurisé ! Impossible de supprimer quoi que ce soit sans le mot de passe admin_supp. 🛡️🔒
