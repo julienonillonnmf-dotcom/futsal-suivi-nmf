@@ -369,6 +369,11 @@ const AdminPanel = ({
   };
 
   // FONCTIONS DE SUPPRESSION
+  const verifyDeletePassword = () => {
+    const password = prompt('🔐 Mot de passe requis pour supprimer :');
+    return password === 'admin_supp';
+  };
+
   const deleteAllResponses = async () => {
     const confirmation1 = confirm(
       '⚠️ ATTENTION : Cette action est IRRÉVERSIBLE !\n\n' +
@@ -379,11 +384,7 @@ const AdminPanel = ({
     
     if (!confirmation1) return;
     
-    const password = prompt(
-      '🔐 Pour confirmer, entrez le mot de passe administrateur :'
-    );
-    
-    if (password !== 'coachNmf_2026') {
+    if (!verifyDeletePassword()) {
       alert('❌ Mot de passe incorrect - Opération annulée');
       return;
     }
@@ -426,6 +427,11 @@ const AdminPanel = ({
   };
 
   const deleteResponsesByPlayer = async (playerId, playerName) => {
+    if (!verifyDeletePassword()) {
+      alert('❌ Mot de passe incorrect - Opération annulée');
+      return;
+    }
+
     const confirmation = confirm(
       `⚠️ Supprimer toutes les réponses de ${playerName} ?\n\n` +
       `Cette action est irréversible.`
@@ -457,6 +463,11 @@ const AdminPanel = ({
   };
 
   const deleteResponsesByType = async (type) => {
+    if (!verifyDeletePassword()) {
+      alert('❌ Mot de passe incorrect - Opération annulée');
+      return;
+    }
+
     const typeLabels = {
       pre: 'Pré-séance',
       post: 'Post-séance',
@@ -499,6 +510,11 @@ const AdminPanel = ({
       alert('⚠️ Veuillez sélectionner une période (date de début et date de fin)');
       return;
     }
+
+    if (!verifyDeletePassword()) {
+      alert('❌ Mot de passe incorrect - Opération annulée');
+      return;
+    }
     
     const confirmation = confirm(
       `⚠️ Supprimer tous les questionnaires entre :\n` +
@@ -535,6 +551,11 @@ const AdminPanel = ({
   };
 
   const deleteSingleResponse = async (responseId, playerName, responseType, responseDate) => {
+    if (!verifyDeletePassword()) {
+      alert('❌ Mot de passe incorrect - Opération annulée');
+      return;
+    }
+
     const typeLabels = {
       pre: 'Pré-séance',
       post: 'Post-séance',
@@ -2243,6 +2264,20 @@ const AdminPanel = ({
 
           {showDeleteSection && (
             <>
+              {/* AVERTISSEMENT MOT DE PASSE */}
+              <div className="bg-blue-50 border-l-4 border-blue-500 p-4 mb-6">
+                <div className="flex items-center">
+                  <div className="flex-shrink-0">
+                    <AlertTriangle className="h-5 w-5 text-blue-400" />
+                  </div>
+                  <div className="ml-3">
+                    <p className="text-sm text-blue-700">
+                      <strong>🔐 Mot de passe requis :</strong> Toutes les opérations de suppression nécessitent le mot de passe spécial <code className="bg-blue-100 px-2 py-0.5 rounded">admin_supp</code>
+                    </p>
+                  </div>
+                </div>
+              </div>
+
               {/* BOUTONS DE SUPPRESSION GLOBALE */}
               <div className="bg-red-50 border-2 border-red-300 rounded-lg p-6 mb-6">
                 <h3 className="text-lg font-bold text-red-800 mb-4 flex items-center">
@@ -2256,7 +2291,7 @@ const AdminPanel = ({
                     <h4 className="font-semibold text-red-800 mb-2">🗑️ Supprimer TOUT</h4>
                     <p className="text-xs text-gray-600 mb-3">
                       Supprime toutes les réponses de toutes les joueuses. 
-                      Nécessite le mot de passe administrateur.
+                      Nécessite le mot de passe de suppression.
                     </p>
                     <button
                       onClick={deleteAllResponses}
@@ -2271,7 +2306,7 @@ const AdminPanel = ({
                   <div className="bg-white border-2 border-orange-400 rounded-lg p-4">
                     <h4 className="font-semibold text-orange-800 mb-2">📋 Par type de questionnaire</h4>
                     <p className="text-xs text-gray-600 mb-3">
-                      Supprime tous les questionnaires d'un type spécifique
+                      Supprime tous les questionnaires d'un type spécifique (mot de passe requis)
                     </p>
                     <div className="grid grid-cols-2 gap-2">
                       <button
@@ -2309,7 +2344,7 @@ const AdminPanel = ({
                   <div className="bg-white border-2 border-yellow-400 rounded-lg p-4">
                     <h4 className="font-semibold text-yellow-800 mb-2">📅 Par période</h4>
                     <p className="text-xs text-gray-600 mb-3">
-                      Supprime toutes les réponses entre deux dates
+                      Supprime toutes les réponses entre deux dates (mot de passe requis)
                     </p>
                     <div className="space-y-2">
                       <input
@@ -2340,7 +2375,7 @@ const AdminPanel = ({
                   <div className="bg-white border-2 border-purple-400 rounded-lg p-4">
                     <h4 className="font-semibold text-purple-800 mb-2">👤 Par joueuse</h4>
                     <p className="text-xs text-gray-600 mb-3">
-                      Supprime toutes les réponses d'une joueuse
+                      Supprime toutes les réponses d'une joueuse (mot de passe requis)
                     </p>
                     <div className="max-h-32 overflow-y-auto space-y-1">
                       {players.map(player => (
@@ -2364,6 +2399,12 @@ const AdminPanel = ({
                   <Filter size={20} className="mr-2" />
                   Suppression Individuelle des Réponses
                 </h3>
+                
+                <div className="bg-yellow-50 border border-yellow-200 rounded p-3 mb-4">
+                  <p className="text-xs text-yellow-800">
+                    <strong>ℹ️ Info :</strong> Chaque suppression individuelle nécessite le mot de passe <code className="bg-yellow-100 px-1 py-0.5 rounded">admin_supp</code>
+                  </p>
+                </div>
 
                 {/* Barre de recherche et filtres */}
                 <div className="bg-white rounded-lg p-4 mb-4 border border-gray-200">
