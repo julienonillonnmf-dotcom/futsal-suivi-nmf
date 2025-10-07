@@ -1,4 +1,4 @@
-// views/AdminPlayerDetail.jsx - Version COMPLÈTE avec influence_groupe
+// views/AdminPlayerDetail.jsx - VERSION MISE À JOUR avec cycle menstruel simplifié (Oui/Non)
 import React, { useState, useRef, useMemo } from 'react';
 import { 
   ChevronLeft, 
@@ -16,7 +16,6 @@ import {
   Filter
 } from 'lucide-react';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
-import { resizeImage } from '../utils/imageUtils';
 
 const AdminPlayerDetail = ({ 
   selectedPlayer,
@@ -41,16 +40,13 @@ const AdminPlayerDetail = ({
   const [tempMentalObjectives, setTempMentalObjectives] = useState('');
   const fileInputRef = useRef(null);
   
-  // Filtres pour les blessures
   const [injuryStartDate, setInjuryStartDate] = useState('');
   const [injuryEndDate, setInjuryEndDate] = useState('');
   
-  // Filtres pour les métriques
   const [metricsStartDate, setMetricsStartDate] = useState('');
   const [metricsEndDate, setMetricsEndDate] = useState('');
   const [selectedMetricsToDisplay, setSelectedMetricsToDisplay] = useState(['motivation', 'fatigue', 'intensite_rpe', 'plaisir']);
 
-  // Filtres pour le cycle menstruel
   const [menstrualStartDate, setMenstrualStartDate] = useState('');
   const [menstrualEndDate, setMenstrualEndDate] = useState('');
 
@@ -58,7 +54,6 @@ const AdminPlayerDetail = ({
 
   const stats = playerStats[selectedPlayer.id] || {};
 
-  // Options de métriques disponibles - AJOUT DE influence_groupe
   const availableMetrics = [
     { value: 'motivation', label: 'Motivation', color: '#2563eb' },
     { value: 'fatigue', label: 'Fatigue', color: '#dc2626' },
@@ -72,7 +67,6 @@ const AdminPlayerDetail = ({
     { value: 'influence_groupe', label: 'Influence groupe', color: '#14b8a6' }
   ];
 
-  // Calcul de la moyenne mobile exponentielle (EMA)
   const calculateEMA = (data, period = 7) => {
     if (data.length === 0) return [];
     
@@ -89,7 +83,6 @@ const AdminPlayerDetail = ({
     return ema;
   };
 
-  // Traitement des données du graphique avec tri et filtres
   const processedChartData = useMemo(() => {
     if (!stats.chartData || stats.chartData.length === 0) return { chartData: [], averages: {}, emaData: {} };
     
@@ -181,14 +174,13 @@ const AdminPlayerDetail = ({
         return;
       }
 
-      const resizedFile = await resizeImage(file);
       const fileExt = 'jpg';
       const fileName = `${selectedPlayer.id}-${Date.now()}.${fileExt}`;
       const filePath = `player-photos/${fileName}`;
 
       const { error: uploadError } = await supabase.storage
         .from('photos')
-        .upload(filePath, resizedFile, { upsert: true });
+        .upload(filePath, file, { upsert: true });
 
       if (uploadError) throw uploadError;
 
@@ -273,7 +265,6 @@ const AdminPlayerDetail = ({
     <div className="min-h-screen" style={{background: 'linear-gradient(135deg, #f0f4f8 0%, #fef9e7 100%)'}}>
       <div className="max-w-6xl mx-auto p-4">
         
-        {/* En-tête avec retour */}
         <div className="bg-white rounded-xl shadow-lg p-6 mb-6">
           <div className="flex items-center justify-between">
             <button
@@ -292,10 +283,8 @@ const AdminPlayerDetail = ({
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           
-          {/* Colonne 1: Profil et Photo */}
           <div className="space-y-6">
             
-            {/* Section Photo de Profil */}
             <div className="bg-white rounded-xl shadow-lg p-4">
               <div className="flex items-center justify-between mb-3">
                 <h2 className="text-base font-semibold" style={{color: '#1D2945'}}>
@@ -382,7 +371,6 @@ const AdminPlayerDetail = ({
               </div>
             </div>
 
-            {/* Statistiques rapides */}
             <div className="bg-white rounded-xl shadow-lg p-6">
               <h3 className="text-lg font-bold mb-4" style={{color: '#1D2945'}}>
                 <BarChart3 className="inline mr-2" size={20} />
@@ -413,10 +401,8 @@ const AdminPlayerDetail = ({
             </div>
           </div>
 
-          {/* Colonne 2: Objectifs Personnels */}
           <div className="space-y-6">
             
-            {/* Objectifs Techniques */}
             <div className="bg-white rounded-xl shadow-lg p-6">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-xl font-bold" style={{color: '#1D2945'}}>
@@ -472,7 +458,6 @@ const AdminPlayerDetail = ({
               )}
             </div>
 
-            {/* Objectifs Mentaux */}
             <div className="bg-white rounded-xl shadow-lg p-6">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-xl font-bold" style={{color: '#1D2945'}}>
@@ -529,10 +514,8 @@ const AdminPlayerDetail = ({
             </div>
           </div>
 
-          {/* Colonne 3: Historique, Graphiques, Cycle menstruel et Blessures */}
           <div className="space-y-6">
             
-            {/* Graphique d'évolution avec filtres */}
             {stats.chartData && stats.chartData.length > 0 && (
               <div className="bg-white rounded-xl shadow-lg p-6">
                 <h3 className="text-lg font-bold mb-4" style={{color: '#1D2945'}}>
@@ -540,7 +523,6 @@ const AdminPlayerDetail = ({
                   Évolution des Métriques
                 </h3>
                 
-                {/* Filtres */}
                 <div className="bg-gray-50 rounded-lg p-4 mb-6 border border-gray-200">
                   <div className="flex items-center justify-between mb-3">
                     <h4 className="text-sm font-semibold text-gray-700 flex items-center">
@@ -559,7 +541,6 @@ const AdminPlayerDetail = ({
                     </button>
                   </div>
                   
-                  {/* Filtre de période */}
                   <div className="mb-4">
                     <label className="block text-xs font-medium text-gray-700 mb-2">Période</label>
                     <div className="grid grid-cols-2 gap-2">
@@ -579,7 +560,6 @@ const AdminPlayerDetail = ({
                     </div>
                   </div>
                   
-                  {/* Sélection des métriques */}
                   <div>
                     <label className="block text-xs font-medium text-gray-700 mb-2">Métriques à afficher</label>
                     <div className="space-y-1">
@@ -605,7 +585,6 @@ const AdminPlayerDetail = ({
                   </div>
                 </div>
 
-                {/* Moyennes sur la période */}
                 {processedChartData.averages && Object.keys(processedChartData.averages).length > 0 && (
                   <div className="bg-blue-50 rounded-lg p-3 mb-4 border border-blue-200">
                     <h4 className="text-sm font-semibold text-blue-800 mb-2">Moyennes sur la période</h4>
@@ -629,7 +608,6 @@ const AdminPlayerDetail = ({
                   </div>
                 )}
 
-                {/* Graphique */}
                 {processedChartData.chartData.length > 0 ? (
                   <>
                     <ResponsiveContainer width="100%" height={350}>
@@ -687,7 +665,6 @@ const AdminPlayerDetail = ({
                           }}
                         />
                         
-                        {/* Lignes des valeurs réelles */}
                         {selectedMetricsToDisplay.map(metric => {
                           const metricInfo = availableMetrics.find(m => m.value === metric);
                           return (
@@ -704,7 +681,6 @@ const AdminPlayerDetail = ({
                           );
                         })}
                         
-                        {/* Lignes de moyenne (pointillés) */}
                         {selectedMetricsToDisplay.map(metric => {
                           const metricInfo = availableMetrics.find(m => m.value === metric);
                           if (!processedChartData.averages[metric]) return null;
@@ -724,7 +700,6 @@ const AdminPlayerDetail = ({
                           );
                         })}
                         
-                        {/* Lignes EMA (tirets longs) */}
                         {selectedMetricsToDisplay.map(metric => {
                           const metricInfo = availableMetrics.find(m => m.value === metric);
                           return (
@@ -744,7 +719,6 @@ const AdminPlayerDetail = ({
                       </LineChart>
                     </ResponsiveContainer>
                     
-                    {/* Légende */}
                     <div className="mt-4 space-y-3">
                       <div>
                         <h5 className="text-xs font-semibold text-gray-700 mb-2">Valeurs réelles (lignes pleines)</h5>
@@ -780,13 +754,12 @@ const AdminPlayerDetail = ({
               </div>
             )}
 
-            {/* Section Cycle menstruel */}
+            {/* Section Cycle menstruel - VERSION SIMPLIFIÉE */}
             <div className="bg-white rounded-xl shadow-lg p-6">
               <h2 className="text-xl font-bold mb-4 text-pink-600 flex items-center">
                 🌸 Suivi Cycle Menstruel
               </h2>
 
-              {/* Filtres de période */}
               <div className="bg-pink-50 rounded-lg p-3 mb-4 border border-pink-200">
                 <div className="flex items-center justify-between mb-2">
                   <label className="text-xs font-medium text-pink-700">Période d'analyse</label>
@@ -831,28 +804,31 @@ const AdminPlayerDetail = ({
 
                 const menstrualData = [];
                 const phaseCount = {
-                  'menstruations': 0,
-                  'folliculaire': 0,
-                  'ovulation': 0,
-                  'luteale': 0,
-                  'contraception': 0
+                  'oui': 0,
+                  'non': 0,
+                  '': 0
                 };
                 const impactValues = [];
 
                 preResponses.forEach(response => {
-                  if (response.data?.cycle_phase && response.data.cycle_phase !== '') {
-                    const phase = response.data.cycle_phase;
-                    phaseCount[phase] = (phaseCount[phase] || 0) + 1;
+                  if (response.data?.cycle_phase !== undefined) {
+                    const phase = response.data.cycle_phase || '';
                     
-                    if (response.data.cycle_impact != null) {
-                      impactValues.push(Number(response.data.cycle_impact));
-                    }
+                    if (phase !== '') {
+                      phaseCount[phase] = (phaseCount[phase] || 0) + 1;
+                      
+                      if (response.data.cycle_impact != null) {
+                        impactValues.push(Number(response.data.cycle_impact));
+                      }
 
-                    menstrualData.push({
-                      date: new Date(response.created_at).toLocaleDateString('fr-FR'),
-                      phase: phase,
-                      impact: response.data.cycle_impact || 10
-                    });
+                      menstrualData.push({
+                        date: new Date(response.created_at).toLocaleDateString('fr-FR'),
+                        phase: phase,
+                        impact: response.data.cycle_impact || 10
+                      });
+                    } else {
+                      phaseCount[''] = (phaseCount[''] || 0) + 1;
+                    }
                   }
                 });
 
@@ -861,19 +837,15 @@ const AdminPlayerDetail = ({
                   : 0;
 
                 const phaseLabels = {
-                  'menstruations': 'Menstruations',
-                  'folliculaire': 'Phase folliculaire',
-                  'ovulation': 'Ovulation',
-                  'luteale': 'Phase lutéale',
-                  'contraception': 'Contraception'
+                  'oui': 'Oui (règles)',
+                  'non': 'Non (pas de règles)',
+                  '': 'Non renseigné'
                 };
 
                 const phaseColors = {
-                  'menstruations': '#dc2626',
-                  'folliculaire': '#f59e0b',
-                  'ovulation': '#10b981',
-                  'luteale': '#8b5cf6',
-                  'contraception': '#6366f1'
+                  'oui': '#dc2626',
+                  'non': '#10b981',
+                  '': '#9ca3af'
                 };
 
                 return menstrualData.length === 0 ? (
@@ -884,7 +856,6 @@ const AdminPlayerDetail = ({
                   </div>
                 ) : (
                   <>
-                    {/* Statistiques */}
                     <div className="grid grid-cols-2 gap-3 mb-4">
                       <div className="p-3 bg-pink-50 border border-pink-200 rounded-lg">
                         <p className="text-xs text-pink-600 font-medium">Entrées totales</p>
@@ -898,14 +869,14 @@ const AdminPlayerDetail = ({
                       </div>
                     </div>
 
-                    {/* Distribution des phases */}
                     <div className="mb-4">
-                      <h4 className="text-sm font-semibold mb-3 text-gray-700">Distribution des phases</h4>
+                      <h4 className="text-sm font-semibold mb-3 text-gray-700">Distribution des réponses</h4>
                       <div className="space-y-2">
                         {Object.entries(phaseCount)
                           .filter(([_, count]) => count > 0)
                           .map(([phase, count]) => {
-                            const percentage = (count / menstrualData.length) * 100;
+                            const totalWithData = menstrualData.length + phaseCount[''];
+                            const percentage = (count / totalWithData) * 100;
                             return (
                               <div key={phase}>
                                 <div className="flex items-center justify-between mb-1">
@@ -930,9 +901,8 @@ const AdminPlayerDetail = ({
                       </div>
                     </div>
 
-                    {/* Impact par phase */}
                     <div className="mb-4">
-                      <h4 className="text-sm font-semibold mb-3 text-gray-700">Impact moyen par phase</h4>
+                      <h4 className="text-sm font-semibold mb-3 text-gray-700">Impact moyen par statut</h4>
                       {(() => {
                         const impactByPhase = {};
                         menstrualData.forEach(d => {
@@ -961,14 +931,12 @@ const AdminPlayerDetail = ({
                       })()}
                     </div>
 
-                    {/* Info importante */}
                     <div className="bg-pink-50 border-l-4 border-pink-500 p-3">
                       <p className="text-xs text-pink-800">
                         <strong>Confidentiel:</strong> Ces données sont sensibles. Ne les partagez pas sans accord de la joueuse.
                       </p>
                     </div>
 
-                    {/* Détail des entrées */}
                     <details className="mt-4">
                       <summary className="cursor-pointer text-xs font-medium text-gray-700 py-2">
                         Voir le détail ({menstrualData.length} entrées)
@@ -999,7 +967,6 @@ const AdminPlayerDetail = ({
                 🚑 Suivi des Blessures
               </h2>
 
-              {/* Filtres de période */}
               <div className="bg-red-50 rounded-lg p-4 mb-6 border-2 border-red-200">
                 <div className="flex items-center justify-between mb-3">
                   <h3 className="text-sm font-semibold text-red-800 flex items-center">
@@ -1118,7 +1085,6 @@ const AdminPlayerDetail = ({
                   </div>
                 ) : (
                   <>
-                    {/* Statistiques */}
                     <div className="grid grid-cols-3 gap-4 mb-6">
                       <div className="p-4 bg-red-50 border-2 border-red-200 rounded-lg">
                         <p className="text-sm text-red-600 font-medium">Total</p>
@@ -1136,7 +1102,6 @@ const AdminPlayerDetail = ({
                       </div>
                     </div>
 
-                    {/* Graphique d'évolution */}
                     {injuryTimeline.length > 0 && (
                       <div className="mb-6">
                         <h4 className="text-md font-semibold mb-3 text-gray-700">Évolution temporelle</h4>
@@ -1197,7 +1162,6 @@ const AdminPlayerDetail = ({
                       </div>
                     )}
 
-                    {/* Zones touchées */}
                     {zonesSorted.length > 0 && (
                       <div className="mb-6">
                         <h4 className="text-md font-semibold mb-3 text-gray-700">Zones touchées</h4>
@@ -1228,7 +1192,6 @@ const AdminPlayerDetail = ({
                       </div>
                     )}
 
-                    {/* Détail des blessures */}
                     <details className="mt-4">
                       <summary className="cursor-pointer text-sm font-medium text-gray-700 hover:text-gray-900 py-2">
                         Voir le détail des blessures ({injuryData.length})
@@ -1255,7 +1218,6 @@ const AdminPlayerDetail = ({
               })()}
             </div>
 
-            {/* Historique des réponses récentes */}
             <div className="bg-white rounded-xl shadow-lg p-6">
               <h3 className="text-lg font-bold mb-4" style={{color: '#1D2945'}}>
                 <MessageSquare className="inline mr-2" size={20} />
@@ -1298,7 +1260,7 @@ const AdminPlayerDetail = ({
                               technique: '⚽ Technique',
                               tactique: '🎯 Tactique',
                               influence_groupe: '👥 Influence groupe',
-                              cycle_phase: '🌸 Phase cycle',
+                              cycle_phase: '🌸 Règles',
                               cycle_impact: '🌸 Impact cycle',
                               blessure_actuelle: '🚨 Blessure actuelle',
                               douleur_niveau: '😣 Niveau douleur',
@@ -1307,6 +1269,11 @@ const AdminPlayerDetail = ({
                               objectifs_atteints: '✅ Objectifs atteints',
                               difficultes_rencontrees: '⚠️ Difficultés'
                             };
+                            
+                            if (key === 'cycle_phase') {
+                              return `${labels[key] || key}: ${value === 'oui' ? 'Oui' : value === 'non' ? 'Non' : value}`;
+                            }
+                            
                             return `${labels[key] || key}: ${value}${typeof value === 'number' && key !== 'douleur_niveau' && key !== 'cycle_impact' ? '/20' : ''}`;
                           })
                           .join('\n');
@@ -1371,7 +1338,9 @@ const AdminPlayerDetail = ({
                           <p><span className="font-medium">Influence groupe:</span> {response.data.influence_groupe}/20</p>
                         )}
                         {response.data?.cycle_phase && (
-                          <p className="text-pink-600 font-medium">🌸 Cycle: {response.data.cycle_phase}</p>
+                          <p className="text-pink-600 font-medium">
+                            🌸 Règles: {response.data.cycle_phase === 'oui' ? 'Oui' : 'Non'}
+                          </p>
                         )}
                         {response.data?.commentaires_libres && (
                           <p className="text-gray-600 italic">"{response.data.commentaires_libres}"</p>
