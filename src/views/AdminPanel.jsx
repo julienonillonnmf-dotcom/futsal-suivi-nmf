@@ -1,6 +1,6 @@
-// views/AdminPanel.jsx - Version MISE À JOUR avec cycle menstruel simplifié (Oui/Non)
-import React, { useState } from 'react';
-import { ChevronLeft, Edit3, UserPlus, Download, Trash2, Filter, TrendingUp, BarChart3, Users, Calendar } from 'lucide-react';
+// views/AdminPanel.jsx - Version COMPLÈTE avec gestion des suppressions
+import React, { useState, useMemo } from 'react';
+import { ChevronLeft, Edit3, UserPlus, Download, Trash2, Filter, TrendingUp, BarChart3, Users, Calendar, AlertTriangle, Search } from 'lucide-react';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 
 const AdminPanel = ({ 
@@ -35,6 +35,16 @@ const AdminPanel = ({
   const [menstrualSelectedPlayers, setMenstrualSelectedPlayers] = useState([]);
   const [menstrualStartDate, setMenstrualStartDate] = useState('');
   const [menstrualEndDate, setMenstrualEndDate] = useState('');
+
+  // États pour la gestion des suppressions
+  const [showDeleteSection, setShowDeleteSection] = useState(false);
+  const [responseFilter, setResponseFilter] = useState({
+    playerIds: [],
+    types: [],
+    startDate: '',
+    endDate: ''
+  });
+  const [searchQuery, setSearchQuery] = useState('');
 
   const metricsOptions = [
     { value: 'motivation', label: 'Motivation', color: '#2563eb' },
@@ -357,6 +367,252 @@ const AdminPanel = ({
     }
     setLoading(false);
   };
+
+  // FONCTIONS DE SUPPRESSION
+  const deleteAllResponses = async () => {
+    const confirmation1 = confirm(
+      '⚠️ ATTENTION : Cette action est IRRÉVERSIBLE !\n\n' +
+      'Vous allez supprimer TOUTES les réponses de TOUTES les joueuses.\n' +
+      'Les joueuses ne seront pas supprimées.\n\n' +
+      'Voulez-vous vraiment continuer ?'
+    );
+    
+    if (!confirmation1) return;
+    
+    const password = prompt(
+      '🔐 Pour confirmer, entrez le mot de passe administrateur :'
+    );
+    
+    if (password !== 'coachNmf_2026') {
+      alert('❌ Mot de passe incorrect - Opération annulée');
+      return;
+    }
+    
+    const confirmation2 = prompt(
+      '⚠️ DERNIÈRE CONFIRMATION\n\n' +
+      'Tapez exactement "SUPPRIMER TOUT" pour confirmer :'
+    );
+    
+    if (confirmation2 !== 'SUPPRIMER TOUT') {
+      alert('Opération annulée');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const { count: totalBefore } = await supabase
+        .from('responses')
+        .select('*', { count: 'exact', head: true });
+      
+      const { error } = await supabase
+        .from('responses')
+        .delete()
+        .neq('id', '00000000-0000-0000-0000-000000000000');
+      
+      if (error) throw error;
+      
+      alert(
+        `✅ Suppression réussie !\n\n` +
+        `${totalBefore} réponse(s) supprimée(s)\n` +
+        `Les joueuses sont conservées.`
+      );
+      
+      await loadPlayers();
+    } catch (error) {
+      console.error('Erreur suppression totale:', error);
+      alert('❌ Erreur lors de la suppression: ' + error.message);
+    }
+    setLoading(false);
+  };
+
+  const deleteResponsesByPlayer = async (playerId, playerName) => {
+    const confirmation = confirm(
+      `⚠️ Supprimer toutes les réponses de ${playerName} ?\n\n` +
+      `Cette action est irréversible.`
+    );
+    
+    if (!confirmation) return;
+
+    setLoading(true);
+    try {
+      const { count: totalBefore } = await supabase
+        .from('responses')
+        .select('*', { count: 'exact', head: true })
+        .eq('player_id', playerId);
+      
+      const { error } = await supabase
+        .from('responses')
+        .delete()
+        .eq('player_id', playerId);
+      
+      if (error) throw error;
+      
+      alert(`✅ ${totalBefore} réponse(s) de ${playerName} supprimée(s)`);
+      await loadPlayers();
+    } catch (error) {
+      console.error('Erreur suppression par joueuse:', error);
+      alert('❌ Erreur: ' + error.message);
+    }
+    setLoading(false);
+  };
+
+  const deleteResponsesByType = async (type) => {
+    const typeLabels = {
+      pre: 'Pré-séance',
+      post: 'Post-séance',
+      match: 'Match',
+      injury: 'Blessures'
+    };
+    
+    const confirmation = confirm(
+      `⚠️ Supprimer tous les questionnaires "${typeLabels[type]}" ?\n\n` +
+      `Cette action est irréversible.`
+    );
+    
+    if (!confirmation) return;
+
+    setLoading(true);
+    try {
+      const { count: totalBefore } = await supabase
+        .from('responses')
+        .select('*', { count: 'exact', head: true })
+        .eq('type', type);
+      
+      const { error } = await supabase
+        .from('responses')
+        .delete()
+        .eq('type', type);
+      
+      if (error) throw error;
+      
+      alert(`✅ ${totalBefore} questionnaire(s) "${typeLabels[type]}" supprimé(s)`);
+      await loadPlayers();
+    } catch (error) {
+      console.error('Erreur suppression par type:', error);
+      alert('❌ Erreur: ' + error.message);
+    }
+    setLoading(false);
+  };
+
+  const deleteResponsesByDateRange = async (startDate, endDate) => {
+    if (!startDate || !endDate) {
+      alert('⚠️ Veuillez sélectionner une période (date de début et date de fin)');
+      return;
+    }
+    
+    const confirmation = confirm(
+      `⚠️ Supprimer tous les questionnaires entre :\n` +
+      `Du ${new Date(startDate).toLocaleDateString('fr-FR')} ` +
+      `au ${new Date(endDate).toLocaleDateString('fr-FR')} ?\n\n` +
+      `Cette action est irréversible.`
+    );
+    
+    if (!confirmation) return;
+
+    setLoading(true);
+    try {
+      const { count: totalBefore } = await supabase
+        .from('responses')
+        .select('*', { count: 'exact', head: true })
+        .gte('created_at', startDate)
+        .lte('created_at', endDate + 'T23:59:59');
+      
+      const { error } = await supabase
+        .from('responses')
+        .delete()
+        .gte('created_at', startDate)
+        .lte('created_at', endDate + 'T23:59:59');
+      
+      if (error) throw error;
+      
+      alert(`✅ ${totalBefore} réponse(s) supprimée(s) pour la période sélectionnée`);
+      await loadPlayers();
+    } catch (error) {
+      console.error('Erreur suppression par date:', error);
+      alert('❌ Erreur: ' + error.message);
+    }
+    setLoading(false);
+  };
+
+  const deleteSingleResponse = async (responseId, playerName, responseType, responseDate) => {
+    const typeLabels = {
+      pre: 'Pré-séance',
+      post: 'Post-séance',
+      match: 'Match',
+      injury: 'Blessure'
+    };
+    
+    const confirmation = confirm(
+      `⚠️ Supprimer ce questionnaire ?\n\n` +
+      `Joueuse: ${playerName}\n` +
+      `Type: ${typeLabels[responseType]}\n` +
+      `Date: ${new Date(responseDate).toLocaleDateString('fr-FR')} à ${new Date(responseDate).toLocaleTimeString('fr-FR', {hour: '2-digit', minute: '2-digit'})}\n\n` +
+      `Cette action est irréversible.`
+    );
+    
+    if (!confirmation) return;
+
+    setLoading(true);
+    try {
+      const { error } = await supabase
+        .from('responses')
+        .delete()
+        .eq('id', responseId);
+      
+      if (error) throw error;
+      
+      alert(`✅ Questionnaire supprimé`);
+      await loadPlayers();
+    } catch (error) {
+      console.error('Erreur suppression réponse unique:', error);
+      alert('❌ Erreur: ' + error.message);
+    }
+    setLoading(false);
+  };
+
+  // Calcul des réponses filtrées pour l'affichage
+  const filteredResponses = useMemo(() => {
+    let allResponses = [];
+    
+    players.forEach(player => {
+      const responses = player.responses || [];
+      responses.forEach(response => {
+        allResponses.push({
+          ...response,
+          playerName: player.name,
+          playerId: player.id
+        });
+      });
+    });
+    
+    if (responseFilter.playerIds.length > 0) {
+      allResponses = allResponses.filter(r => responseFilter.playerIds.includes(r.playerId));
+    }
+    
+    if (responseFilter.types.length > 0) {
+      allResponses = allResponses.filter(r => responseFilter.types.includes(r.type));
+    }
+    
+    if (responseFilter.startDate) {
+      allResponses = allResponses.filter(r => 
+        new Date(r.created_at) >= new Date(responseFilter.startDate)
+      );
+    }
+    
+    if (responseFilter.endDate) {
+      allResponses = allResponses.filter(r => 
+        new Date(r.created_at) <= new Date(responseFilter.endDate + 'T23:59:59')
+      );
+    }
+    
+    if (searchQuery) {
+      allResponses = allResponses.filter(r => 
+        r.playerName.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+    }
+    
+    return allResponses.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+  }, [players, responseFilter, searchQuery]);
 
   const { chartData, globalAverages, filteredAverages } = getUnifiedChartData();
 
@@ -1958,6 +2214,273 @@ const AdminPanel = ({
               </>
             );
           })()}
+        </div>
+
+        {/* SECTION GESTION DES RÉPONSES - ZONE DANGEREUSE */}
+        <div className="bg-white rounded-xl shadow-lg p-6 mb-8">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h2 className="text-2xl font-bold text-red-600 flex items-center">
+                <Trash2 className="inline mr-2" size={24} />
+                Gestion des Réponses (Zone Dangereuse)
+              </h2>
+              <p className="text-sm text-gray-600 mt-1">
+                Suppression de questionnaires - Actions irréversibles
+              </p>
+            </div>
+            <button
+              onClick={() => setShowDeleteSection(!showDeleteSection)}
+              className={`flex items-center space-x-2 px-4 py-2 rounded-lg font-medium transition-all ${
+                showDeleteSection 
+                  ? 'bg-red-100 text-red-700 hover:bg-red-200' 
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              <AlertTriangle size={16} />
+              <span>{showDeleteSection ? 'Masquer' : 'Afficher'} les options</span>
+            </button>
+          </div>
+
+          {showDeleteSection && (
+            <>
+              {/* BOUTONS DE SUPPRESSION GLOBALE */}
+              <div className="bg-red-50 border-2 border-red-300 rounded-lg p-6 mb-6">
+                <h3 className="text-lg font-bold text-red-800 mb-4 flex items-center">
+                  <AlertTriangle size={20} className="mr-2" />
+                  Actions Globales de Suppression
+                </h3>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Suppression totale */}
+                  <div className="bg-white border-2 border-red-400 rounded-lg p-4">
+                    <h4 className="font-semibold text-red-800 mb-2">🗑️ Supprimer TOUT</h4>
+                    <p className="text-xs text-gray-600 mb-3">
+                      Supprime toutes les réponses de toutes les joueuses. 
+                      Nécessite le mot de passe administrateur.
+                    </p>
+                    <button
+                      onClick={deleteAllResponses}
+                      disabled={loading}
+                      className="w-full px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-all disabled:opacity-50 font-semibold"
+                    >
+                      Supprimer toutes les réponses
+                    </button>
+                  </div>
+
+                  {/* Suppression par type */}
+                  <div className="bg-white border-2 border-orange-400 rounded-lg p-4">
+                    <h4 className="font-semibold text-orange-800 mb-2">📋 Par type de questionnaire</h4>
+                    <p className="text-xs text-gray-600 mb-3">
+                      Supprime tous les questionnaires d'un type spécifique
+                    </p>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        onClick={() => deleteResponsesByType('pre')}
+                        disabled={loading}
+                        className="px-3 py-2 bg-blue-500 text-white text-xs rounded hover:bg-blue-600 transition-all disabled:opacity-50"
+                      >
+                        Pré-séance
+                      </button>
+                      <button
+                        onClick={() => deleteResponsesByType('post')}
+                        disabled={loading}
+                        className="px-3 py-2 bg-green-500 text-white text-xs rounded hover:bg-green-600 transition-all disabled:opacity-50"
+                      >
+                        Post-séance
+                      </button>
+                      <button
+                        onClick={() => deleteResponsesByType('match')}
+                        disabled={loading}
+                        className="px-3 py-2 bg-purple-500 text-white text-xs rounded hover:bg-purple-600 transition-all disabled:opacity-50"
+                      >
+                        Match
+                      </button>
+                      <button
+                        onClick={() => deleteResponsesByType('injury')}
+                        disabled={loading}
+                        className="px-3 py-2 bg-yellow-500 text-white text-xs rounded hover:bg-yellow-600 transition-all disabled:opacity-50"
+                      >
+                        Blessures
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Suppression par période */}
+                  <div className="bg-white border-2 border-yellow-400 rounded-lg p-4">
+                    <h4 className="font-semibold text-yellow-800 mb-2">📅 Par période</h4>
+                    <p className="text-xs text-gray-600 mb-3">
+                      Supprime toutes les réponses entre deux dates
+                    </p>
+                    <div className="space-y-2">
+                      <input
+                        type="date"
+                        value={responseFilter.startDate}
+                        onChange={(e) => setResponseFilter({...responseFilter, startDate: e.target.value})}
+                        className="w-full px-2 py-1 border border-gray-300 rounded text-xs"
+                        placeholder="Date de début"
+                      />
+                      <input
+                        type="date"
+                        value={responseFilter.endDate}
+                        onChange={(e) => setResponseFilter({...responseFilter, endDate: e.target.value})}
+                        className="w-full px-2 py-1 border border-gray-300 rounded text-xs"
+                        placeholder="Date de fin"
+                      />
+                      <button
+                        onClick={() => deleteResponsesByDateRange(responseFilter.startDate, responseFilter.endDate)}
+                        disabled={loading || !responseFilter.startDate || !responseFilter.endDate}
+                        className="w-full px-3 py-2 bg-yellow-500 text-white text-xs rounded hover:bg-yellow-600 transition-all disabled:opacity-50"
+                      >
+                        Supprimer la période
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Suppression par joueuse */}
+                  <div className="bg-white border-2 border-purple-400 rounded-lg p-4">
+                    <h4 className="font-semibold text-purple-800 mb-2">👤 Par joueuse</h4>
+                    <p className="text-xs text-gray-600 mb-3">
+                      Supprime toutes les réponses d'une joueuse
+                    </p>
+                    <div className="max-h-32 overflow-y-auto space-y-1">
+                      {players.map(player => (
+                        <button
+                          key={player.id}
+                          onClick={() => deleteResponsesByPlayer(player.id, player.name)}
+                          disabled={loading}
+                          className="w-full px-2 py-1 bg-purple-100 text-purple-800 text-xs rounded hover:bg-purple-200 transition-all disabled:opacity-50 text-left"
+                        >
+                          {player.name} ({player.responses?.length || 0})
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* LISTE DES RÉPONSES INDIVIDUELLES */}
+              <div className="bg-gray-50 rounded-lg p-6">
+                <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center">
+                  <Filter size={20} className="mr-2" />
+                  Suppression Individuelle des Réponses
+                </h3>
+
+                {/* Barre de recherche et filtres */}
+                <div className="bg-white rounded-lg p-4 mb-4 border border-gray-200">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    {/* Recherche par nom */}
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">Rechercher une joueuse</label>
+                      <div className="relative">
+                        <Search size={16} className="absolute left-2 top-2 text-gray-400" />
+                        <input
+                          type="text"
+                          value={searchQuery}
+                          onChange={(e) => setSearchQuery(e.target.value)}
+                          placeholder="Nom de la joueuse..."
+                          className="w-full pl-8 pr-2 py-1 border border-gray-300 rounded text-sm"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Filtre par type */}
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">Type de questionnaire</label>
+                      <select
+                        multiple
+                        value={responseFilter.types}
+                        onChange={(e) => {
+                          const values = Array.from(e.target.selectedOptions, option => option.value);
+                          setResponseFilter({...responseFilter, types: values});
+                        }}
+                        className="w-full p-1 border border-gray-300 rounded text-xs"
+                        size="4"
+                      >
+                        <option value="pre">Pré-séance</option>
+                        <option value="post">Post-séance</option>
+                        <option value="match">Match</option>
+                        <option value="injury">Blessure</option>
+                      </select>
+                    </div>
+
+                    {/* Bouton réinitialiser */}
+                    <div className="flex items-end">
+                      <button
+                        onClick={() => {
+                          setResponseFilter({ playerIds: [], types: [], startDate: '', endDate: '' });
+                          setSearchQuery('');
+                        }}
+                        className="w-full px-3 py-2 bg-gray-200 text-gray-700 rounded text-sm hover:bg-gray-300 transition-all"
+                      >
+                        Réinitialiser les filtres
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="mt-3 text-xs text-gray-600">
+                    <strong>{filteredResponses.length}</strong> réponse(s) affichée(s)
+                  </div>
+                </div>
+
+                {/* Liste des réponses */}
+                <div className="space-y-2 max-h-96 overflow-y-auto">
+                  {filteredResponses.length === 0 ? (
+                    <div className="text-center py-8 text-gray-500">
+                      <p>Aucune réponse à afficher</p>
+                    </div>
+                  ) : (
+                    filteredResponses.map((response) => {
+                      const typeLabels = {
+                        pre: 'Pré-séance',
+                        post: 'Post-séance',
+                        match: 'Match',
+                        injury: 'Blessure'
+                      };
+                      const typeColors = {
+                        pre: 'bg-blue-100 text-blue-800',
+                        post: 'bg-green-100 text-green-800',
+                        match: 'bg-purple-100 text-purple-800',
+                        injury: 'bg-yellow-100 text-yellow-800'
+                      };
+
+                      return (
+                        <div 
+                          key={response.id}
+                          className="flex items-center justify-between p-3 bg-white border border-gray-200 rounded-lg hover:border-red-300 transition-all"
+                        >
+                          <div className="flex-1">
+                            <div className="flex items-center space-x-3">
+                              <span className={`px-2 py-1 rounded text-xs font-medium ${typeColors[response.type]}`}>
+                                {typeLabels[response.type]}
+                              </span>
+                              <span className="font-semibold text-gray-900">{response.playerName}</span>
+                            </div>
+                            <div className="text-xs text-gray-600 mt-1">
+                              {new Date(response.created_at).toLocaleDateString('fr-FR')} à{' '}
+                              {new Date(response.created_at).toLocaleTimeString('fr-FR', {hour: '2-digit', minute: '2-digit'})}
+                            </div>
+                          </div>
+                          <button
+                            onClick={() => deleteSingleResponse(
+                              response.id, 
+                              response.playerName, 
+                              response.type, 
+                              response.created_at
+                            )}
+                            disabled={loading}
+                            className="px-3 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition-all disabled:opacity-50 flex items-center space-x-1"
+                          >
+                            <Trash2 size={14} />
+                            <span className="text-xs">Supprimer</span>
+                          </button>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+            </>
+          )}
         </div>
 
         <div className="bg-white rounded-xl shadow-lg p-6">
