@@ -192,7 +192,7 @@ const PreSessionQuestionnaire = ({
               
               <div className="mb-4">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Phase actuelle du cycle
+                  Avez-vous vos règles actuellement ?
                 </label>
                 <select
                   value={preSessionForm.cycle_phase}
@@ -200,11 +200,8 @@ const PreSessionQuestionnaire = ({
                   className="w-full p-3 border border-pink-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent bg-white"
                 >
                   <option value="">Je ne souhaite pas répondre</option>
-                  <option value="menstruations">Menstruations (règles)</option>
-                  <option value="folliculaire">Phase folliculaire (après règles, avant ovulation)</option>
-                  <option value="ovulation">Ovulation (milieu de cycle)</option>
-                  <option value="luteale">Phase lutéale (après ovulation, avant règles)</option>
-                  <option value="contraception">Sous contraception hormonale</option>
+                  <option value="oui">Oui</option>
+                  <option value="non">Non</option>
                 </select>
                 <p className="text-xs text-gray-500 mt-2 italic">
                   Cette information aide le staff à adapter l'entraînement à votre physiologie
