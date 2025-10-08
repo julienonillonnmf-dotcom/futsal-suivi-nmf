@@ -15,6 +15,7 @@ const MatchQuestionnaire = ({
 }) => {
   
   const [matchForm, setMatchForm] = useState({
+    activite: 'futsal', // NOUVEAU CHAMP
     motivation: 10,
     confiance: 10,
     stress: 10,
@@ -22,7 +23,7 @@ const MatchQuestionnaire = ({
     performance_perçue: 10,
     satisfaction: 10,
     commentaires_libres: '',
-    injuries: [],  // AMÉLIORATION: Suivi des blessures durant le match
+    injuries: [],
     new_injury: false
   });
 
@@ -36,7 +37,7 @@ const MatchQuestionnaire = ({
         .from('responses')
         .insert({
           player_id: selectedPlayer.id,
-          type: 'match',  // NOUVEAU type de questionnaire
+          type: 'match',
           data: matchForm
         });
       
@@ -46,6 +47,7 @@ const MatchQuestionnaire = ({
       
       // Réinitialiser le formulaire
       setMatchForm({
+        activite: 'futsal', // NOUVEAU
         motivation: 10,
         confiance: 10,
         stress: 10,
@@ -91,6 +93,22 @@ const MatchQuestionnaire = ({
           </div>
 
           <div className="space-y-6">
+            {/* NOUVEAU : Sélecteur d'activité */}
+            <div className="bg-gradient-to-r from-purple-50 to-blue-50 rounded-lg p-4 border-2 border-purple-200">
+              <label className="block text-sm font-semibold text-gray-700 mb-3">
+                🏃 Type d'activité
+              </label>
+              <select
+                value={matchForm.activite}
+                onChange={(e) => setMatchForm({...matchForm, activite: e.target.value})}
+                className="w-full p-3 border-2 border-purple-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white text-base font-medium"
+              >
+                <option value="futsal">⚽ Futsal</option>
+                <option value="foot">⚽ Football</option>
+                <option value="autre">🏃 Autre</option>
+              </select>
+            </div>
+
             {/* Questions spécifiques aux matchs */}
             <ScaleQuestion
               question="A quel point étais-tu motivés pour ce match ?"
@@ -98,7 +116,7 @@ const MatchQuestionnaire = ({
               onChange={(value) => setMatchForm({...matchForm, motivation: value})}
               leftLabel="Très faible"
               rightLabel="Très élevée"
-              showValue={false}  // Pas de nombres pour les joueuses
+              showValue={false}
             />
 
             <ScaleQuestion
