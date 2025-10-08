@@ -1,7 +1,99 @@
-// views/AdminPanel.jsx - Version COMPLÈTE avec gestion des suppressions
+// views/AdminPanel.jsx - Version COMPLÈTE avec suivi longitudinal des blessures et gestion des suppressions
 import React, { useState, useMemo } from 'react';
 import { ChevronLeft, Edit3, UserPlus, Download, Trash2, Filter, TrendingUp, BarChart3, Users, Calendar, AlertTriangle, Search } from 'lucide-react';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+
+// Fonction pour regrouper les blessures par zone et créer un suivi temporel
+const processInjuryTracking = (responses, injuryStartDate, injuryEndDate) => {
+  const injuryTracking = new Map();
+  
+  const injuryResponses = responses.filter(r => {
+    const responseDate = new Date(r.created_at);
+    if (injuryStartDate && new Date(injuryStartDate) > responseDate) return false;
+    if (injuryEndDate && new Date(injuryEndDate) < responseDate) return false;
+    
+    return r.type === 'injury' || (r.data?.injuries && r.data.injuries.length > 0);
+  });
+
+  injuryResponses.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+
+  injuryResponses.forEach(response => {
+    const date = new Date(response.created_at);
+    const injuries = response.data?.injuries || [];
+    const playerName = response.playerName || 'Inconnue';
+    const playerId = response.playerId || response.player_id;
+    
+    injuries.forEach(injury => {
+      const zone = (injury.location || injury.zone || 'Non spécifiée').toLowerCase().trim();
+      const douleur = Number(injury.intensity || injury.douleur || 0);
+      const status = injury.status || injury.active || 'unknown';
+      const isActive = status === 'active' || status === 'oui' || injury.active === true;
+      
+      // Clé unique : joueur + zone pour différencier les blessures de différentes joueuses à la même zone
+      const trackingKey = `${playerId}_${zone}`;
+      
+      if (!injuryTracking.has(trackingKey)) {
+        injuryTracking.set(trackingKey, []);
+      }
+      
+      injuryTracking.get(trackingKey).push({
+        date: date,
+        dateStr: date.toLocaleDateString('fr-FR'),
+        douleur: douleur,
+        isActive: isActive,
+        description: injury.description || '',
+        playerName: playerName,
+        playerId: playerId
+      });
+    });
+  });
+
+  const uniqueInjuries = [];
+  const DAYS_GAP_THRESHOLD = 14;
+  
+  injuryTracking.forEach((timeline, trackingKey) => {
+    timeline.sort((a, b) => a.date - b.date);
+    
+    const [playerId, zone] = trackingKey.split('_');
+    const playerName = timeline[0]?.playerName || 'Inconnue';
+    
+    let currentInjury = null;
+    
+    timeline.forEach((entry, index) => {
+      const shouldCreateNew = !currentInjury || 
+        (index > 0 && 
+         (entry.date - timeline[index - 1].date) / (1000 * 60 * 60 * 24) > DAYS_GAP_THRESHOLD);
+      
+      if (shouldCreateNew) {
+        currentInjury = {
+          zone: zone,
+          zoneDisplay: zone.charAt(0).toUpperCase() + zone.slice(1),
+          playerName: playerName,
+          playerId: playerId,
+          startDate: entry.date,
+          lastUpdate: entry.date,
+          timeline: [entry],
+          isCurrentlyActive: entry.isActive,
+          initialDouleur: entry.douleur,
+          currentDouleur: entry.douleur,
+          peakDouleur: entry.douleur,
+          totalReports: 1
+        };
+        uniqueInjuries.push(currentInjury);
+      } else {
+        currentInjury.timeline.push(entry);
+        currentInjury.lastUpdate = entry.date;
+        currentInjury.isCurrentlyActive = entry.isActive;
+        currentInjury.currentDouleur = entry.douleur;
+        currentInjury.peakDouleur = Math.max(currentInjury.peakDouleur, entry.douleur);
+        currentInjury.totalReports++;
+      }
+    });
+  });
+
+  uniqueInjuries.sort((a, b) => b.lastUpdate - a.lastUpdate);
+  return uniqueInjuries;
+};
 
 const AdminPanel = ({ 
   players,
@@ -31,6 +123,7 @@ const AdminPanel = ({
   const [injurySelectedPlayers, setInjurySelectedPlayers] = useState([]);
   const [injuryStartDate, setInjuryStartDate] = useState('');
   const [injuryEndDate, setInjuryEndDate] = useState('');
+  const [expandedInjury, setExpandedInjury] = useState(null);
 
   const [menstrualSelectedPlayers, setMenstrualSelectedPlayers] = useState([]);
   const [menstrualStartDate, setMenstrualStartDate] = useState('');
@@ -65,6 +158,36 @@ const AdminPanel = ({
     { value: 'match', label: 'Match' },
     { value: 'injury', label: 'Blessures' }
   ];
+
+  // Calcul des blessures uniques avec suivi longitudinal
+  const uniqueInjuries = useMemo(() => {
+    const playersToAnalyze = injurySelectedPlayers.length > 0 
+      ? players.filter(p => injurySelectedPlayers.includes(p.id))
+      : players;
+
+    const allResponses = [];
+    playersToAnalyze.forEach(player => {
+      const responses = player.responses || [];
+      responses.forEach(response => {
+        allResponses.push({
+          ...response,
+          playerName: player.name,
+          playerId: player.id
+        });
+      });
+    });
+
+    return processInjuryTracking(allResponses, injuryStartDate, injuryEndDate);
+  }, [players, injurySelectedPlayers, injuryStartDate, injuryEndDate]);
+
+  const injuryStats = useMemo(() => {
+    const activeInjuries = uniqueInjuries.filter(inj => inj.isCurrentlyActive).length;
+    const totalInjuries = uniqueInjuries.length;
+    const healedInjuries = totalInjuries - activeInjuries;
+    const zonesAffected = new Set(uniqueInjuries.map(inj => inj.zone)).size;
+    const playersAffected = new Set(uniqueInjuries.map(inj => inj.playerId)).size;
+    return { activeInjuries, totalInjuries, healedInjuries, zonesAffected, playersAffected };
+  }, [uniqueInjuries]);
 
   const getUnifiedChartData = () => {
     if (selectedMetrics.length === 0) {
@@ -634,6 +757,41 @@ const AdminPanel = ({
     
     return allResponses.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
   }, [players, responseFilter, searchQuery]);
+
+  const getDuration = (startDate, endDate) => {
+    const days = Math.floor((endDate - startDate) / (1000 * 60 * 60 * 24));
+    if (days === 0) return "Signalée aujourd'hui";
+    if (days === 1) return "1 jour de suivi";
+    return `${days} jours de suivi`;
+  };
+
+  const getEvolutionTrend = (injury) => {
+    if (injury.timeline.length < 2) return 'neutral';
+    const first = injury.initialDouleur;
+    const last = injury.currentDouleur;
+    const diff = last - first;
+    if (diff <= -2) return 'improving';
+    if (diff >= 2) return 'worsening';
+    return 'stable';
+  };
+
+  const getTrendIcon = (trend) => {
+    switch(trend) {
+      case 'improving': return '📉 Amélioration';
+      case 'worsening': return '📈 Aggravation';
+      case 'stable': return '➡️ Stable';
+      default: return '❓';
+    }
+  };
+
+  const getTrendColor = (trend) => {
+    switch(trend) {
+      case 'improving': return 'text-green-600 bg-green-50 border-green-300';
+      case 'worsening': return 'text-red-600 bg-red-50 border-red-300';
+      case 'stable': return 'text-blue-600 bg-blue-50 border-blue-300';
+      default: return 'text-gray-600 bg-gray-50 border-gray-300';
+    }
+  };
 
   const { chartData, globalAverages, filteredAverages } = getUnifiedChartData();
 
@@ -1206,7 +1364,7 @@ const AdminPanel = ({
           </div>
         </div>
 
-        {/* SECTION : Suivi du Cycle Menstruel - VERSION SIMPLIFIÉE (Oui/Non) */}
+        {/* SECTION : Suivi du Cycle Menstruel */}
         <div className="bg-white rounded-xl shadow-lg p-6 mb-8">
           <h2 className="text-2xl font-bold mb-4 text-pink-600 flex items-center">
             🌸 Suivi du Cycle Menstruel
@@ -1542,33 +1700,37 @@ const AdminPanel = ({
           })()}
         </div>
 
-        {/* SECTION Blessures */}
+        {/* SECTION SUIVI LONGITUDINAL DES BLESSURES - VERSION COMPLÈTE */}
         <div className="bg-white rounded-xl shadow-lg p-6 mb-8">
-          <h2 className="text-2xl font-bold mb-6 text-red-600 flex items-center">
-            🚑 Suivi des Blessures
+          <h2 className="text-2xl font-bold mb-4 text-red-600 flex items-center">
+            🚑 Suivi Longitudinal des Blessures
           </h2>
 
-          <div className="bg-red-50 rounded-lg p-4 mb-6 border-2 border-red-200 shadow-sm">
-            <h3 className="text-sm font-semibold mb-3 text-red-800 flex items-center">
-              <Filter size={16} className="mr-2" />
-              Filtres du graphique blessures
-            </h3>
+          <div className="bg-red-50 rounded-lg p-4 mb-6 border-2 border-red-200">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-semibold text-red-800 flex items-center">
+                <Calendar size={16} className="mr-2" />
+                Période d'analyse
+              </h3>
+              <button
+                onClick={() => {
+                  setInjuryStartDate('');
+                  setInjuryEndDate('');
+                  setInjurySelectedPlayers([]);
+                }}
+                className="px-2 py-1 bg-red-100 text-red-700 text-xs rounded hover:bg-red-200 transition-all"
+              >
+                Réinitialiser
+              </button>
+            </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               <div>
-                <div className="flex items-center justify-between mb-2">
-                  <label className="text-xs font-medium text-red-700">Joueuses</label>
-                  <button
-                    onClick={() => setInjurySelectedPlayers([])}
-                    className="px-2 py-0.5 bg-red-100 text-red-700 text-xs rounded hover:bg-red-200 transition-all"
-                  >
-                    Toutes
-                  </button>
-                </div>
+                <label className="block text-xs text-gray-600 mb-1">Joueuses</label>
                 <select 
                   multiple
-                  size="4"
-                  className="w-full p-2 border-2 border-red-200 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent bg-white text-sm"
+                  size="3"
+                  className="w-full p-2 border-2 border-red-200 rounded text-sm focus:ring-2 focus:ring-red-500"
                   value={injurySelectedPlayers}
                   onChange={(e) => {
                     const values = Array.from(e.target.selectedOptions, option => option.value);
@@ -1582,659 +1744,247 @@ const AdminPanel = ({
                   ))}
                 </select>
               </div>
-
+              
               <div>
-                <div className="flex items-center justify-between mb-2">
-                  <label className="text-xs font-medium text-red-700">Période</label>
-                  <button
-                    onClick={() => {
-                      setInjuryStartDate('');
-                      setInjuryEndDate('');
-                    }}
-                    className="px-2 py-0.5 bg-red-100 text-red-700 text-xs rounded hover:bg-red-200 transition-all"
-                  >
-                    Réinitialiser
-                  </button>
-                </div>
-                <div className="space-y-2">
-                  <input
-                    type="date"
-                    value={injuryStartDate}
-                    onChange={(e) => setInjuryStartDate(e.target.value)}
-                    className="w-full px-2 py-1 border-2 border-red-200 rounded text-sm focus:ring-2 focus:ring-red-500"
-                  />
-                  <input
-                    type="date"
-                    value={injuryEndDate}
-                    onChange={(e) => setInjuryEndDate(e.target.value)}
-                    min={injuryStartDate}
-                    className="w-full px-2 py-1 border-2 border-red-200 rounded text-sm focus:ring-2 focus:ring-red-500"
-                  />
-                </div>
+                <label className="block text-xs text-gray-600 mb-1">Du</label>
+                <input
+                  type="date"
+                  value={injuryStartDate}
+                  onChange={(e) => setInjuryStartDate(e.target.value)}
+                  className="w-full px-2 py-1 border-2 border-red-200 rounded text-sm focus:ring-2 focus:ring-red-500"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-gray-600 mb-1">Au</label>
+                <input
+                  type="date"
+                  value={injuryEndDate}
+                  onChange={(e) => setInjuryEndDate(e.target.value)}
+                  min={injuryStartDate}
+                  className="w-full px-2 py-1 border-2 border-red-200 rounded text-sm focus:ring-2 focus:ring-red-500"
+                />
               </div>
             </div>
           </div>
 
-          {(() => {
-            const playersToAnalyze = injurySelectedPlayers.length > 0 
-              ? players.filter(p => injurySelectedPlayers.includes(p.id))
-              : players;
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">
+            <div className="p-3 bg-red-50 border-2 border-red-200 rounded-lg">
+              <p className="text-xs text-red-600 font-medium">Blessures uniques</p>
+              <p className="text-2xl font-bold text-red-700 mt-1">{injuryStats.totalInjuries}</p>
+            </div>
 
-            const injuryData = [];
-            const injuryByZone = {};
-            let totalInjuries = 0;
-            let activeInjuries = 0;
+            <div className="p-3 bg-orange-50 border-2 border-orange-200 rounded-lg">
+              <p className="text-xs text-orange-600 font-medium">Actives</p>
+              <p className="text-2xl font-bold text-orange-700 mt-1">{injuryStats.activeInjuries}</p>
+            </div>
 
-            playersToAnalyze.forEach(player => {
-              const responses = player.responses || [];
-              const injuryResponses = responses.filter(r => {
-                const responseDate = new Date(r.created_at);
-                if (injuryStartDate && new Date(injuryStartDate) > responseDate) return false;
-                if (injuryEndDate && new Date(injuryEndDate) < responseDate) return false;
-                
-                return r.type === 'injury' || (r.data?.injuries && r.data.injuries.length > 0);
-              });
+            <div className="p-3 bg-green-50 border-2 border-green-200 rounded-lg">
+              <p className="text-xs text-green-600 font-medium">Guéries</p>
+              <p className="text-2xl font-bold text-green-700 mt-1">{injuryStats.healedInjuries}</p>
+            </div>
 
-              injuryResponses.forEach(response => {
-                const date = new Date(response.created_at).toLocaleDateString('fr-FR');
-                const injuries = response.data?.injuries || [];
-                
-                injuries.forEach(injury => {
-                  const zone = injury.location || injury.zone || 'Non spécifiée';
-                  const douleur = injury.intensity || injury.douleur || 0;
-                  const status = injury.status || injury.active || 'unknown';
-                  
-                  totalInjuries++;
-                  
-                  if (status === 'active' || status === 'oui' || injury.active === true) {
-                    activeInjuries++;
-                  }
+            <div className="p-3 bg-blue-50 border-2 border-blue-200 rounded-lg">
+              <p className="text-xs text-blue-600 font-medium">Zones touchées</p>
+              <p className="text-2xl font-bold text-blue-700 mt-1">{injuryStats.zonesAffected}</p>
+            </div>
 
-                  injuryData.push({
-                    date,
-                    player: player.name,
-                    zone,
-                    douleur: Number(douleur),
-                    status
-                  });
-
-                  injuryByZone[zone] = (injuryByZone[zone] || 0) + 1;
-                });
-              });
-            });
-
-            const injuryTimeline = injuryData.reduce((acc, injury) => {
-              const existing = acc.find(item => item.date === injury.date);
-              if (existing) {
-                existing.count++;
-                existing.avgDouleur = ((existing.avgDouleur * (existing.count - 1)) + injury.douleur) / existing.count;
-              } else {
-                acc.push({
-                  date: injury.date,
-                  count: 1,
-                  avgDouleur: injury.douleur
-                });
-              }
-              return acc;
-            }, []);
-
-            injuryTimeline.sort((a, b) => {
-              const dateA = new Date(a.date.split('/').reverse().join('-'));
-              const dateB = new Date(b.date.split('/').reverse().join('-'));
-              return dateA - dateB;
-            });
-
-            const zonesSorted = Object.entries(injuryByZone)
-              .sort((a, b) => b[1] - a[1])
-              .slice(0, 5);
-
-            return totalInjuries === 0 ? (
-              <div className="text-center py-12 text-gray-500">
-                <p className="text-lg font-medium">✅ Aucune blessure signalée</p>
-                <p className="text-sm mt-2">C'est une excellente nouvelle pour l'équipe</p>
-              </div>
-            ) : (
-              <>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                  <div className="p-4 bg-red-50 border-2 border-red-200 rounded-lg">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm text-red-600 font-medium">Blessures totales</p>
-                        <p className="text-3xl font-bold text-red-700 mt-1">{totalInjuries}</p>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="p-4 bg-orange-50 border-2 border-orange-200 rounded-lg">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm text-orange-600 font-medium">Blessures actives</p>
-                        <p className="text-3xl font-bold text-orange-700 mt-1">{activeInjuries}</p>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="p-4 bg-green-50 border-2 border-green-200 rounded-lg">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm text-green-600 font-medium">Joueuses affectées</p>
-                        <p className="text-3xl font-bold text-green-700 mt-1">
-                          {[...new Set(injuryData.map(i => i.player))].length}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-                  <div>
-                    <h3 className="text-lg font-semibold mb-4 text-gray-700">Évolution temporelle des blessures</h3>
-                    {injuryTimeline.length > 0 ? (
-                      <ResponsiveContainer width="100%" height={250}>
-                        <LineChart data={injuryTimeline}>
-                          <CartesianGrid strokeDasharray="3 3" />
-                          <XAxis dataKey="date" tick={{fontSize: 11}} angle={-45} textAnchor="end" height={70} />
-                          <YAxis />
-                          <Tooltip />
-                          <Line 
-                            type="monotone" 
-                            dataKey="count" 
-                            stroke="#dc2626" 
-                            strokeWidth={3}
-                            dot={{ fill: '#dc2626', strokeWidth: 2, r: 5 }}
-                            connectNulls
-                          />
-                          <Line 
-                            type="monotone" 
-                            dataKey="avgDouleur" 
-                            stroke="#f59e0b" 
-                            strokeWidth={2}
-                            strokeDasharray="5 5"
-                            dot={{ fill: '#f59e0b', strokeWidth: 2, r: 4 }}
-                            connectNulls
-                          />
-                        </LineChart>
-                      </ResponsiveContainer>
-                    ) : (
-                      <p className="text-gray-500 text-center py-8">Aucune donnée temporelle</p>
-                    )}
-                  </div>
-
-                  <div>
-                    <h3 className="text-lg font-semibold mb-4 text-gray-700">Zones les plus touchées</h3>
-                    {zonesSorted.length > 0 ? (
-                      <div className="space-y-3">
-                        {zonesSorted.map(([zone, count], index) => {
-                          const percentage = (count / totalInjuries) * 100;
-                          return (
-                            <div key={zone}>
-                              <div className="flex items-center justify-between mb-1">
-                                <span className="text-sm font-medium text-gray-700">{zone}</span>
-                                <span className="text-sm font-semibold text-red-600">{count} ({percentage.toFixed(0)}%)</span>
-                              </div>
-                              <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
-                                <div 
-                                  className="h-full rounded-full transition-all duration-500"
-                                  style={{
-                                    width: `${percentage}%`,
-                                    background: index === 0 ? 'linear-gradient(90deg, #dc2626 0%, #ef4444 100%)' :
-                                               index === 1 ? 'linear-gradient(90deg, #ea580c 0%, #f97316 100%)' :
-                                               'linear-gradient(90deg, #f59e0b 0%, #fbbf24 100%)'
-                                  }}
-                                ></div>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    ) : (
-                      <p className="text-gray-500 text-center py-8">Aucune zone identifiée</p>
-                    )}
-                  </div>
-                </div>
-              </>
-            );
-          })()}
-        </div>
-
-        {/* SECTION ANALYSE PRÉVENTIVE avec cycle menstruel simplifié */}
-        <div className="bg-white rounded-xl shadow-lg p-6 mb-8">
-          <h2 className="text-2xl font-bold mb-4 text-orange-600 flex items-center">
-            📊 Analyse Préventive - Patterns & Blessures
-          </h2>
-
-          <div className="bg-orange-50 border-l-4 border-orange-500 p-4 mb-6">
-            <h3 className="text-sm font-bold text-orange-800 mb-2">⚠️ Limites de cette analyse</h3>
-            <ul className="text-xs text-orange-700 space-y-1">
-              <li>• Cette analyse montre des <strong>corrélations</strong>, pas des <strong>causalités</strong></li>
-              <li>• Les blessures ont des causes multifactorielles complexes (technique, biomécanique, fatigue, hasard...)</li>
-              <li>• Ces observations doivent être <strong>discutées avec un professionnel de santé</strong> (médecin, kiné, préparateur physique)</li>
-              <li>• Ne pas prendre de décisions uniquement basées sur ces patterns</li>
-            </ul>
+            <div className="p-3 bg-purple-50 border-2 border-purple-200 rounded-lg">
+              <p className="text-xs text-purple-600 font-medium">Joueuses affectées</p>
+              <p className="text-2xl font-bold text-purple-700 mt-1">{injuryStats.playersAffected}</p>
+            </div>
           </div>
 
-          {(() => {
-            const playersToAnalyze = injurySelectedPlayers.length > 0 
-              ? players.filter(p => injurySelectedPlayers.includes(p.id))
-              : players;
-
-            const injuriesWithDates = [];
-            playersToAnalyze.forEach(player => {
-              const responses = player.responses || [];
-              responses.forEach(response => {
-                const responseDate = new Date(response.created_at);
-                if (injuryStartDate && new Date(injuryStartDate) > responseDate) return;
-                if (injuryEndDate && new Date(injuryEndDate) < responseDate) return;
+          {uniqueInjuries.length === 0 ? (
+            <div className="text-center py-12 text-gray-500">
+              <p className="text-lg font-medium">✅ Aucune blessure signalée</p>
+              <p className="text-sm mt-2">Excellente nouvelle pour l'équipe</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {uniqueInjuries.map((injury, index) => {
+                const trend = getEvolutionTrend(injury);
+                const isExpanded = expandedInjury === index;
                 
-                const injuries = response.data?.injuries || [];
-                injuries.forEach(injury => {
-                  injuriesWithDates.push({
-                    date: responseDate,
-                    playerId: player.id,
-                    playerName: player.name,
-                    injury
-                  });
-                });
-              });
-            });
-
-            if (injuriesWithDates.length === 0) {
-              return (
-                <div className="text-center py-12 text-gray-500">
-                  <p className="text-lg font-medium">Aucune blessure à analyser</p>
-                  <p className="text-sm mt-2">Sélectionnez une période avec des blessures signalées</p>
-                </div>
-              );
-            }
-
-            const metricsBeforeInjury = [];
-            const metricsNormalPeriods = [];
-            const cycleDataBeforeInjury = [];
-            const cycleDataNormal = [];
-
-            playersToAnalyze.forEach(player => {
-              const responses = player.responses || [];
-              
-              const playerInjuryDates = injuriesWithDates
-                .filter(i => i.playerId === player.id)
-                .map(i => i.date.getTime());
-
-              responses.forEach(response => {
-                if (response.type !== 'pre' && response.type !== 'post') return;
-                
-                const responseDate = new Date(response.created_at);
-                const responseTime = responseDate.getTime();
-                
-                const hasInjuryWithin7Days = playerInjuryDates.some(injuryTime => {
-                  const daysDiff = (injuryTime - responseTime) / (1000 * 60 * 60 * 24);
-                  return daysDiff >= 0 && daysDiff <= 7;
-                });
-
-                const metrics = {
-                  motivation: response.data?.motivation || 0,
-                  fatigue: response.data?.fatigue || 0,
-                  intensite_rpe: response.data?.intensite_rpe || 0,
-                  plaisir: response.data?.plaisir || response.data?.plaisir_seance || 0,
-                  confiance: response.data?.confiance || 0
-                };
-
-                // Données cycle menstruel simplifié
-                if (response.type === 'pre' && response.data?.cycle_phase && response.data.cycle_phase !== '') {
-                  const cycleInfo = {
-                    phase: response.data.cycle_phase,
-                    impact: response.data.cycle_impact || 10
-                  };
-                  
-                  if (hasInjuryWithin7Days) {
-                    cycleDataBeforeInjury.push(cycleInfo);
-                  } else {
-                    cycleDataNormal.push(cycleInfo);
-                  }
-                }
-
-                if (hasInjuryWithin7Days) {
-                  metricsBeforeInjury.push(metrics);
-                } else {
-                  metricsNormalPeriods.push(metrics);
-                }
-              });
-            });
-
-            const calculateAvg = (arr, key) => {
-              const values = arr.map(m => m[key]).filter(v => v > 0);
-              return values.length > 0 ? (values.reduce((a, b) => a + b, 0) / values.length).toFixed(1) : 0;
-            };
-
-            const avgBeforeInjury = {
-              motivation: calculateAvg(metricsBeforeInjury, 'motivation'),
-              fatigue: calculateAvg(metricsBeforeInjury, 'fatigue'),
-              intensite_rpe: calculateAvg(metricsBeforeInjury, 'intensite_rpe'),
-              plaisir: calculateAvg(metricsBeforeInjury, 'plaisir'),
-              confiance: calculateAvg(metricsBeforeInjury, 'confiance')
-            };
-
-            const avgNormal = {
-              motivation: calculateAvg(metricsNormalPeriods, 'motivation'),
-              fatigue: calculateAvg(metricsNormalPeriods, 'fatigue'),
-              intensite_rpe: calculateAvg(metricsNormalPeriods, 'intensite_rpe'),
-              plaisir: calculateAvg(metricsNormalPeriods, 'plaisir'),
-              confiance: calculateAvg(metricsNormalPeriods, 'confiance')
-            };
-
-            const differences = {
-              motivation: (avgBeforeInjury.motivation - avgNormal.motivation).toFixed(1),
-              fatigue: (avgBeforeInjury.fatigue - avgNormal.fatigue).toFixed(1),
-              intensite_rpe: (avgBeforeInjury.intensite_rpe - avgNormal.intensite_rpe).toFixed(1),
-              plaisir: (avgBeforeInjury.plaisir - avgNormal.plaisir).toFixed(1),
-              confiance: (avgBeforeInjury.confiance - avgNormal.confiance).toFixed(1)
-            };
-
-            // Analyse du cycle menstruel simplifié en lien avec les blessures
-            const phaseCountBeforeInjury = {};
-            const phaseCountNormal = {};
-            const avgImpactBeforeInjury = cycleDataBeforeInjury.length > 0
-              ? (cycleDataBeforeInjury.reduce((sum, d) => sum + d.impact, 0) / cycleDataBeforeInjury.length).toFixed(1)
-              : null;
-            const avgImpactNormal = cycleDataNormal.length > 0
-              ? (cycleDataNormal.reduce((sum, d) => sum + d.impact, 0) / cycleDataNormal.length).toFixed(1)
-              : null;
-
-            cycleDataBeforeInjury.forEach(d => {
-              phaseCountBeforeInjury[d.phase] = (phaseCountBeforeInjury[d.phase] || 0) + 1;
-            });
-
-            cycleDataNormal.forEach(d => {
-              phaseCountNormal[d.phase] = (phaseCountNormal[d.phase] || 0) + 1;
-            });
-
-            const phaseLabels = {
-              'oui': 'Oui (règles)',
-              'non': 'Non (pas de règles)'
-            };
-
-            return (
-              <>
-                <div className="mb-6">
-                  <h3 className="text-lg font-semibold mb-4 text-gray-700">
-                    Comparaison des métriques : 7 jours avant blessure vs période normale
-                  </h3>
-                  
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
-                    <p className="text-sm text-blue-800">
-                      <strong>Méthodologie :</strong> Cette analyse compare les valeurs moyennes des métriques dans les <strong>7 jours précédant une blessure</strong> 
-                      avec les valeurs des <strong>périodes sans blessure</strong>. Un écart significatif peut indiquer un pattern à surveiller.
-                    </p>
-                    <p className="text-xs text-blue-700 mt-2">
-                      Échantillon : {metricsBeforeInjury.length} réponses avant blessure vs {metricsNormalPeriods.length} réponses en période normale
-                    </p>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    <div className="border-2 border-blue-200 rounded-lg p-4 bg-gradient-to-br from-blue-50 to-white">
-                      <h4 className="text-sm font-semibold text-blue-800 mb-3">💪 Motivation</h4>
-                      <div className="space-y-2 text-sm">
-                        <div className="flex justify-between">
-                          <span className="text-gray-600">Avant blessure:</span>
-                          <span className="font-bold text-blue-700">{avgBeforeInjury.motivation}/20</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-gray-600">Normale:</span>
-                          <span className="font-bold text-green-700">{avgNormal.motivation}/20</span>
-                        </div>
-                        <div className="pt-2 border-t border-blue-200">
-                          <div className="flex justify-between items-center">
-                            <span className="text-gray-700 font-medium">Différence:</span>
-                            <span className={`font-bold text-lg ${parseFloat(differences.motivation) < 0 ? 'text-red-600' : 'text-green-600'}`}>
-                              {differences.motivation > 0 ? '+' : ''}{differences.motivation}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="border-2 border-red-200 rounded-lg p-4 bg-gradient-to-br from-red-50 to-white">
-                      <h4 className="text-sm font-semibold text-red-800 mb-3">😴 Fatigue</h4>
-                      <div className="space-y-2 text-sm">
-                        <div className="flex justify-between">
-                          <span className="text-gray-600">Avant blessure:</span>
-                          <span className="font-bold text-blue-700">{avgBeforeInjury.fatigue}/20</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-gray-600">Normale:</span>
-                          <span className="font-bold text-green-700">{avgNormal.fatigue}/20</span>
-                        </div>
-                        <div className="pt-2 border-t border-red-200">
-                          <div className="flex justify-between items-center">
-                            <span className="text-gray-700 font-medium">Différence:</span>
-                            <span className={`font-bold text-lg ${parseFloat(differences.fatigue) < 0 ? 'text-red-600' : 'text-green-600'}`}>
-                              {differences.fatigue > 0 ? '+' : ''}{differences.fatigue}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                      <p className="text-xs text-gray-500 mt-2 italic">Note: Échelle inversée (20 = en forme)</p>
-                    </div>
-
-                    <div className="border-2 border-orange-200 rounded-lg p-4 bg-gradient-to-br from-orange-50 to-white">
-                      <h4 className="text-sm font-semibold text-orange-800 mb-3">💥 Intensité RPE</h4>
-                      <div className="space-y-2 text-sm">
-                        <div className="flex justify-between">
-                          <span className="text-gray-600">Avant blessure:</span>
-                          <span className="font-bold text-blue-700">{avgBeforeInjury.intensite_rpe}/20</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-gray-600">Normale:</span>
-                          <span className="font-bold text-green-700">{avgNormal.intensite_rpe}/20</span>
-                        </div>
-                        <div className="pt-2 border-t border-orange-200">
-                          <div className="flex justify-between items-center">
-                            <span className="text-gray-700 font-medium">Différence:</span>
-                            <span className={`font-bold text-lg ${parseFloat(differences.intensite_rpe) > 0 ? 'text-red-600' : 'text-green-600'}`}>
-                              {differences.intensite_rpe > 0 ? '+' : ''}{differences.intensite_rpe}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="border-2 border-green-200 rounded-lg p-4 bg-gradient-to-br from-green-50 to-white">
-                      <h4 className="text-sm font-semibold text-green-800 mb-3">😊 Plaisir</h4>
-                      <div className="space-y-2 text-sm">
-                        <div className="flex justify-between">
-                          <span className="text-gray-600">Avant blessure:</span>
-                          <span className="font-bold text-blue-700">{avgBeforeInjury.plaisir}/20</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-gray-600">Normale:</span>
-                          <span className="font-bold text-green-700">{avgNormal.plaisir}/20</span>
-                        </div>
-                        <div className="pt-2 border-t border-green-200">
-                          <div className="flex justify-between items-center">
-                            <span className="text-gray-700 font-medium">Différence:</span>
-                            <span className={`font-bold text-lg ${parseFloat(differences.plaisir) < 0 ? 'text-red-600' : 'text-green-600'}`}>
-                              {differences.plaisir > 0 ? '+' : ''}{differences.plaisir}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="border-2 border-purple-200 rounded-lg p-4 bg-gradient-to-br from-purple-50 to-white">
-                      <h4 className="text-sm font-semibold text-purple-800 mb-3">💪 Confiance</h4>
-                      <div className="space-y-2 text-sm">
-                        <div className="flex justify-between">
-                          <span className="text-gray-600">Avant blessure:</span>
-                          <span className="font-bold text-blue-700">{avgBeforeInjury.confiance}/20</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-gray-600">Normale:</span>
-                          <span className="font-bold text-green-700">{avgNormal.confiance}/20</span>
-                        </div>
-                        <div className="pt-2 border-t border-purple-200">
-                          <div className="flex justify-between items-center">
-                            <span className="text-gray-700 font-medium">Différence:</span>
-                            <span className={`font-bold text-lg ${parseFloat(differences.confiance) < 0 ? 'text-red-600' : 'text-green-600'}`}>
-                              {differences.confiance > 0 ? '+' : ''}{differences.confiance}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="border-2 border-gray-200 rounded-lg p-4 bg-gradient-to-br from-gray-50 to-white">
-                      <h4 className="text-sm font-semibold text-gray-800 mb-3">📊 Échantillon</h4>
-                      <div className="space-y-2 text-sm">
-                        <div className="flex justify-between">
-                          <span className="text-gray-600">Blessures analysées:</span>
-                          <span className="font-bold text-red-700">{injuriesWithDates.length}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-gray-600">Joueuses concernées:</span>
-                          <span className="font-bold text-blue-700">
-                            {[...new Set(injuriesWithDates.map(i => i.playerId))].length}
-                          </span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-gray-600">Réponses avant blessure:</span>
-                          <span className="font-bold text-orange-700">{metricsBeforeInjury.length}</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Analyse du cycle menstruel simplifié */}
-                {(cycleDataBeforeInjury.length > 0 || cycleDataNormal.length > 0) && (
-                  <div className="mb-6">
-                    <h3 className="text-lg font-semibold mb-4 text-gray-700">
-                      🌸 Analyse du Cycle Menstruel en Lien avec les Blessures
-                    </h3>
-
-                    <div className="bg-pink-50 border border-pink-200 rounded-lg p-4 mb-4">
-                      <p className="text-sm text-pink-800">
-                        <strong>Analyse exploratoire :</strong> Comparaison du statut menstruel (règles ou non) et de l'impact perçu 
-                        dans les 7 jours précédant une blessure vs périodes normales.
-                      </p>
-                      <p className="text-xs text-pink-700 mt-2">
-                        Échantillon : {cycleDataBeforeInjury.length} entrées avant blessure vs {cycleDataNormal.length} entrées normales
-                      </p>
-                    </div>
-
-                    {cycleDataBeforeInjury.length > 0 && cycleDataNormal.length > 0 ? (
-                      <>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                          <div className="border-2 border-pink-200 rounded-lg p-4 bg-gradient-to-br from-pink-50 to-white">
-                            <h4 className="text-sm font-semibold text-pink-800 mb-3">Impact Cycle - Avant Blessure</h4>
-                            <div className="text-center">
-                              <p className="text-4xl font-bold text-pink-700">{avgImpactBeforeInjury}/20</p>
-                              <p className="text-xs text-gray-600 mt-2">Moyenne de l'impact perçu</p>
-                            </div>
-                            <div className="mt-4 space-y-1 text-xs">
-                              {Object.entries(phaseCountBeforeInjury).map(([phase, count]) => (
-                                <div key={phase} className="flex justify-between">
-                                  <span className="text-gray-600">{phaseLabels[phase]}:</span>
-                                  <span className="font-semibold">{count} ({((count/cycleDataBeforeInjury.length)*100).toFixed(0)}%)</span>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-
-                          <div className="border-2 border-green-200 rounded-lg p-4 bg-gradient-to-br from-green-50 to-white">
-                            <h4 className="text-sm font-semibold text-green-800 mb-3">Impact Cycle - Période Normale</h4>
-                            <div className="text-center">
-                              <p className="text-4xl font-bold text-green-700">{avgImpactNormal}/20</p>
-                              <p className="text-xs text-gray-600 mt-2">Moyenne de l'impact perçu</p>
-                            </div>
-                            <div className="mt-4 space-y-1 text-xs">
-                              {Object.entries(phaseCountNormal).map(([phase, count]) => (
-                                <div key={phase} className="flex justify-between">
-                                  <span className="text-gray-600">{phaseLabels[phase]}:</span>
-                                  <span className="font-semibold">{count} ({((count/cycleDataNormal.length)*100).toFixed(0)}%)</span>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="bg-pink-100 border-l-4 border-pink-500 p-4">
-                          <p className="text-sm text-pink-900">
-                            <strong>Observation :</strong> {avgImpactBeforeInjury && avgImpactNormal && (
-                              <>
-                                {Math.abs(avgImpactBeforeInjury - avgImpactNormal) > 2 ? (
-                                  <span>
-                                    {avgImpactBeforeInjury < avgImpactNormal 
-                                      ? `⚠️ Impact du cycle plus négatif avant blessures (${avgImpactBeforeInjury}/20 vs ${avgImpactNormal}/20). Cela pourrait suggérer une vulnérabilité accrue pendant certaines phases.`
-                                      : `✓ Impact du cycle similaire ou meilleur avant blessures (${avgImpactBeforeInjury}/20 vs ${avgImpactNormal}/20).`
-                                    }
-                                  </span>
-                                ) : (
-                                  <span>
-                                    Impact du cycle comparable entre les deux périodes ({avgImpactBeforeInjury}/20 vs {avgImpactNormal}/20).
-                                  </span>
-                                )}
-                              </>
+                return (
+                  <div 
+                    key={index}
+                    className={`border-2 rounded-lg overflow-hidden transition-all ${
+                      injury.isCurrentlyActive 
+                        ? 'border-red-300 bg-red-50' 
+                        : 'border-green-300 bg-green-50'
+                    }`}
+                  >
+                    <div 
+                      className="p-4 cursor-pointer hover:bg-white/50 transition-all"
+                      onClick={() => setExpandedInjury(isExpanded ? null : index)}
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center space-x-3 mb-2">
+                            <h4 className="text-lg font-bold text-gray-900">
+                              {injury.playerName} - {injury.zoneDisplay}
+                            </h4>
+                            {injury.isCurrentlyActive ? (
+                              <span className="px-2 py-1 bg-red-100 text-red-700 text-xs rounded-full font-medium">
+                                🔴 Active
+                              </span>
+                            ) : (
+                              <span className="px-2 py-1 bg-green-100 text-green-700 text-xs rounded-full font-medium">
+                                ✅ Guérie
+                              </span>
                             )}
-                          </p>
-                          <p className="text-xs text-pink-800 mt-2">
-                            <strong>Important :</strong> Cette observation nécessite validation scientifique. Consultez un professionnel de santé.
-                          </p>
+                            <span className={`px-2 py-1 text-xs rounded-full font-medium border ${getTrendColor(trend)}`}>
+                              {getTrendIcon(trend)}
+                            </span>
+                          </div>
+                          
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
+                            <div>
+                              <span className="text-gray-600">Début :</span>
+                              <span className="font-semibold ml-1">{injury.startDate.toLocaleDateString('fr-FR')}</span>
+                            </div>
+                            <div>
+                              <span className="text-gray-600">Durée :</span>
+                              <span className="font-semibold ml-1">{getDuration(injury.startDate, injury.lastUpdate)}</span>
+                            </div>
+                            <div>
+                              <span className="text-gray-600">Signalements :</span>
+                              <span className="font-semibold ml-1">{injury.totalReports}</span>
+                            </div>
+                            <div>
+                              <span className="text-gray-600">Douleur actuelle :</span>
+                              <span className="font-semibold ml-1">{injury.currentDouleur}/10</span>
+                            </div>
+                          </div>
                         </div>
-                      </>
-                    ) : (
-                      <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 text-center">
-                        <p className="text-sm text-gray-600">
-                          Données de cycle insuffisantes pour une analyse comparative
-                          ({cycleDataBeforeInjury.length} avant blessure, {cycleDataNormal.length} période normale)
-                        </p>
+                        
+                        <button className="text-gray-400 hover:text-gray-600 ml-4">
+                          {isExpanded ? '▼' : '▶'}
+                        </button>
+                      </div>
+                    </div>
+
+                    {isExpanded && (
+                      <div className="border-t-2 border-gray-200 bg-white p-4">
+                        <div className="mb-4">
+                          <h5 className="text-sm font-semibold text-gray-700 mb-3">
+                            📊 Évolution de la douleur
+                          </h5>
+                          <ResponsiveContainer width="100%" height={200}>
+                            <LineChart data={injury.timeline}>
+                              <CartesianGrid strokeDasharray="3 3" />
+                              <XAxis 
+                                dataKey="dateStr" 
+                                tick={{fontSize: 10}} 
+                                angle={-45} 
+                                textAnchor="end" 
+                                height={60}
+                              />
+                              <YAxis domain={[0, 10]} />
+                              <Tooltip 
+                                content={({ active, payload }) => {
+                                  if (active && payload && payload.length > 0) {
+                                    const data = payload[0].payload;
+                                    return (
+                                      <div className="bg-white p-3 border-2 border-red-300 rounded-lg shadow-lg">
+                                        <p className="font-semibold text-gray-800">{data.dateStr}</p>
+                                        <p className="text-sm text-red-600">
+                                          Douleur: <strong>{data.douleur}/10</strong>
+                                        </p>
+                                        <p className="text-xs text-gray-600">
+                                          Statut: {data.isActive ? '🔴 Active' : '✅ Guérie'}
+                                        </p>
+                                        {data.description && (
+                                          <p className="text-xs text-gray-500 mt-1 italic">"{data.description}"</p>
+                                        )}
+                                      </div>
+                                    );
+                                  }
+                                  return null;
+                                }}
+                              />
+                              <Line 
+                                type="monotone" 
+                                dataKey="douleur" 
+                                stroke="#dc2626" 
+                                strokeWidth={3}
+                                dot={{ fill: '#dc2626', strokeWidth: 2, r: 5 }}
+                                name="Niveau de douleur"
+                              />
+                            </LineChart>
+                          </ResponsiveContainer>
+                        </div>
+
+                        <div className="grid grid-cols-3 gap-3 mb-4">
+                          <div className="p-2 bg-gray-50 rounded border border-gray-200">
+                            <p className="text-xs text-gray-600">Douleur initiale</p>
+                            <p className="text-lg font-bold text-gray-800">{injury.initialDouleur}/10</p>
+                          </div>
+                          <div className="p-2 bg-gray-50 rounded border border-gray-200">
+                            <p className="text-xs text-gray-600">Douleur max</p>
+                            <p className="text-lg font-bold text-orange-600">{injury.peakDouleur}/10</p>
+                          </div>
+                          <div className="p-2 bg-gray-50 rounded border border-gray-200">
+                            <p className="text-xs text-gray-600">Douleur actuelle</p>
+                            <p className="text-lg font-bold text-blue-600">{injury.currentDouleur}/10</p>
+                          </div>
+                        </div>
+
+                        <details className="mb-2">
+                          <summary className="cursor-pointer text-xs font-medium text-gray-700 py-2 hover:text-gray-900">
+                            📝 Historique complet ({injury.timeline.length} entrées)
+                          </summary>
+                          <div className="mt-2 space-y-2 max-h-48 overflow-y-auto">
+                            {injury.timeline.slice().reverse().map((entry, idx) => (
+                              <div key={idx} className="flex items-start justify-between p-2 bg-gray-50 rounded text-xs border border-gray-200">
+                                <div className="flex-1">
+                                  <p className="font-medium text-gray-900">
+                                    {entry.dateStr} - Douleur: {entry.douleur}/10
+                                  </p>
+                                  {entry.description && (
+                                    <p className="text-gray-600 italic mt-1">"{entry.description}"</p>
+                                  )}
+                                </div>
+                                <span className={`ml-2 px-2 py-0.5 rounded-full text-xs ${
+                                  entry.isActive 
+                                    ? 'bg-red-100 text-red-700' 
+                                    : 'bg-green-100 text-green-700'
+                                }`}>
+                                  {entry.isActive ? '🔴 Active' : '✅ Guérie'}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        </details>
+
+                        {injury.isCurrentlyActive && (
+                          <div className="bg-orange-50 border-l-4 border-orange-500 p-3 mt-3">
+                            <p className="text-xs text-orange-800">
+                              <strong>⚠️ Blessure active :</strong> Suivi médical recommandé. 
+                              {injury.totalReports >= 3 && ' Cette blessure persiste depuis plusieurs signalements.'}
+                              {trend === 'worsening' && ' ⚠️ Aggravation constatée - Consultation urgente recommandée.'}
+                              {trend === 'improving' && ' ✅ Évolution positive - Continuer le suivi.'}
+                            </p>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
-                )}
+                );
+              })}
+            </div>
+          )}
 
-                <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                  <h3 className="text-sm font-bold text-green-800 mb-3">💡 Interprétation prudente</h3>
-                  <div className="text-sm text-green-700 space-y-2">
-                    <p><strong>Patterns observés à discuter avec votre staff :</strong></p>
-                    <ul className="list-disc list-inside space-y-1 ml-2">
-                      {Math.abs(parseFloat(differences.fatigue)) > 2 && (
-                        <li>
-                          {parseFloat(differences.fatigue) < 0 ? '⚠️ Niveau de forme diminué avant blessures' : '✓ Bon niveau de forme maintenu'}
-                          {parseFloat(differences.fatigue) < 0 && ' - Envisager plus de récupération'}
-                        </li>
-                      )}
-                      {Math.abs(parseFloat(differences.intensite_rpe)) > 2 && (
-                        <li>
-                          {parseFloat(differences.intensite_rpe) > 0 ? '⚠️ Intensité RPE élevée avant blessures' : '✓ Intensité contrôlée'}
-                          {parseFloat(differences.intensite_rpe) > 0 && ' - Surveiller la charge d\'entraînement'}
-                        </li>
-                      )}
-                      {Math.abs(parseFloat(differences.motivation)) > 2 && (
-                        <li>
-                          {parseFloat(differences.motivation) < 0 ? '⚠️ Motivation en baisse avant blessures' : '✓ Motivation maintenue'}
-                        </li>
-                      )}
-                      {Math.abs(parseFloat(differences.plaisir)) > 2 && (
-                        <li>
-                          {parseFloat(differences.plaisir) < 0 ? '⚠️ Plaisir diminué avant blessures' : '✓ Plaisir préservé'}
-                        </li>
-                      )}
-                      {avgImpactBeforeInjury && avgImpactNormal && Math.abs(avgImpactBeforeInjury - avgImpactNormal) > 2 && (
-                        <li>
-                          {avgImpactBeforeInjury < avgImpactNormal 
-                            ? '⚠️ Impact négatif du cycle menstruel plus marqué avant blessures - Adapter charge selon les phases'
-                            : '✓ Pas de corrélation négative entre cycle et blessures'}
-                        </li>
-                      )}
-                    </ul>
-                    <p className="pt-2 border-t border-green-300 mt-3">
-                      <strong>Important :</strong> Ces observations nécessitent une analyse approfondie avec un professionnel de santé. 
-                      De nombreux facteurs non mesurés (technique, biomécanique, historique médical, etc.) influencent le risque de blessure.
-                    </p>
-                  </div>
-                </div>
-              </>
-            );
-          })()}
+          <div className="mt-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <h4 className="text-sm font-bold text-blue-800 mb-2">ℹ️ Comment fonctionne le suivi ?</h4>
+            <ul className="text-xs text-blue-700 space-y-1">
+              <li>• Les blessures à la <strong>même zone</strong> de la <strong>même joueuse</strong> signalées dans un <strong>délai de 14 jours</strong> sont regroupées</li>
+              <li>• Chaque signalement met à jour le suivi de la blessure (évolution de la douleur)</li>
+              <li>• Si plus de 14 jours entre deux signalements → nouvelle blessure créée</li>
+              <li>• Le statut "Guérie" est défini quand la joueuse indique que la blessure n'est plus active</li>
+              <li>• Ce système permet de suivre l'évolution dans le temps et d'identifier les blessures chroniques</li>
+            </ul>
+          </div>
         </div>
 
         {/* SECTION GESTION DES RÉPONSES - ZONE DANGEREUSE */}
@@ -2524,6 +2274,7 @@ const AdminPanel = ({
           )}
         </div>
 
+        {/* SECTION GESTION DES OBJECTIFS */}
         <div className="bg-white rounded-xl shadow-lg p-6">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-2xl font-bold" style={{color: '#1D2945'}}>
