@@ -902,7 +902,7 @@ const AdminPanel = ({
               <button
                 onClick={() => {
                   setSelectedPlayers([]);
-                  setSelectedMetrics(['all']);
+                  setSelectedMetrics(['Motivation']);
                   setSelectedQuestionTypes(['all']);
                   setStartDate('');
                   setEndDate('');
