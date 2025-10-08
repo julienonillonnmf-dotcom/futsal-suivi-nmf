@@ -115,7 +115,7 @@ const AdminPanel = ({
   
   const [editingObjectives, setEditingObjectives] = useState(false);
   const [selectedPlayers, setSelectedPlayers] = useState([]);
-  const [selectedMetrics, setSelectedMetrics] = useState(['motivation']);
+  const [selectedMetrics, setSelectedMetrics] = useState(['motivation', 'intensite_rpe', 'fatigue', 'plaisir', 'confiance', 'technique', 'tactique']);
   const [selectedQuestionTypes, setSelectedQuestionTypes] = useState(['all']);
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
