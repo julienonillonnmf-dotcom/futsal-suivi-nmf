@@ -18,6 +18,7 @@ const PreSessionQuestionnaire = ({
 }) => {
   
   const [preSessionForm, setPreSessionForm] = useState({
+    activite: 'futsal', // NOUVEAU CHAMP
     motivation: 10,
     fatigue: 10,
     plaisir: 10,
@@ -25,7 +26,6 @@ const PreSessionQuestionnaire = ({
     objectifs_personnels: '',
     commentaires_libres: '',
     injuries: [],
-    // Nouveaux champs pour le cycle menstruel
     cycle_phase: '',
     cycle_impact: 10
   });
@@ -50,6 +50,7 @@ const PreSessionQuestionnaire = ({
       
       // Réinitialiser le formulaire
       setPreSessionForm({
+        activite: 'futsal', // NOUVEAU
         motivation: 10,
         fatigue: 10,
         plaisir: 10,
@@ -93,6 +94,22 @@ const PreSessionQuestionnaire = ({
           </div>
 
           <div className="space-y-6">
+            {/* NOUVEAU : Sélecteur d'activité */}
+            <div className="bg-gradient-to-r from-purple-50 to-blue-50 rounded-lg p-4 border-2 border-purple-200">
+              <label className="block text-sm font-semibold text-gray-700 mb-3">
+                🏃 Type d'activité
+              </label>
+              <select
+                value={preSessionForm.activite}
+                onChange={(e) => setPreSessionForm({...preSessionForm, activite: e.target.value})}
+                className="w-full p-3 border-2 border-purple-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white text-base font-medium"
+              >
+                <option value="futsal">⚽ Futsal</option>
+                <option value="foot">⚽ Football</option>
+                <option value="autre">🏃 Autre</option>
+              </select>
+            </div>
+
             {/* Affichage des objectifs existants */}
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
               <h3 className="text-lg font-semibold mb-3" style={{color: '#1D2945'}}>
