@@ -389,6 +389,7 @@ const AdminPlayerDetail = ({
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           
+          {/* COLONNE 1 : Photo et Statistiques */}
           <div className="space-y-6">
             
             <div className="bg-white rounded-xl shadow-lg p-4">
@@ -507,6 +508,7 @@ const AdminPlayerDetail = ({
             </div>
           </div>
 
+          {/* COLONNE 2 : Objectifs */}
           <div className="space-y-6">
             
             <div className="bg-white rounded-xl shadow-lg p-6">
@@ -620,8 +622,10 @@ const AdminPlayerDetail = ({
             </div>
           </div>
 
+          {/* COLONNE 3 : Graphiques, Cycle Menstruel, Blessures, Réponses */}
           <div className="space-y-6">
             
+            {/* Section Évolution des Métriques */}
             {stats.chartData && stats.chartData.length > 0 && (
               <div className="bg-white rounded-xl shadow-lg p-6">
                 <h3 className="text-lg font-bold mb-4" style={{color: '#1D2945'}}>
@@ -1328,6 +1332,7 @@ const AdminPlayerDetail = ({
               </div>
             </div>
 
+            {/* Section Réponses Récentes */}
             <div className="bg-white rounded-xl shadow-lg p-6">
               <h3 className="text-lg font-bold mb-4" style={{color: '#1D2945'}}>
                 <MessageSquare className="inline mr-2" size={20} />
@@ -1361,6 +1366,7 @@ const AdminPlayerDetail = ({
                           })
                           .map(([key, value]) => {
                             const labels = {
+                              activite: '🏃 Activité',
                               motivation: '🔥 Motivation',
                               fatigue: '😴 Fatigue',
                               intensite_rpe: '💪 Intensité RPE',
@@ -1379,6 +1385,15 @@ const AdminPlayerDetail = ({
                               objectifs_atteints: '✅ Objectifs atteints',
                               difficultes_rencontrees: '⚠️ Difficultés'
                             };
+                            
+                            if (key === 'activite') {
+                              const activiteLabels = {
+                                'futsal': '⚽ Futsal',
+                                'foot': '⚽ Football',
+                                'autre': '🏃 Autre'
+                              };
+                              return `${labels[key] || key}: ${activiteLabels[value] || value}`;
+                            }
                             
                             if (key === 'cycle_phase') {
                               return `${labels[key] || key}: ${value === 'oui' ? 'Oui' : value === 'non' ? 'Non' : value}`;
@@ -1399,6 +1414,7 @@ const AdminPlayerDetail = ({
                           📅 Date: ${new Date(response.created_at).toLocaleDateString('fr-FR')} à ${new Date(response.created_at).toLocaleTimeString('fr-FR', {hour: '2-digit', minute: '2-digit'})}
                           👤 Joueuse: ${selectedPlayer.name}
                           📋 Type: ${response.type === 'pre' ? 'Pré-séance' : response.type === 'post' ? 'Post-séance' : response.type === 'match' ? 'Match' : 'Suivi blessure'}
+                          🏃 Activité: ${response.data?.activite === 'futsal' ? 'Futsal' : response.data?.activite === 'foot' ? 'Football' : response.data?.activite === 'autre' ? 'Autre' : 'Non renseignée'}
                           
                           ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
                           
@@ -1412,16 +1428,26 @@ const AdminPlayerDetail = ({
                       }}
                     >
                       <div className="flex justify-between items-center mb-2">
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                          response.type === 'pre' ? 'bg-blue-100 text-blue-800' :
-                          response.type === 'post' ? 'bg-green-100 text-green-800' :
-                          response.type === 'match' ? 'bg-purple-100 text-purple-800' :
-                          'bg-yellow-100 text-yellow-800'
-                        }`}>
-                          {response.type === 'pre' ? 'Pré-séance' :
-                           response.type === 'post' ? 'Post-séance' :
-                           response.type === 'match' ? 'Match' : 'Blessure'}
-                        </span>
+                        <div className="flex items-center space-x-2">
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                            response.type === 'pre' ? 'bg-blue-100 text-blue-800' :
+                            response.type === 'post' ? 'bg-green-100 text-green-800' :
+                            response.type === 'match' ? 'bg-purple-100 text-purple-800' :
+                            'bg-yellow-100 text-yellow-800'
+                          }`}>
+                            {response.type === 'pre' ? 'Pré-séance' :
+                             response.type === 'post' ? 'Post-séance' :
+                             response.type === 'match' ? 'Match' : 'Blessure'}
+                          </span>
+                          {/* NOUVEAU : Badge activité */}
+                          {response.data?.activite && (
+                            <span className="px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                              {response.data.activite === 'futsal' ? '⚽ Futsal' :
+                               response.data.activite === 'foot' ? '⚽ Foot' :
+                               '🏃 Autre'}
+                            </span>
+                          )}
+                        </div>
                         <div className="flex items-center space-x-2">
                           <span className="text-xs text-gray-500">
                             {new Date(response.created_at).toLocaleDateString('fr-FR')}
