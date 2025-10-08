@@ -14,7 +14,8 @@ const InjuryFollowupQuestionnaire = ({
 }) => {
   
   const [injuryFollowUpForm, setInjuryFollowUpForm] = useState({
-    injuries: [], // AMÉLIORATION: Suivi spécifique des blessures existantes
+    activite: 'futsal', // NOUVEAU CHAMP
+    injuries: [],
     commentaires_libres: ''
   });
 
@@ -28,7 +29,7 @@ const InjuryFollowupQuestionnaire = ({
         .from('responses')
         .insert({
           player_id: selectedPlayer.id,
-          type: 'injury', // AMÉLIORATION: Nouveau type de questionnaire dédié blessures
+          type: 'injury',
           data: injuryFollowUpForm
         });
       
@@ -38,6 +39,7 @@ const InjuryFollowupQuestionnaire = ({
       
       // Réinitialiser le formulaire
       setInjuryFollowUpForm({
+        activite: 'futsal', // NOUVEAU
         injuries: [],
         commentaires_libres: ''
       });
@@ -76,6 +78,22 @@ const InjuryFollowupQuestionnaire = ({
           </div>
 
           <div className="space-y-6">
+            {/* NOUVEAU : Sélecteur d'activité */}
+            <div className="bg-gradient-to-r from-purple-50 to-blue-50 rounded-lg p-4 mb-6 border-2 border-purple-200">
+              <label className="block text-sm font-semibold text-gray-700 mb-3">
+                🏃 Type d'activité concernée
+              </label>
+              <select
+                value={injuryFollowUpForm.activite}
+                onChange={(e) => setInjuryFollowUpForm({...injuryFollowUpForm, activite: e.target.value})}
+                className="w-full p-3 border-2 border-purple-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white text-base font-medium"
+              >
+                <option value="futsal">⚽ Futsal</option>
+                <option value="foot">⚽ Football</option>
+                <option value="autre">🏃 Autre</option>
+              </select>
+            </div>
+
             {/* AMÉLIORATION: Information explicative pour le suivi médical */}
             <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
               <h3 className="text-lg font-semibold mb-3 text-red-800 flex items-center">
