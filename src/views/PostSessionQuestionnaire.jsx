@@ -17,6 +17,7 @@ const PostSessionQuestionnaire = ({
 }) => {
   
   const [postSessionForm, setPostSessionForm] = useState({
+    activite: 'futsal', // NOUVEAU CHAMP
     intensite_rpe: 10,
     plaisir_seance: 10,
     confiance: 10,
@@ -86,6 +87,7 @@ const PostSessionQuestionnaire = ({
       
       // Réinitialiser le formulaire
       setPostSessionForm({
+        activite: 'futsal', // NOUVEAU
         intensite_rpe: 10,
         plaisir_seance: 10,
         confiance: 10,
@@ -129,6 +131,22 @@ const PostSessionQuestionnaire = ({
           </div>
 
           <div className="space-y-6">
+            {/* NOUVEAU : Sélecteur d'activité */}
+            <div className="bg-gradient-to-r from-purple-50 to-blue-50 rounded-lg p-4 border-2 border-purple-200">
+              <label className="block text-sm font-semibold text-gray-700 mb-3">
+                🏃 Type d'activité
+              </label>
+              <select
+                value={postSessionForm.activite}
+                onChange={(e) => setPostSessionForm({...postSessionForm, activite: e.target.value})}
+                className="w-full p-3 border-2 border-purple-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white text-base font-medium"
+              >
+                <option value="futsal">⚽ Futsal</option>
+                <option value="foot">⚽ Football</option>
+                <option value="autre">🏃 Autre</option>
+              </select>
+            </div>
+
             {/* Rappel de TOUS les objectifs du début de séance */}
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
               <h3 className="text-lg font-semibold mb-3" style={{color: '#1D2945'}}>
