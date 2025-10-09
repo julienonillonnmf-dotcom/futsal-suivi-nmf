@@ -1,16 +1,22 @@
-// views/AdminPanel.jsx - Version COMPLÈTE avec suivi longitudinal des blessures et gestion des suppressions
+// views/AdminPanel.jsx - Version COMPLÈTE avec filtres d'activité
 import React, { useState, useMemo } from 'react';
 import { ChevronLeft, Edit3, UserPlus, Download, Trash2, Filter, TrendingUp, BarChart3, Users, Calendar, AlertTriangle, Search } from 'lucide-react';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 
 // Fonction pour regrouper les blessures par zone et créer un suivi temporel
-const processInjuryTracking = (responses, injuryStartDate, injuryEndDate) => {
+const processInjuryTracking = (responses, injuryStartDate, injuryEndDate, activityFilter = 'all') => {
   const injuryTracking = new Map();
   
   const injuryResponses = responses.filter(r => {
     const responseDate = new Date(r.created_at);
     if (injuryStartDate && new Date(injuryStartDate) > responseDate) return false;
     if (injuryEndDate && new Date(injuryEndDate) < responseDate) return false;
+    
+    // Filtre par activité
+    if (activityFilter !== 'all') {
+      if (!r.data?.activite) return false;
+      if (r.data.activite !== activityFilter) return false;
+    }
     
     return r.type === 'injury' || (r.data?.injuries && r.data.injuries.length > 0);
   });
@@ -29,7 +35,6 @@ const processInjuryTracking = (responses, injuryStartDate, injuryEndDate) => {
       const status = injury.status || injury.active || 'unknown';
       const isActive = status === 'active' || status === 'oui' || injury.active === true;
       
-      // Clé unique : joueur + zone pour différencier les blessures de différentes joueuses à la même zone
       const trackingKey = `${playerId}_${zone}`;
       
       if (!injuryTracking.has(trackingKey)) {
@@ -120,10 +125,16 @@ const AdminPanel = ({
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   
+  // NOUVEAU: Filtre d'activité pour les métriques
+  const [metricsActivityFilter, setMetricsActivityFilter] = useState('all');
+  
   const [injurySelectedPlayers, setInjurySelectedPlayers] = useState([]);
   const [injuryStartDate, setInjuryStartDate] = useState('');
   const [injuryEndDate, setInjuryEndDate] = useState('');
   const [expandedInjury, setExpandedInjury] = useState(null);
+  
+  // NOUVEAU: Filtre d'activité pour les blessures
+  const [injuryActivityFilter, setInjuryActivityFilter] = useState('all');
 
   const [menstrualSelectedPlayers, setMenstrualSelectedPlayers] = useState([]);
   const [menstrualStartDate, setMenstrualStartDate] = useState('');
@@ -159,7 +170,7 @@ const AdminPanel = ({
     { value: 'injury', label: 'Blessures' }
   ];
 
-  // Calcul des blessures uniques avec suivi longitudinal
+  // Calcul des blessures uniques avec suivi longitudinal et filtre d'activité
   const uniqueInjuries = useMemo(() => {
     const playersToAnalyze = injurySelectedPlayers.length > 0 
       ? players.filter(p => injurySelectedPlayers.includes(p.id))
@@ -177,8 +188,8 @@ const AdminPanel = ({
       });
     });
 
-    return processInjuryTracking(allResponses, injuryStartDate, injuryEndDate);
-  }, [players, injurySelectedPlayers, injuryStartDate, injuryEndDate]);
+    return processInjuryTracking(allResponses, injuryStartDate, injuryEndDate, injuryActivityFilter);
+  }, [players, injurySelectedPlayers, injuryStartDate, injuryEndDate, injuryActivityFilter]);
 
   const injuryStats = useMemo(() => {
     const activeInjuries = uniqueInjuries.filter(inj => inj.isCurrentlyActive).length;
@@ -214,6 +225,12 @@ const AdminPanel = ({
         
         if (startDate && new Date(startDate) > responseDate) return;
         if (endDate && new Date(endDate) < responseDate) return;
+        
+        // NOUVEAU: Filtre par activité
+        if (metricsActivityFilter !== 'all') {
+          if (!response.data?.activite) return;
+          if (response.data.activite !== metricsActivityFilter) return;
+        }
         
         const date = responseDate.toLocaleDateString('fr-FR');
         allDates.add(date);
@@ -274,6 +291,12 @@ const AdminPanel = ({
           if (startDate && new Date(startDate) > responseDate) return;
           if (endDate && new Date(endDate) < responseDate) return;
           
+          // NOUVEAU: Filtre par activité
+          if (metricsActivityFilter !== 'all') {
+            if (!response.data?.activite) return;
+            if (response.data.activite !== metricsActivityFilter) return;
+          }
+          
           if (response.data?.[metric] != null && !isNaN(response.data[metric])) {
             allValues.push(Number(response.data[metric]));
           }
@@ -310,6 +333,12 @@ const AdminPanel = ({
             
             if (startDate && new Date(startDate) > responseDate) return;
             if (endDate && new Date(endDate) < responseDate) return;
+            
+            // NOUVEAU: Filtre par activité
+            if (metricsActivityFilter !== 'all') {
+              if (!response.data?.activite) return;
+              if (response.data.activite !== metricsActivityFilter) return;
+            }
             
             if (response.data?.[metric] != null && !isNaN(response.data[metric])) {
               allValues.push(Number(response.data[metric]));
@@ -416,11 +445,12 @@ const AdminPanel = ({
         .order('created_at', { ascending: false });
 
       const csvContent = [
-        ['Date', 'Joueuse', 'Type', 'Motivation', 'Fatigue', 'Plaisir', 'RPE', 'Tactique', 'Technique', 'Influence', 'Règles', 'Cycle Impact', 'Commentaires'].join(','),
+        ['Date', 'Joueuse', 'Type', 'Activité', 'Motivation', 'Fatigue', 'Plaisir', 'RPE', 'Tactique', 'Technique', 'Influence', 'Règles', 'Cycle Impact', 'Commentaires'].join(','),
         ...responses.map(r => [
           new Date(r.created_at).toLocaleDateString('fr-FR'),
           `"${r.players?.name || ''}"`,
           r.type,
+          r.data?.activite || '',
           r.data?.motivation || '',
           r.data?.fatigue || '',
           r.data?.plaisir || r.data?.plaisir_seance || '',
@@ -902,15 +932,39 @@ const AdminPanel = ({
               <button
                 onClick={() => {
                   setSelectedPlayers([]);
-                  setSelectedMetrics(['Motivation']);
+                  setSelectedMetrics(['motivation']);
                   setSelectedQuestionTypes(['all']);
                   setStartDate('');
                   setEndDate('');
+                  setMetricsActivityFilter('all');
                 }}
                 className="px-3 py-1.5 bg-gray-100 text-gray-700 text-xs rounded-lg hover:bg-gray-200 transition-all font-medium"
               >
                 Réinitialiser tous
               </button>
+            </div>
+            
+            {/* NOUVEAU: Filtre d'activité pour les métriques */}
+            <div className="bg-white rounded-lg p-4 mb-4 border-2 border-purple-200 shadow-sm">
+              <div className="flex items-center justify-between mb-3">
+                <label className="text-sm font-semibold text-gray-700">🏃 Type d'activité</label>
+                <button
+                  onClick={() => setMetricsActivityFilter('all')}
+                  className="px-2 py-1 bg-purple-100 text-purple-700 text-xs rounded hover:bg-purple-200 transition-all font-medium"
+                >
+                  Toutes
+                </button>
+              </div>
+              <select
+                value={metricsActivityFilter}
+                onChange={(e) => setMetricsActivityFilter(e.target.value)}
+                className="w-full px-3 py-2 border-2 border-purple-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white text-sm font-medium"
+              >
+                <option value="all">Toutes les activités</option>
+                <option value="futsal">⚽ Futsal uniquement</option>
+                <option value="foot">⚽ Football uniquement</option>
+                <option value="autre">🏃 Autre uniquement</option>
+              </select>
             </div>
             
             <div className="bg-white rounded-lg p-4 mb-4 border-2 border-purple-200 shadow-sm">
@@ -1119,6 +1173,15 @@ const AdminPanel = ({
               <div className="flex items-center justify-between text-sm flex-wrap gap-2">
                 <div className="flex items-center space-x-3 flex-wrap gap-2">
                   <span className="text-gray-700 font-medium">Filtres actifs:</span>
+                  {metricsActivityFilter !== 'all' && (
+                    <span className="bg-purple-100 text-purple-800 px-2 py-1 rounded-full text-xs font-medium">
+                      🏃 {
+                        metricsActivityFilter === 'futsal' ? '⚽ Futsal' :
+                        metricsActivityFilter === 'foot' ? '⚽ Football' :
+                        '🏃 Autre'
+                      }
+                    </span>
+                  )}
                   {(startDate || endDate) && (
                     <span className="bg-purple-100 text-purple-800 px-2 py-1 rounded-full text-xs font-medium">
                       📅 {startDate ? new Date(startDate).toLocaleDateString('fr-FR', {day: '2-digit', month: 'short'}) : '...'} → {endDate ? new Date(endDate).toLocaleDateString('fr-FR', {day: '2-digit', month: 'short'}) : '...'}
@@ -1154,6 +1217,18 @@ const AdminPanel = ({
               </div>
             ) : (
               <>
+                {metricsActivityFilter !== 'all' && (
+                  <div className="mb-4 p-3 bg-purple-50 border-2 border-purple-200 rounded-lg">
+                    <span className="text-sm text-purple-700 font-medium">
+                      🏃 Filtre actif: {
+                        metricsActivityFilter === 'futsal' ? '⚽ Futsal uniquement' :
+                        metricsActivityFilter === 'foot' ? '⚽ Football uniquement' :
+                        '🏃 Autre uniquement'
+                      }
+                    </span>
+                  </div>
+                )}
+                
                 <ResponsiveContainer width="100%" height={400}>
                   <LineChart data={chartData}>
                     <CartesianGrid strokeDasharray="3 3" />
@@ -1336,6 +1411,15 @@ const AdminPanel = ({
                         <span> Les lignes pleines épaisses montrent les performances quotidiennes. Les pointillés courts représentent la moyenne période des {selectedPlayers.length} joueuse(s) sélectionnée(s). Les tirets longs montrent la moyenne de TOUTE l'équipe ({players.length} joueuses) pour comparaison.</span>
                       ) : (
                         <span> Les lignes pleines épaisses montrent les performances quotidiennes. Les pointillés courts représentent la moyenne sur toute la période. Quand toutes les joueuses sont sélectionnées, les moyennes période et globales sont identiques.</span>
+                      )}
+                      {metricsActivityFilter !== 'all' && (
+                        <span className="block mt-2 text-purple-800 font-semibold">
+                          🏃 Seules les données de type "{
+                            metricsActivityFilter === 'futsal' ? 'Futsal' :
+                            metricsActivityFilter === 'foot' ? 'Football' :
+                            'Autre'
+                          }" sont affichées.
+                        </span>
                       )}
                     </p>
                   </div>
@@ -1700,7 +1784,7 @@ const AdminPanel = ({
           })()}
         </div>
 
-        {/* SECTION SUIVI LONGITUDINAL DES BLESSURES - VERSION COMPLÈTE */}
+        {/* SECTION SUIVI LONGITUDINAL DES BLESSURES avec filtre d'activité */}
         <div className="bg-white rounded-xl shadow-lg p-6 mb-8">
           <h2 className="text-2xl font-bold mb-4 text-red-600 flex items-center">
             🚑 Suivi Longitudinal des Blessures
@@ -1717,6 +1801,7 @@ const AdminPanel = ({
                   setInjuryStartDate('');
                   setInjuryEndDate('');
                   setInjurySelectedPlayers([]);
+                  setInjuryActivityFilter('all');
                 }}
                 className="px-2 py-1 bg-red-100 text-red-700 text-xs rounded hover:bg-red-200 transition-all"
               >
@@ -1724,7 +1809,22 @@ const AdminPanel = ({
               </button>
             </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+              {/* NOUVEAU: Filtre d'activité pour les blessures */}
+              <div>
+                <label className="block text-xs text-gray-600 mb-1">Type d'activité</label>
+                <select
+                  value={injuryActivityFilter}
+                  onChange={(e) => setInjuryActivityFilter(e.target.value)}
+                  className="w-full px-2 py-1 border-2 border-red-200 rounded text-sm focus:ring-2 focus:ring-red-500"
+                >
+                  <option value="all">Toutes les activités</option>
+                  <option value="futsal">⚽ Futsal uniquement</option>
+                  <option value="foot">⚽ Football uniquement</option>
+                  <option value="autre">🏃 Autre uniquement</option>
+                </select>
+              </div>
+              
               <div>
                 <label className="block text-xs text-gray-600 mb-1">Joueuses</label>
                 <select 
@@ -1766,6 +1866,18 @@ const AdminPanel = ({
               </div>
             </div>
           </div>
+
+          {injuryActivityFilter !== 'all' && (
+            <div className="mb-4 p-3 bg-purple-50 border-2 border-purple-200 rounded-lg">
+              <span className="text-sm text-purple-700 font-medium">
+                🏃 Filtre actif: {
+                  injuryActivityFilter === 'futsal' ? '⚽ Futsal uniquement' :
+                  injuryActivityFilter === 'foot' ? '⚽ Football uniquement' :
+                  '🏃 Autre uniquement'
+                }
+              </span>
+            </div>
+          )}
 
           <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">
             <div className="p-3 bg-red-50 border-2 border-red-200 rounded-lg">
@@ -1983,11 +2095,18 @@ const AdminPanel = ({
               <li>• Si plus de 14 jours entre deux signalements → nouvelle blessure créée</li>
               <li>• Le statut "Guérie" est défini quand la joueuse indique que la blessure n'est plus active</li>
               <li>• Ce système permet de suivre l'évolution dans le temps et d'identifier les blessures chroniques</li>
+              {injuryActivityFilter !== 'all' && (
+                <li className="text-purple-700 font-semibold">• 🏃 Filtre actif: Seules les blessures survenues lors de {
+                  injuryActivityFilter === 'futsal' ? 'séances de Futsal' :
+                  injuryActivityFilter === 'foot' ? 'séances de Football' :
+                  'autres activités'
+                } sont affichées</li>
+              )}
             </ul>
           </div>
         </div>
 
-        {/* SECTION ANALYSE PRÉVENTIVE avec cycle menstruel simplifié */}
+        {/* SECTION ANALYSE PRÉVENTIVE - inchangée */}
         <div className="bg-white rounded-xl shadow-lg p-6 mb-8">
           <h2 className="text-2xl font-bold mb-4 text-orange-600 flex items-center">
             📊 Analyse Préventive - Patterns & Blessures
@@ -2015,6 +2134,12 @@ const AdminPanel = ({
                 const responseDate = new Date(response.created_at);
                 if (injuryStartDate && new Date(injuryStartDate) > responseDate) return;
                 if (injuryEndDate && new Date(injuryEndDate) < responseDate) return;
+                
+                // Filtre par activité également dans l'analyse préventive
+                if (injuryActivityFilter !== 'all') {
+                  if (!response.data?.activite) return;
+                  if (response.data.activite !== injuryActivityFilter) return;
+                }
                 
                 const injuries = response.data?.injuries || [];
                 injuries.forEach(injury => {
@@ -2052,6 +2177,12 @@ const AdminPanel = ({
               responses.forEach(response => {
                 if (response.type !== 'pre' && response.type !== 'post') return;
                 
+                // Filtre par activité
+                if (injuryActivityFilter !== 'all') {
+                  if (!response.data?.activite) return;
+                  if (response.data.activite !== injuryActivityFilter) return;
+                }
+                
                 const responseDate = new Date(response.created_at);
                 const responseTime = responseDate.getTime();
                 
@@ -2068,7 +2199,6 @@ const AdminPanel = ({
                   confiance: response.data?.confiance || 0
                 };
 
-                // Données cycle menstruel simplifié
                 if (response.type === 'pre' && response.data?.cycle_phase && response.data.cycle_phase !== '') {
                   const cycleInfo = {
                     phase: response.data.cycle_phase,
@@ -2119,7 +2249,6 @@ const AdminPanel = ({
               confiance: (avgBeforeInjury.confiance - avgNormal.confiance).toFixed(1)
             };
 
-            // Analyse du cycle menstruel simplifié en lien avec les blessures
             const phaseCountBeforeInjury = {};
             const phaseCountNormal = {};
             const avgImpactBeforeInjury = cycleDataBeforeInjury.length > 0
@@ -2144,6 +2273,18 @@ const AdminPanel = ({
 
             return (
               <>
+                {injuryActivityFilter !== 'all' && (
+                  <div className="mb-4 p-3 bg-purple-50 border-2 border-purple-200 rounded-lg">
+                    <span className="text-sm text-purple-700 font-medium">
+                      🏃 Analyse limitée aux blessures de type: {
+                        injuryActivityFilter === 'futsal' ? '⚽ Futsal' :
+                        injuryActivityFilter === 'foot' ? '⚽ Football' :
+                        '🏃 Autre'
+                      }
+                    </span>
+                  </div>
+                )}
+                
                 <div className="mb-6">
                   <h3 className="text-lg font-semibold mb-4 text-gray-700">
                     Comparaison des métriques : 7 jours avant blessure vs période normale
@@ -2293,7 +2434,6 @@ const AdminPanel = ({
                   </div>
                 </div>
 
-                {/* Analyse du cycle menstruel simplifié */}
                 {(cycleDataBeforeInjury.length > 0 || cycleDataNormal.length > 0) && (
                   <div className="mb-6">
                     <h3 className="text-lg font-semibold mb-4 text-gray-700">
@@ -2427,7 +2567,7 @@ const AdminPanel = ({
           })()}
         </div>
 
-        {/* SECTION GESTION DES RÉPONSES - ZONE DANGEREUSE */}
+        {/* SECTION GESTION DES RÉPONSES - ZONE DANGEREUSE - code identique à la version originale */}
         <div className="bg-white rounded-xl shadow-lg p-6 mb-8">
           <div className="flex items-center justify-between mb-6">
             <div>
@@ -2454,7 +2594,6 @@ const AdminPanel = ({
 
           {showDeleteSection && (
             <>
-              {/* AVERTISSEMENT MOT DE PASSE */}
               <div className="bg-blue-50 border-l-4 border-blue-500 p-4 mb-6">
                 <div className="flex items-center">
                   <div className="flex-shrink-0">
@@ -2468,7 +2607,6 @@ const AdminPanel = ({
                 </div>
               </div>
 
-              {/* BOUTONS DE SUPPRESSION GLOBALE */}
               <div className="bg-red-50 border-2 border-red-300 rounded-lg p-6 mb-6">
                 <h3 className="text-lg font-bold text-red-800 mb-4 flex items-center">
                   <AlertTriangle size={20} className="mr-2" />
@@ -2476,7 +2614,6 @@ const AdminPanel = ({
                 </h3>
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* Suppression totale */}
                   <div className="bg-white border-2 border-red-400 rounded-lg p-4">
                     <h4 className="font-semibold text-red-800 mb-2">🗑️ Supprimer TOUT</h4>
                     <p className="text-xs text-gray-600 mb-3">
@@ -2492,7 +2629,6 @@ const AdminPanel = ({
                     </button>
                   </div>
 
-                  {/* Suppression par type */}
                   <div className="bg-white border-2 border-orange-400 rounded-lg p-4">
                     <h4 className="font-semibold text-orange-800 mb-2">📋 Par type de questionnaire</h4>
                     <p className="text-xs text-gray-600 mb-3">
@@ -2530,7 +2666,6 @@ const AdminPanel = ({
                     </div>
                   </div>
 
-                  {/* Suppression par période */}
                   <div className="bg-white border-2 border-yellow-400 rounded-lg p-4">
                     <h4 className="font-semibold text-yellow-800 mb-2">📅 Par période</h4>
                     <p className="text-xs text-gray-600 mb-3">
@@ -2561,7 +2696,6 @@ const AdminPanel = ({
                     </div>
                   </div>
 
-                  {/* Suppression par joueuse */}
                   <div className="bg-white border-2 border-purple-400 rounded-lg p-4">
                     <h4 className="font-semibold text-purple-800 mb-2">👤 Par joueuse</h4>
                     <p className="text-xs text-gray-600 mb-3">
@@ -2583,7 +2717,6 @@ const AdminPanel = ({
                 </div>
               </div>
 
-              {/* LISTE DES RÉPONSES INDIVIDUELLES */}
               <div className="bg-gray-50 rounded-lg p-6">
                 <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center">
                   <Filter size={20} className="mr-2" />
@@ -2596,10 +2729,8 @@ const AdminPanel = ({
                   </p>
                 </div>
 
-                {/* Barre de recherche et filtres */}
                 <div className="bg-white rounded-lg p-4 mb-4 border border-gray-200">
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                    {/* Recherche par nom */}
                     <div>
                       <label className="block text-xs font-medium text-gray-700 mb-1">Rechercher une joueuse</label>
                       <div className="relative">
@@ -2614,7 +2745,6 @@ const AdminPanel = ({
                       </div>
                     </div>
 
-                    {/* Filtre par type */}
                     <div>
                       <label className="block text-xs font-medium text-gray-700 mb-1">Type de questionnaire</label>
                       <select
@@ -2634,7 +2764,6 @@ const AdminPanel = ({
                       </select>
                     </div>
 
-                    {/* Bouton réinitialiser */}
                     <div className="flex items-end">
                       <button
                         onClick={() => {
@@ -2653,7 +2782,6 @@ const AdminPanel = ({
                   </div>
                 </div>
 
-                {/* Liste des réponses */}
                 <div className="space-y-2 max-h-96 overflow-y-auto">
                   {filteredResponses.length === 0 ? (
                     <div className="text-center py-8 text-gray-500">
@@ -2714,7 +2842,7 @@ const AdminPanel = ({
           )}
         </div>
 
-        {/* SECTION GESTION DES OBJECTIFS */}
+        {/* SECTION GESTION DES OBJECTIFS - code identique à la version originale */}
         <div className="bg-white rounded-xl shadow-lg p-6">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-2xl font-bold" style={{color: '#1D2945'}}>
