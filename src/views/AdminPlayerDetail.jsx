@@ -21,13 +21,19 @@ import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, R
 // ============================================
 // FONCTION 1: Traitement longitudinal des blessures
 // ============================================
-const processInjuryTracking = (responses, injuryStartDate, injuryEndDate) => {
+const processInjuryTracking = (responses, injuryStartDate, injuryEndDate, activityFilter = 'all') => {
   const injuryTracking = new Map();
   
   const injuryResponses = responses.filter(r => {
     const responseDate = new Date(r.created_at);
     if (injuryStartDate && new Date(injuryStartDate) > responseDate) return false;
     if (injuryEndDate && new Date(injuryEndDate) < responseDate) return false;
+    
+    // Filtre par activité
+    if (activityFilter !== 'all') {
+      if (!r.data?.activite) return false;
+      if (r.data.activite !== activityFilter) return false;
+    }
     
     return r.type === 'injury' || (r.data?.injuries && r.data.injuries.length > 0);
   });
@@ -132,10 +138,14 @@ const AdminPlayerDetail = ({
   const [metricsStartDate, setMetricsStartDate] = useState('');
   const [metricsEndDate, setMetricsEndDate] = useState('');
   const [selectedMetricsToDisplay, setSelectedMetricsToDisplay] = useState(['motivation', 'fatigue', 'intensite_rpe', 'plaisir']);
+  const [metricsActivityFilter, setMetricsActivityFilter] = useState('all'); // 'all', 'futsal', 'foot', 'autre'
 
   // Filtres pour le cycle menstruel
   const [menstrualStartDate, setMenstrualStartDate] = useState('');
   const [menstrualEndDate, setMenstrualEndDate] = useState('');
+  
+  // Filtre d'activité pour les blessures
+  const [injuryActivityFilter, setInjuryActivityFilter] = useState('all'); // 'all', 'futsal', 'foot', 'autre'
 
   if (!selectedPlayer) return null;
 
@@ -177,6 +187,7 @@ const AdminPlayerDetail = ({
     if (!stats.chartData || stats.chartData.length === 0) return { chartData: [], averages: {}, emaData: {} };
     
     let filteredData = stats.chartData.filter(item => {
+      // Filtre par date
       const [day, month, year] = item.date.split('/');
       const itemDate = new Date(year, month - 1, day);
       
@@ -188,6 +199,13 @@ const AdminPlayerDetail = ({
       if (metricsEndDate) {
         const endDate = new Date(metricsEndDate);
         if (itemDate > endDate) return false;
+      }
+      
+      // Filtre par activité
+      if (metricsActivityFilter !== 'all') {
+        // Si l'item n'a pas d'activité définie, on l'exclut
+        if (!item.activite) return false;
+        if (item.activite !== metricsActivityFilter) return false;
       }
       
       return true;
@@ -241,15 +259,15 @@ const AdminPlayerDetail = ({
     });
     
     return { chartData: enrichedData, averages, emaData };
-  }, [stats.chartData, metricsStartDate, metricsEndDate, selectedMetricsToDisplay]);
+  }, [stats.chartData, metricsStartDate, metricsEndDate, selectedMetricsToDisplay, metricsActivityFilter]);
 
   // ============================================
   // TRAITEMENT DES BLESSURES LONGITUDINALES
   // ============================================
   const uniqueInjuries = useMemo(() => {
     if (!selectedPlayer || !selectedPlayer.responses) return [];
-    return processInjuryTracking(selectedPlayer.responses, injuryStartDate, injuryEndDate);
-  }, [selectedPlayer, injuryStartDate, injuryEndDate]);
+    return processInjuryTracking(selectedPlayer.responses, injuryStartDate, injuryEndDate, injuryActivityFilter);
+  }, [selectedPlayer, injuryStartDate, injuryEndDate, injuryActivityFilter]);
 
   const injuryStats = useMemo(() => {
     const activeInjuries = uniqueInjuries.filter(inj => inj.isCurrentlyActive).length;
@@ -666,11 +684,27 @@ const AdminPlayerDetail = ({
                         setMetricsStartDate('');
                         setMetricsEndDate('');
                         setSelectedMetricsToDisplay(['motivation', 'fatigue', 'intensite_rpe', 'plaisir']);
+                        setMetricsActivityFilter('all');
                       }}
                       className="px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded hover:bg-blue-200 transition-all"
                     >
                       Réinitialiser
                     </button>
+                  </div>
+                  
+                  {/* Filtre d'activité */}
+                  <div className="mb-4">
+                    <label className="block text-xs font-medium text-gray-700 mb-2">Type d'activité</label>
+                    <select
+                      value={metricsActivityFilter}
+                      onChange={(e) => setMetricsActivityFilter(e.target.value)}
+                      className="w-full px-2 py-1 border border-gray-300 rounded text-xs focus:ring-2 focus:ring-purple-500"
+                    >
+                      <option value="all">Toutes les activités</option>
+                      <option value="futsal">⚽ Futsal uniquement</option>
+                      <option value="foot">⚽ Football uniquement</option>
+                      <option value="autre">🏃 Autre uniquement</option>
+                    </select>
                   </div>
                   
                   <div className="mb-4">
@@ -737,6 +771,17 @@ const AdminPlayerDetail = ({
                         );
                       })}
                     </div>
+                    {metricsActivityFilter !== 'all' && (
+                      <div className="mt-2 pt-2 border-t border-blue-300">
+                        <span className="text-xs text-blue-700 font-medium">
+                          🏃 Filtre actif: {
+                            metricsActivityFilter === 'futsal' ? '⚽ Futsal' :
+                            metricsActivityFilter === 'foot' ? '⚽ Football' :
+                            '🏃 Autre'
+                          }
+                        </span>
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -876,6 +921,18 @@ const AdminPlayerDetail = ({
                         <h5 className="text-xs font-semibold text-gray-700 mb-2">EMA-7 jours (tirets longs)</h5>
                         <p className="text-xs text-gray-600">Moyenne mobile exponentielle sur 7 jours (tendance récente)</p>
                       </div>
+                      
+                      {metricsActivityFilter !== 'all' && (
+                        <div className="pt-2 border-t border-gray-200">
+                          <p className="text-xs text-purple-700 font-semibold">
+                            🏃 Données filtrées par activité: {
+                              metricsActivityFilter === 'futsal' ? '⚽ Futsal uniquement' :
+                              metricsActivityFilter === 'foot' ? '⚽ Football uniquement' :
+                              '🏃 Autre uniquement'
+                            }
+                          </p>
+                        </div>
+                      )}
                     </div>
                   </>
                 ) : (
@@ -1103,17 +1160,33 @@ const AdminPlayerDetail = ({
                 <div className="flex items-center justify-between mb-3">
                   <h3 className="text-sm font-semibold text-red-800 flex items-center">
                     <Calendar size={16} className="mr-2" />
-                    Période d'analyse
+                    Filtres d'analyse
                   </h3>
                   <button
                     onClick={() => {
                       setInjuryStartDate('');
                       setInjuryEndDate('');
+                      setInjuryActivityFilter('all');
                     }}
                     className="px-2 py-1 bg-red-100 text-red-700 text-xs rounded hover:bg-red-200 transition-all"
                   >
                     Réinitialiser
                   </button>
+                </div>
+                
+                {/* Filtre d'activité */}
+                <div className="mb-3">
+                  <label className="block text-xs text-gray-600 mb-1">Type d'activité</label>
+                  <select
+                    value={injuryActivityFilter}
+                    onChange={(e) => setInjuryActivityFilter(e.target.value)}
+                    className="w-full px-2 py-1 border-2 border-red-200 rounded text-sm focus:ring-2 focus:ring-red-500"
+                  >
+                    <option value="all">Toutes les activités</option>
+                    <option value="futsal">⚽ Futsal uniquement</option>
+                    <option value="foot">⚽ Football uniquement</option>
+                    <option value="autre">🏃 Autre uniquement</option>
+                  </select>
                 </div>
                 
                 <div className="grid grid-cols-2 gap-3">
@@ -1160,6 +1233,18 @@ const AdminPlayerDetail = ({
                   <p className="text-2xl font-bold text-blue-700 mt-1">{injuryStats.zonesAffected}</p>
                 </div>
               </div>
+
+              {injuryActivityFilter !== 'all' && (
+                <div className="mb-4 p-3 bg-purple-50 border-2 border-purple-200 rounded-lg">
+                  <span className="text-sm text-purple-700 font-medium">
+                    🏃 Filtre actif: {
+                      injuryActivityFilter === 'futsal' ? '⚽ Futsal uniquement' :
+                      injuryActivityFilter === 'foot' ? '⚽ Football uniquement' :
+                      '🏃 Autre uniquement'
+                    }
+                  </span>
+                </div>
+              )}
 
               {uniqueInjuries.length === 0 ? (
                 <div className="text-center py-12 text-gray-500">
@@ -1349,6 +1434,13 @@ const AdminPlayerDetail = ({
                   <li>• Chaque signalement met à jour le suivi de la blessure (évolution de la douleur)</li>
                   <li>• Si plus de 14 jours entre deux signalements → nouvelle blessure créée</li>
                   <li>• Le statut "Guérie" est défini quand la joueuse indique que la blessure n'est plus active</li>
+                  {injuryActivityFilter !== 'all' && (
+                    <li className="text-purple-700 font-semibold">• 🏃 Filtre actif: Seules les blessures survenues lors de {
+                      injuryActivityFilter === 'futsal' ? 'séances de Futsal' :
+                      injuryActivityFilter === 'foot' ? 'séances de Football' :
+                      'autres activités'
+                    } sont affichées</li>
+                  )}
                 </ul>
               </div>
             </div>
