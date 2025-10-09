@@ -1,4 +1,5 @@
-// views/AdminPlayerDetail.jsx - VERSION COMPLÈTE avec suivi longitudinal des blessures
+// views/AdminPlayerDetail.jsx - VERSION COMPLÈTE FUSIONNÉE
+// Inclut: Suivi longitudinal des blessures + Filtres métriques avancés + Cycle menstruel
 import React, { useState, useRef, useMemo } from 'react';
 import { 
   ChevronLeft, 
@@ -15,9 +16,11 @@ import {
   MessageSquare,
   Filter
 } from 'lucide-react';
-import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
+import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 
-// Fonction pour regrouper les blessures par zone et créer un suivi temporel
+// ============================================
+// FONCTION 1: Traitement longitudinal des blessures
+// ============================================
 const processInjuryTracking = (responses, injuryStartDate, injuryEndDate) => {
   const injuryTracking = new Map();
   
@@ -120,14 +123,17 @@ const AdminPlayerDetail = ({
   const [tempMentalObjectives, setTempMentalObjectives] = useState('');
   const fileInputRef = useRef(null);
   
+  // Filtres pour les blessures
   const [injuryStartDate, setInjuryStartDate] = useState('');
   const [injuryEndDate, setInjuryEndDate] = useState('');
   const [expandedInjury, setExpandedInjury] = useState(null);
   
+  // Filtres pour les métriques
   const [metricsStartDate, setMetricsStartDate] = useState('');
   const [metricsEndDate, setMetricsEndDate] = useState('');
   const [selectedMetricsToDisplay, setSelectedMetricsToDisplay] = useState(['motivation', 'fatigue', 'intensite_rpe', 'plaisir']);
 
+  // Filtres pour le cycle menstruel
   const [menstrualStartDate, setMenstrualStartDate] = useState('');
   const [menstrualEndDate, setMenstrualEndDate] = useState('');
 
@@ -135,6 +141,7 @@ const AdminPlayerDetail = ({
 
   const stats = playerStats[selectedPlayer.id] || {};
 
+  // Options de métriques disponibles
   const availableMetrics = [
     { value: 'motivation', label: 'Motivation', color: '#2563eb' },
     { value: 'fatigue', label: 'Fatigue', color: '#dc2626' },
@@ -148,6 +155,9 @@ const AdminPlayerDetail = ({
     { value: 'influence_groupe', label: 'Influence groupe', color: '#14b8a6' }
   ];
 
+  // ============================================
+  // FONCTION 2: Calcul EMA (Moyenne Mobile Exponentielle)
+  // ============================================
   const calculateEMA = (data, period = 7) => {
     if (data.length === 0) return [];
     const multiplier = 2 / (period + 1);
@@ -160,6 +170,9 @@ const AdminPlayerDetail = ({
     return ema;
   };
 
+  // ============================================
+  // TRAITEMENT DES DONNÉES DE MÉTRIQUES
+  // ============================================
   const processedChartData = useMemo(() => {
     if (!stats.chartData || stats.chartData.length === 0) return { chartData: [], averages: {}, emaData: {} };
     
@@ -230,7 +243,9 @@ const AdminPlayerDetail = ({
     return { chartData: enrichedData, averages, emaData };
   }, [stats.chartData, metricsStartDate, metricsEndDate, selectedMetricsToDisplay]);
 
-  // Calcul des blessures uniques avec suivi
+  // ============================================
+  // TRAITEMENT DES BLESSURES LONGITUDINALES
+  // ============================================
   const uniqueInjuries = useMemo(() => {
     if (!selectedPlayer || !selectedPlayer.responses) return [];
     return processInjuryTracking(selectedPlayer.responses, injuryStartDate, injuryEndDate);
@@ -244,11 +259,15 @@ const AdminPlayerDetail = ({
     return { activeInjuries, totalInjuries, healedInjuries, zonesAffected };
   }, [uniqueInjuries]);
 
+  // Initialiser les objectifs
   React.useEffect(() => {
     setTempTechnicalObjectives(objectifsIndividuels[selectedPlayer.id] || '');
     setTempMentalObjectives(objectifsMentaux[selectedPlayer.id] || '');
   }, [selectedPlayer.id, objectifsIndividuels, objectifsMentaux]);
 
+  // ============================================
+  // FONCTIONS DE GESTION
+  // ============================================
   const handlePhotoUpload = async (file) => {
     if (!file) return;
     setLoading(true);
@@ -332,6 +351,9 @@ const AdminPlayerDetail = ({
     setLoading(false);
   };
 
+  // ============================================
+  // FONCTIONS UTILITAIRES BLESSURES
+  // ============================================
   const getDuration = (startDate, endDate) => {
     const days = Math.floor((endDate - startDate) / (1000 * 60 * 60 * 24));
     if (days === 0) return "Signalée aujourd'hui";
@@ -622,10 +644,10 @@ const AdminPlayerDetail = ({
             </div>
           </div>
 
-          {/* COLONNE 3 : Graphiques, Cycle Menstruel, Blessures, Réponses */}
+          {/* COLONNE 3 : Graphiques, Cycle, Blessures, Réponses */}
           <div className="space-y-6">
             
-            {/* Section Évolution des Métriques */}
+            {/* Section Évolution des Métriques avec filtres avancés */}
             {stats.chartData && stats.chartData.length > 0 && (
               <div className="bg-white rounded-xl shadow-lg p-6">
                 <h3 className="text-lg font-bold mb-4" style={{color: '#1D2945'}}>
@@ -1071,7 +1093,7 @@ const AdminPlayerDetail = ({
               })()}
             </div>
 
-            {/* Section Suivi Longitudinal des Blessures */}
+            {/* Section Suivi Longitudinal des Blessures - VERSION COMPLÈTE */}
             <div className="bg-white rounded-xl shadow-lg p-6">
               <h2 className="text-xl font-bold mb-4 text-red-600 flex items-center">
                 🚑 Suivi Longitudinal des Blessures
@@ -1248,7 +1270,6 @@ const AdminPlayerDetail = ({
                                       return null;
                                     }}
                                   />
-                                  <Legend />
                                   <Line 
                                     type="monotone" 
                                     dataKey="douleur" 
@@ -1378,12 +1399,7 @@ const AdminPlayerDetail = ({
                               influence_groupe: '👥 Influence groupe',
                               cycle_phase: '🌸 Règles',
                               cycle_impact: '🌸 Impact cycle',
-                              blessure_actuelle: '🚨 Blessure actuelle',
-                              douleur_niveau: '😣 Niveau douleur',
-                              zone_blessure: '📍 Zone blessée',
-                              commentaires_libres: '💭 Commentaires',
-                              objectifs_atteints: '✅ Objectifs atteints',
-                              difficultes_rencontrees: '⚠️ Difficultés'
+                              commentaires_libres: '💭 Commentaires'
                             };
                             
                             if (key === 'activite') {
@@ -1399,7 +1415,7 @@ const AdminPlayerDetail = ({
                               return `${labels[key] || key}: ${value === 'oui' ? 'Oui' : value === 'non' ? 'Non' : value}`;
                             }
                             
-                            return `${labels[key] || key}: ${value}${typeof value === 'number' && key !== 'douleur_niveau' && key !== 'cycle_impact' ? '/20' : ''}`;
+                            return `${labels[key] || key}: ${value}${typeof value === 'number' && key !== 'cycle_impact' ? '/20' : ''}`;
                           })
                           .join('\n');
                         
@@ -1414,7 +1430,6 @@ const AdminPlayerDetail = ({
                           📅 Date: ${new Date(response.created_at).toLocaleDateString('fr-FR')} à ${new Date(response.created_at).toLocaleTimeString('fr-FR', {hour: '2-digit', minute: '2-digit'})}
                           👤 Joueuse: ${selectedPlayer.name}
                           📋 Type: ${response.type === 'pre' ? 'Pré-séance' : response.type === 'post' ? 'Post-séance' : response.type === 'match' ? 'Match' : 'Suivi blessure'}
-                          🏃 Activité: ${response.data?.activite === 'futsal' ? 'Futsal' : response.data?.activite === 'foot' ? 'Football' : response.data?.activite === 'autre' ? 'Autre' : 'Non renseignée'}
                           
                           ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
                           
@@ -1439,7 +1454,6 @@ const AdminPlayerDetail = ({
                              response.type === 'post' ? 'Post-séance' :
                              response.type === 'match' ? 'Match' : 'Blessure'}
                           </span>
-                          {/* NOUVEAU : Badge activité */}
                           {response.data?.activite && (
                             <span className="px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
                               {response.data.activite === 'futsal' ? '⚽ Futsal' :
@@ -1469,9 +1483,6 @@ const AdminPlayerDetail = ({
                         )}
                         {response.data?.plaisir && (
                           <p><span className="font-medium">Plaisir:</span> {response.data.plaisir}/20</p>
-                        )}
-                        {response.data?.influence_groupe && (
-                          <p><span className="font-medium">Influence groupe:</span> {response.data.influence_groupe}/20</p>
                         )}
                         {response.data?.cycle_phase && (
                           <p className="text-pink-600 font-medium">
