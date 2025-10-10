@@ -2943,7 +2943,7 @@ const handleTestWebhook = async () => {
 
   {showAlertConfig && (
     <>
-      <div className="bg-indigo-50 border-l-4 border-indigo-500 p-4 mb-6">
+      #<div className="bg-indigo-50 border-l-4 border-indigo-500 p-4 mb-6">
         <h3 className="text-sm font-bold text-indigo-800 mb-2">
           📱 Comment configurer (2 minutes) :
         </h3>
@@ -2958,7 +2958,7 @@ const handleTestWebhook = async () => {
         <p className="text-xs text-indigo-600 mt-2 font-semibold">
           ✅ 100% GRATUIT • Notifications instantanées • Fonctionne sur mobile
         </p>
-      </div>
+      </div>#
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
         {/* Configuration Webhook */}
