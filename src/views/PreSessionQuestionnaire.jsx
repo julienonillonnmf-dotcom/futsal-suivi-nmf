@@ -1,9 +1,9 @@
 // src/views/PreSessionQuestionnaire.jsx
-
 import React, { useState } from 'react';
 import { ChevronLeft } from 'lucide-react';
 import ScaleQuestion from '../components/ScaleQuestion';
 import InjuryComponent from '../components/InjuryComponent';
+import { checkAndSendAlerts } from '../services/alertService'; // 🆕 AJOUT
 
 const PreSessionQuestionnaire = ({ 
   selectedPlayer,
@@ -18,7 +18,7 @@ const PreSessionQuestionnaire = ({
 }) => {
   
   const [preSessionForm, setPreSessionForm] = useState({
-    activite: 'futsal', // NOUVEAU CHAMP
+    activite: 'futsal',
     motivation: 10,
     fatigue: 10,
     plaisir: 10,
@@ -46,11 +46,19 @@ const PreSessionQuestionnaire = ({
       
       if (error) throw error;
       
+      // 🆕 AJOUT - Vérifier et envoyer les alertes Discord
+      await checkAndSendAlerts(
+        selectedPlayer.id,
+        selectedPlayer.name,
+        'pre',
+        preSessionForm
+      );
+      
       alert('Questionnaire sauvegardé !');
       
       // Réinitialiser le formulaire
       setPreSessionForm({
-        activite: 'futsal', // NOUVEAU
+        activite: 'futsal',
         motivation: 10,
         fatigue: 10,
         plaisir: 10,
@@ -94,7 +102,7 @@ const PreSessionQuestionnaire = ({
           </div>
 
           <div className="space-y-6">
-            {/* NOUVEAU : Sélecteur d'activité */}
+            {/* Sélecteur d'activité */}
             <div className="bg-gradient-to-r from-purple-50 to-blue-50 rounded-lg p-4 border-2 border-purple-200">
               <label className="block text-sm font-semibold text-gray-700 mb-3">
                 🏃 Type d'activité
@@ -201,7 +209,7 @@ const PreSessionQuestionnaire = ({
               showValue={false}
             />
 
-            {/* NOUVELLE SECTION : Cycle menstruel */}
+            {/* Section Cycle menstruel */}
             <div className="bg-pink-50 border border-pink-200 rounded-lg p-4 mb-6">
               <h3 className="text-sm font-semibold text-pink-800 mb-4">
                 🌸 Suivi du cycle menstruel (optionnel et confidentiel)
