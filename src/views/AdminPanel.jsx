@@ -2,6 +2,8 @@
 import React, { useState, useMemo } from 'react';
 import { ChevronLeft, Edit3, UserPlus, Download, Trash2, Filter, TrendingUp, BarChart3, Users, Calendar, AlertTriangle, Search } from 'lucide-react';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import { Bell, AlertCircle, History, Send } from 'lucide-react';
+import { getAlertHistory, testDiscordWebhook } from '../services/alertService';
 
 // Fonction pour regrouper les blessures par zone et créer un suivi temporel
 const processInjuryTracking = (responses, injuryStartDate, injuryEndDate, activityFilter = 'all') => {
@@ -124,6 +126,22 @@ const AdminPanel = ({
   const [selectedQuestionTypes, setSelectedQuestionTypes] = useState(['all']);
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  const [alertSettings, setAlertSettings] = useState({
+    discord_webhook: '',
+    is_active: true,
+    alert_injury: true,
+    alert_fatigue: true,
+    alert_motivation: true,
+    alert_rpe: true,
+    alert_variation: true,
+    fatigue_threshold: 6,
+    motivation_threshold: 6,
+    rpe_threshold: 17,
+    variation_threshold: 5
+  });
+  const [alertHistory, setAlertHistory] = useState([]);
+  const [showAlertConfig, setShowAlertConfig] = useState(false);
+  const [testingWebhook, setTestingWebhook] = useState(false);
   
   // NOUVEAU: Filtre d'activité pour les métriques
   const [metricsActivityFilter, setMetricsActivityFilter] = useState('all');
@@ -825,6 +843,67 @@ const AdminPanel = ({
 
   const { chartData, globalAverages, filteredAverages } = getUnifiedChartData();
 
+  // Charger les paramètres d'alertes au démarrage
+React.useEffect(() => {
+  loadAlertSettings();
+  loadAlertHistory();
+}, []);
+
+const loadAlertSettings = async () => {
+  try {
+    const { data, error } = await supabase
+      .from('alert_settings')
+      .select('*')
+      .single();
+    
+    if (data) {
+      setAlertSettings(data);
+    }
+  } catch (error) {
+    console.error('Erreur chargement paramètres alertes:', error);
+  }
+};
+
+const loadAlertHistory = async () => {
+  const history = await getAlertHistory(30);
+  setAlertHistory(history);
+};
+
+const saveAlertSettings = async () => {
+  setLoading(true);
+  try {
+    const { error } = await supabase
+      .from('alert_settings')
+      .upsert({
+        ...alertSettings,
+        updated_at: new Date().toISOString()
+      });
+    
+    if (error) throw error;
+    alert('✅ Paramètres d\'alertes sauvegardés !');
+  } catch (error) {
+    console.error('Erreur sauvegarde alertes:', error);
+    alert('❌ Erreur: ' + error.message);
+  }
+  setLoading(false);
+};
+
+const handleTestWebhook = async () => {
+  if (!alertSettings.discord_webhook) {
+    alert('⚠️ Veuillez d\'abord entrer l\'URL du webhook Discord');
+    return;
+  }
+
+  setTestingWebhook(true);
+  const result = await testDiscordWebhook(alertSettings.discord_webhook);
+  setTestingWebhook(false);
+
+  if (result.success) {
+    alert('✅ Test réussi ! Vérifiez Discord.');
+  } else {
+    alert('❌ Test échoué : ' + (result.error || 'Erreur inconnue'));
+  }
+};
   return (
     <div className="min-h-screen p-4" style={{background: 'linear-gradient(135deg, #f0f4f8 0%, #fef9e7 100%)'}}>
       <div className="max-w-7xl mx-auto">
@@ -2841,7 +2920,303 @@ const AdminPanel = ({
             </>
           )}
         </div>
+        {/* SYSTÈME D'ALERTES DISCORD */}
+<div className="bg-white rounded-xl shadow-lg p-6 mb-8">
+  <div className="flex items-center justify-between mb-6">
+    <div>
+      <h2 className="text-2xl font-bold text-indigo-600 flex items-center">
+        <Bell className="inline mr-2" size={24} />
+        Système d'Alertes Discord
+      </h2>
+      <p className="text-sm text-gray-600 mt-1">
+        Recevez des notifications instantanées sur votre téléphone 📱
+      </p>
+    </div>
+    <button
+      onClick={() => setShowAlertConfig(!showAlertConfig)}
+      className="flex items-center space-x-2 px-4 py-2 bg-indigo-500 text-white rounded-lg hover:bg-indigo-600 transition-all"
+    >
+      <AlertCircle size={16} />
+      <span>{showAlertConfig ? 'Masquer' : 'Configurer'}</span>
+    </button>
+  </div>
 
+  {showAlertConfig && (
+    <>
+      <div className="bg-indigo-50 border-l-4 border-indigo-500 p-4 mb-6">
+        <h3 className="text-sm font-bold text-indigo-800 mb-2">
+          📱 Comment configurer (2 minutes) :
+        </h3>
+        <ol className="text-xs text-indigo-700 space-y-1 ml-4 list-decimal">
+          <li>Ouvrir Discord (web ou app mobile)</li>
+          <li>Créer un serveur "NMF Futsal - Alertes"</li>
+          <li>Créer un canal #alertes-equipe</li>
+          <li>Clic droit sur le canal → Modifier → Intégrations → Webhooks</li>
+          <li>Nouveau Webhook → Copier l'URL</li>
+          <li>Coller l'URL ci-dessous et tester</li>
+        </ol>
+        <p className="text-xs text-indigo-600 mt-2 font-semibold">
+          ✅ 100% GRATUIT • Notifications instantanées • Fonctionne sur mobile
+        </p>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+        {/* Configuration Webhook */}
+        <div className="border-2 border-indigo-200 rounded-lg p-4 bg-gradient-to-br from-indigo-50 to-white">
+          <h3 className="text-lg font-semibold mb-4 text-gray-800 flex items-center">
+            <Send size={20} className="mr-2 text-indigo-600" />
+            Configuration Discord
+          </h3>
+          
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                URL du Webhook Discord *
+              </label>
+              <input
+                type="url"
+                value={alertSettings.discord_webhook}
+                onChange={(e) => setAlertSettings({...alertSettings, discord_webhook: e.target.value})}
+                placeholder="https://discord.com/api/webhooks/..."
+                className="w-full px-3 py-2 border-2 border-indigo-300 rounded-lg focus:ring-2 focus:ring-indigo-500 text-sm"
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                Format: https://discord.com/api/webhooks/123456789/abcd...
+              </p>
+            </div>
+
+            <div className="flex items-center space-x-2 p-3 bg-white rounded-lg border-2 border-indigo-200">
+              <input
+                type="checkbox"
+                checked={alertSettings.is_active}
+                onChange={(e) => setAlertSettings({...alertSettings, is_active: e.target.checked})}
+                className="w-5 h-5 text-indigo-600 rounded"
+              />
+              <label className="text-sm font-medium text-gray-700">
+                ✅ Système d'alertes activé
+              </label>
+            </div>
+
+            <button
+              onClick={handleTestWebhook}
+              disabled={!alertSettings.discord_webhook || testingWebhook}
+              className="w-full flex items-center justify-center space-x-2 px-4 py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed font-semibold"
+            >
+              <Send size={16} />
+              <span>{testingWebhook ? 'Test en cours...' : '🧪 Tester le webhook'}</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Types d'alertes */}
+        <div className="border-2 border-gray-200 rounded-lg p-4 bg-white">
+          <h3 className="text-lg font-semibold mb-4 text-gray-800">⚠️ Types d'alertes</h3>
+          
+          <div className="space-y-3">
+            <label className="flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 border border-gray-200">
+              <span className="text-sm font-medium">🚑 Nouvelles blessures</span>
+              <input
+                type="checkbox"
+                checked={alertSettings.alert_injury}
+                onChange={(e) => setAlertSettings({...alertSettings, alert_injury: e.target.checked})}
+                className="w-5 h-5 text-indigo-600 rounded"
+              />
+            </label>
+
+            <div className="border border-gray-200 rounded-lg p-3">
+              <label className="flex items-center justify-between mb-2">
+                <span className="text-sm font-medium">😴 Fatigue élevée</span>
+                <input
+                  type="checkbox"
+                  checked={alertSettings.alert_fatigue}
+                  onChange={(e) => setAlertSettings({...alertSettings, alert_fatigue: e.target.checked})}
+                  className="w-5 h-5 text-indigo-600 rounded"
+                />
+              </label>
+              {alertSettings.alert_fatigue && (
+                <div className="flex items-center space-x-2 mt-2 pl-2">
+                  <span className="text-xs text-gray-600">Seuil ≤</span>
+                  <input
+                    type="number"
+                    min="0"
+                    max="20"
+                    value={alertSettings.fatigue_threshold}
+                    onChange={(e) => setAlertSettings({...alertSettings, fatigue_threshold: parseInt(e.target.value)})}
+                    className="w-16 px-2 py-1 border border-gray-300 rounded text-sm"
+                  />
+                  <span className="text-xs text-gray-600">/20</span>
+                </div>
+              )}
+            </div>
+
+            <div className="border border-gray-200 rounded-lg p-3">
+              <label className="flex items-center justify-between mb-2">
+                <span className="text-sm font-medium">📉 Motivation basse</span>
+                <input
+                  type="checkbox"
+                  checked={alertSettings.alert_motivation}
+                  onChange={(e) => setAlertSettings({...alertSettings, alert_motivation: e.target.checked})}
+                  className="w-5 h-5 text-indigo-600 rounded"
+                />
+              </label>
+              {alertSettings.alert_motivation && (
+                <div className="flex items-center space-x-2 mt-2 pl-2">
+                  <span className="text-xs text-gray-600">Seuil ≤</span>
+                  <input
+                    type="number"
+                    min="0"
+                    max="20"
+                    value={alertSettings.motivation_threshold}
+                    onChange={(e) => setAlertSettings({...alertSettings, motivation_threshold: parseInt(e.target.value)})}
+                    className="w-16 px-2 py-1 border border-gray-300 rounded text-sm"
+                  />
+                  <span className="text-xs text-gray-600">/20</span>
+                </div>
+              )}
+            </div>
+
+            <div className="border border-gray-200 rounded-lg p-3">
+              <label className="flex items-center justify-between mb-2">
+                <span className="text-sm font-medium">💥 RPE très élevé</span>
+                <input
+                  type="checkbox"
+                  checked={alertSettings.alert_rpe}
+                  onChange={(e) => setAlertSettings({...alertSettings, alert_rpe: e.target.checked})}
+                  className="w-5 h-5 text-indigo-600 rounded"
+                />
+              </label>
+              {alertSettings.alert_rpe && (
+                <div className="flex items-center space-x-2 mt-2 pl-2">
+                  <span className="text-xs text-gray-600">Seuil ≥</span>
+                  <input
+                    type="number"
+                    min="0"
+                    max="20"
+                    value={alertSettings.rpe_threshold}
+                    onChange={(e) => setAlertSettings({...alertSettings, rpe_threshold: parseInt(e.target.value)})}
+                    className="w-16 px-2 py-1 border border-gray-300 rounded text-sm"
+                  />
+                  <span className="text-xs text-gray-600">/20</span>
+                </div>
+              )}
+            </div>
+
+            <div className="border border-gray-200 rounded-lg p-3">
+              <label className="flex items-center justify-between mb-2">
+                <span className="text-sm font-medium">📊 Variations importantes</span>
+                <input
+                  type="checkbox"
+                  checked={alertSettings.alert_variation}
+                  onChange={(e) => setAlertSettings({...alertSettings, alert_variation: e.target.checked})}
+                  className="w-5 h-5 text-indigo-600 rounded"
+                />
+              </label>
+              {alertSettings.alert_variation && (
+                <div className="flex items-center space-x-2 mt-2 pl-2">
+                  <span className="text-xs text-gray-600">Écart ≥</span>
+                  <input
+                    type="number"
+                    min="1"
+                    max="10"
+                    value={alertSettings.variation_threshold}
+                    onChange={(e) => setAlertSettings({...alertSettings, variation_threshold: parseInt(e.target.value)})}
+                    className="w-16 px-2 py-1 border border-gray-300 rounded text-sm"
+                  />
+                  <span className="text-xs text-gray-600">pts</span>
+                </div>
+              )}
+              <p className="text-xs text-gray-500 mt-2 italic">
+                Par rapport aux 10 dernières réponses
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="flex justify-end mb-6">
+        <button
+          onClick={saveAlertSettings}
+          disabled={loading}
+          className="flex items-center space-x-2 px-6 py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-all disabled:opacity-50 font-semibold"
+        >
+          <span>{loading ? 'Sauvegarde...' : '💾 Sauvegarder les paramètres'}</span>
+        </button>
+      </div>
+    </>
+  )}
+
+  {/* Historique des alertes */}
+  <div className="border-t-2 border-gray-200 pt-6">
+    <div className="flex items-center justify-between mb-4">
+      <h3 className="text-lg font-semibold text-gray-800 flex items-center">
+        <History size={20} className="mr-2" />
+        Historique des alertes (30 dernières)
+      </h3>
+      <button
+        onClick={loadAlertHistory}
+        className="px-3 py-1 bg-gray-100 text-gray-700 text-sm rounded hover:bg-gray-200 transition-all"
+      >
+        🔄 Actualiser
+      </button>
+    </div>
+    
+    {alertHistory.length === 0 ? (
+      <div className="text-center py-12 bg-gray-50 rounded-lg">
+        <Bell size={48} className="mx-auto mb-4 text-gray-300" />
+        <p className="text-gray-500">Aucune alerte envoyée pour le moment</p>
+        <p className="text-xs text-gray-400 mt-2">
+          Les alertes apparaîtront ici après configuration
+        </p>
+      </div>
+    ) : (
+      <div className="space-y-2 max-h-96 overflow-y-auto">
+        {alertHistory.map((alert) => (
+          <div key={alert.id} className="flex items-start justify-between p-4 bg-gradient-to-r from-gray-50 to-white rounded-lg border-l-4 hover:shadow-md transition-all" style={{
+            borderLeftColor: 
+              alert.alert_type === 'injury' ? '#ef4444' :
+              alert.alert_type === 'fatigue' ? '#f59e0b' :
+              alert.alert_type === 'motivation' ? '#3b82f6' :
+              alert.alert_type === 'rpe' ? '#f97316' :
+              '#a855f7'
+          }}>
+            <div className="flex-1">
+              <div className="flex items-center space-x-2 mb-2">
+                <span className={`px-3 py-1 rounded-full text-xs font-bold ${
+                  alert.alert_type === 'injury' ? 'bg-red-100 text-red-800' :
+                  alert.alert_type === 'fatigue' ? 'bg-yellow-100 text-yellow-800' :
+                  alert.alert_type === 'motivation' ? 'bg-blue-100 text-blue-800' :
+                  alert.alert_type === 'rpe' ? 'bg-orange-100 text-orange-800' :
+                  'bg-purple-100 text-purple-800'
+                }`}>
+                  {alert.alert_type === 'injury' ? '🚑 BLESSURE' :
+                   alert.alert_type === 'fatigue' ? '😴 FATIGUE' :
+                   alert.alert_type === 'motivation' ? '📉 MOTIVATION' :
+                   alert.alert_type === 'rpe' ? '💥 RPE' :
+                   '📊 VARIATION'}
+                </span>
+                <span className="font-semibold text-gray-900">{alert.players?.name}</span>
+              </div>
+              <p className="text-sm text-gray-700 whitespace-pre-line leading-relaxed">{alert.message}</p>
+            </div>
+            <div className="text-right ml-4">
+              <p className="text-xs text-gray-500 font-medium">
+                {new Date(alert.sent_at).toLocaleDateString('fr-FR')}
+              </p>
+              <p className="text-xs text-gray-500">
+                {new Date(alert.sent_at).toLocaleTimeString('fr-FR', {hour: '2-digit', minute: '2-digit'})}
+              </p>
+              <span className={`inline-block mt-2 px-2 py-1 rounded-full text-xs font-semibold ${
+                alert.status === 'sent' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+              }`}>
+                {alert.status === 'sent' ? '✓ Envoyé' : '✗ Échec'}
+              </span>
+            </div>
+          </div>
+        ))}
+      </div>
+    )}
+  </div>
+</div>
         {/* SECTION GESTION DES OBJECTIFS - code identique à la version originale */}
         <div className="bg-white rounded-xl shadow-lg p-6">
           <div className="flex items-center justify-between mb-6">
