@@ -1,8 +1,8 @@
 // src/views/PostSessionQuestionnaire.jsx
-
 import React, { useState, useEffect } from 'react';
 import { ChevronLeft } from 'lucide-react';
 import ScaleQuestion from '../components/ScaleQuestion';
+import { checkAndSendAlerts } from '../services/alertService'; // 🆕 AJOUT
 
 const PostSessionQuestionnaire = ({ 
   selectedPlayer,
@@ -17,7 +17,7 @@ const PostSessionQuestionnaire = ({
 }) => {
   
   const [postSessionForm, setPostSessionForm] = useState({
-    activite: 'futsal', // NOUVEAU CHAMP
+    activite: 'futsal',
     intensite_rpe: 10,
     plaisir_seance: 10,
     confiance: 10,
@@ -83,11 +83,19 @@ const PostSessionQuestionnaire = ({
       
       if (error) throw error;
       
+      // 🆕 AJOUT - Vérifier et envoyer les alertes Discord
+      await checkAndSendAlerts(
+        selectedPlayer.id,
+        selectedPlayer.name,
+        'post',
+        postSessionForm
+      );
+      
       alert('Questionnaire sauvegardé !');
       
       // Réinitialiser le formulaire
       setPostSessionForm({
-        activite: 'futsal', // NOUVEAU
+        activite: 'futsal',
         intensite_rpe: 10,
         plaisir_seance: 10,
         confiance: 10,
@@ -131,7 +139,7 @@ const PostSessionQuestionnaire = ({
           </div>
 
           <div className="space-y-6">
-            {/* NOUVEAU : Sélecteur d'activité */}
+            {/* Sélecteur d'activité */}
             <div className="bg-gradient-to-r from-purple-50 to-blue-50 rounded-lg p-4 border-2 border-purple-200">
               <label className="block text-sm font-semibold text-gray-700 mb-3">
                 🏃 Type d'activité
