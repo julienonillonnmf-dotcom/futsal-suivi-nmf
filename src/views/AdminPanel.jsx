@@ -173,7 +173,7 @@ const AdminPanel = ({
     { value: 'fatigue', label: 'Fatigue', color: '#dc2626' },
     { value: 'intensite_rpe', label: 'RPE (Intensité)', color: '#f59e0b' },
     { value: 'plaisir', label: 'Plaisir', color: '#10b981' },
-    { value: 'plaisir_seance', label: 'Plaisir seance', color: '#12b381' },
+    { value: 'plaisir_seance', label: 'Plaisir seance', color: '#111111' },
     { value: 'confiance', label: 'Confiance', color: '#8b5cf6' },
     { value: 'technique', label: 'Technique', color: '#ec4899' },
     { value: 'tactique', label: 'Tactique', color: '#6366f1' },
