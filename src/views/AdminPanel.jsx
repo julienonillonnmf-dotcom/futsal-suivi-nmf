@@ -5,7 +5,7 @@
 // Onglet 4: Objectifs & Activité (Objectifs + 20 dernières réponses)
 
 import React, { useState, useMemo } from 'react';
-import { ChevronLeft, Edit3, UserPlus, Download, Trash2, Filter, TrendingUp, BarChart3, Users, Calendar, AlertTriangle, Search, Bell, AlertCircle, History, Send, Target, MessageSquare } from 'lucide-react';
+import { ChevronLeft, Edit3, UserPlus, Download, Trash2, Filter, TrendingUp, BarChart3, Users, Calendar, AlertTriangle, Search, Bell, AlertCircle, History, Send, Target, MessageSquare, X } from 'lucide-react';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { getAlertHistory, testDiscordWebhook } from '../services/alertService';
 
@@ -135,7 +135,7 @@ const AdminPanel = ({
   const [selectedQuestionTypes, setSelectedQuestionTypes] = useState(['all']);
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
-  
+  const [selectedResponseDetail, setSelectedResponseDetail] = useState(null);
   
   // Alertes Discord
   const [alertSettings, setAlertSettings] = useState({
@@ -3295,29 +3295,7 @@ const AdminPanel = ({
     </div>
   </>
 )}
-              {/* Section Cycle Menstruel (code inchangé) */}
-              {/* Section Analyse Préventive (code inchangé avec le filtre d'activité) */}
-              {/* Pour gagner de la place, je ne vais pas tout recopier ici, mais vous avez déjà le code complet dans le document original que je vous ai fourni */}
-              <div className="bg-white rounded-xl shadow-lg p-6">
-                <h2 className="text-2xl font-bold mb-4" style={{color: '#1D2945'}}>
-                  🚑 Contenu de l'onglet "Suivi Santé"
-                </h2>
-                <p className="text-gray-600 mb-4">
-                  Cette section contient tout le code existant pour :
-                </p>
-                <ul className="list-disc list-inside space-y-2 text-gray-700">
-                  <li>Suivi longitudinal des blessures (avec filtre d'activité)</li>
-                  <li>Suivi du cycle menstruel</li>
-                  <li>Analyse préventive (patterns & blessures)</li>
-                </ul>
-                <p className="text-sm text-blue-600 mt-4 italic">
-                  💡 Le code complet est dans votre document original AdminPanel.jsx. 
-                  Pour garder la réponse concise, je ne le recopie pas entièrement ici.
-                </p>
-              </div>
-            </>
-          )}
-
+              
           {/* ONGLET 4: OBJECTIFS & ACTIVITÉ */}
           {activeTab === 'objectifs' && (
             <>
