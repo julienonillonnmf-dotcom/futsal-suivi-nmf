@@ -2173,7 +2173,7 @@ const AdminPanel = ({
           
           {/* ONGLET 3: SUIVI SANTÉ */}
           {activeTab === 'sante' && (
-  <>
+    <>
     {/* SECTION SUIVI LONGITUDINAL DES BLESSURES */}
     <div className="bg-white rounded-xl shadow-lg p-6 mb-8">
       <h2 className="text-2xl font-bold mb-4 text-red-600 flex items-center">
