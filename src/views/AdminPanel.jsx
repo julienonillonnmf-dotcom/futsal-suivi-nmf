@@ -135,6 +135,8 @@ const AdminPanel = ({
   const [selectedQuestionTypes, setSelectedQuestionTypes] = useState(['all']);
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  
+  // État pour la modale de détail des réponses
   const [selectedResponseDetail, setSelectedResponseDetail] = useState(null);
   
   // Alertes Discord
@@ -416,7 +418,7 @@ const AdminPanel = ({
     return { chartData, globalAverages, filteredAverages };
   };
 
-  // Fonctions de sauvegarde (identiques à l'original)
+  // Fonctions de sauvegarde
   const saveObjectifsCollectifs = async () => {
     setLoading(true);
     try {
@@ -572,7 +574,7 @@ const AdminPanel = ({
     setLoading(false);
   };
 
-  // Fonctions de suppression (code existant inchangé)
+  // Fonctions de suppression
   const verifyDeletePassword = () => {
     const password = prompt('🔐 Mot de passe requis pour supprimer :');
     return password === 'admin_supp';
@@ -1628,6 +1630,7 @@ const AdminPanel = ({
           )}
 
           {/* ONGLET 2: STATISTIQUES & ANALYSES */}
+          {/* ONGLET 2: STATISTIQUES & ANALYSES */}
           {activeTab === 'statistiques' && (
             <div className="bg-white rounded-xl shadow-lg p-6">
               <h2 className="text-2xl font-bold mb-6" style={{color: '#1D2945'}}>
@@ -2167,13 +2170,9 @@ const AdminPanel = ({
               </div>
             </div>
           )}
-
+          
           {/* ONGLET 3: SUIVI SANTÉ */}
           {activeTab === 'sante' && (
-            <>
-              {/* Section Blessures (code inchangé avec le filtre d'activité) */}
-              {/* ONGLET 3: SUIVI SANTÉ */}
-{activeTab === 'sante' && (
   <>
     {/* SECTION SUIVI LONGITUDINAL DES BLESSURES */}
     <div className="bg-white rounded-xl shadow-lg p-6 mb-8">
@@ -3295,11 +3294,10 @@ const AdminPanel = ({
     </div>
   </>
 )}
-              
           {/* ONGLET 4: OBJECTIFS & ACTIVITÉ */}
           {activeTab === 'objectifs' && (
             <>
-              {/* Gestion des Objectifs (code inchangé) */}
+              {/* Gestion des Objectifs */}
               <div className="bg-white rounded-xl shadow-lg p-6 mb-8">
                 <div className="flex items-center justify-between mb-6">
                   <h2 className="text-2xl font-bold" style={{color: '#1D2945'}}>
@@ -3365,7 +3363,7 @@ const AdminPanel = ({
                 )}
               </div>
 
-              {/* NOUVEAU: Section Réponses Récentes (20 dernières de TOUTES les joueuses) */}
+              {/* Section Réponses Récentes */}
               <div className="bg-white rounded-xl shadow-lg p-6">
                 <h2 className="text-2xl font-bold mb-6" style={{color: '#1D2945'}}>
                   <MessageSquare className="inline mr-2" size={24} />
@@ -3382,7 +3380,7 @@ const AdminPanel = ({
                   </div>
                 ) : (
                   <div className="space-y-3">
-                    {last20Responses.map((response, index) => {
+                    {last20Responses.map((response) => {
                       const typeLabels = {
                         pre: 'Pré-séance',
                         post: 'Post-séance',
@@ -3470,297 +3468,7 @@ const AdminPanel = ({
           )}
 
         </div>
-        {/* Fin de <div className="space-y-6"> */}
-
-        {/* MODALE POUR AFFICHER LE DÉTAIL D'UNE RÉPONSE */}
-        {selectedResponseDetail && (
-          <div 
-            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
-            onClick={() => setSelectedResponseDetail(null)}
-          >
-            <div 
-              className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="sticky top-0 bg-gradient-to-r from-indigo-600 to-blue-600 text-white p-6 rounded-t-2xl">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="text-2xl font-bold">
-                      {selectedResponseDetail.playerName}
-                    </h3>
-                    <p className="text-blue-100 text-sm mt-1">
-                      {(() => {
-                        const typeLabels = {
-                          pre: 'Questionnaire Pré-séance',
-                          post: 'Questionnaire Post-séance',
-                          match: 'Questionnaire Match',
-                          injury: 'Suivi Blessure'
-                        };
-                        return typeLabels[selectedResponseDetail.type];
-                      })()}
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => setSelectedResponseDetail(null)}
-                    className="w-10 h-10 bg-white bg-opacity-20 hover:bg-opacity-30 rounded-full flex items-center justify-center transition-all"
-                  >
-                    <X size={24} />
-                  </button>
-                </div>
-                <div className="flex items-center space-x-3 mt-4">
-                  <span className="px-3 py-1 bg-white bg-opacity-20 rounded-full text-sm">
-                    📅 {new Date(selectedResponseDetail.created_at).toLocaleDateString('fr-FR')}
-                  </span>
-                  <span className="px-3 py-1 bg-white bg-opacity-20 rounded-full text-sm">
-                    🕐 {new Date(selectedResponseDetail.created_at).toLocaleTimeString('fr-FR', {hour: '2-digit', minute: '2-digit'})}
-                  </span>
-                  {selectedResponseDetail.data?.activite && (
-                    <span className="px-3 py-1 bg-white bg-opacity-20 rounded-full text-sm">
-                      {(() => {
-                        const activiteLabels = {
-                          'futsal': '⚽ Futsal',
-                          'foot': '⚽ Football',
-                          'autre': '🏃 Autre'
-                        };
-                        return activiteLabels[selectedResponseDetail.data.activite] || selectedResponseDetail.data.activite;
-                      })()}
-                    </span>
-                  )}
-                </div>
-              </div>
-
-              <div className="p-6 space-y-6">
-                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-4 border-2 border-blue-200">
-                  <h4 className="text-lg font-bold text-gray-800 mb-3">📊 DONNÉES COLLECTÉES</h4>
-                </div>
-
-                {/* PRÉ-SÉANCE */}
-                {selectedResponseDetail.type === 'pre' && (
-                  <>
-                    <div className="grid grid-cols-2 gap-4">
-                      {selectedResponseDetail.data?.motivation && (
-                        <div className="bg-blue-50 border-2 border-blue-200 rounded-lg p-4">
-                          <p className="text-sm text-blue-600 font-medium mb-1">🔥 Motivation</p>
-                          <p className="text-3xl font-bold text-blue-700">{selectedResponseDetail.data.motivation}/20</p>
-                        </div>
-                      )}
-                      {selectedResponseDetail.data?.fatigue && (
-                        <div className="bg-red-50 border-2 border-red-200 rounded-lg p-4">
-                          <p className="text-sm text-red-600 font-medium mb-1">😴 Niveau de forme</p>
-                          <p className="text-3xl font-bold text-red-700">{selectedResponseDetail.data.fatigue}/20</p>
-                        </div>
-                      )}
-                      {selectedResponseDetail.data?.plaisir && (
-                        <div className="bg-green-50 border-2 border-green-200 rounded-lg p-4">
-                          <p className="text-sm text-green-600 font-medium mb-1">😊 Plaisir anticipé</p>
-                          <p className="text-3xl font-bold text-green-700">{selectedResponseDetail.data.plaisir}/20</p>
-                        </div>
-                      )}
-                      {selectedResponseDetail.data?.objectif_difficulte && (
-                        <div className="bg-purple-50 border-2 border-purple-200 rounded-lg p-4">
-                          <p className="text-sm text-purple-600 font-medium mb-1">🎯 Difficulté objectifs</p>
-                          <p className="text-3xl font-bold text-purple-700">{selectedResponseDetail.data.objectif_difficulte}/20</p>
-                        </div>
-                      )}
-                    </div>
-
-                    {selectedResponseDetail.data?.objectifs_personnels && (
-                      <div className="bg-yellow-50 border-l-4 border-yellow-400 rounded-lg p-4">
-                        <p className="text-sm font-semibold text-yellow-800 mb-2">🎯 Objectifs personnels</p>
-                        <p className="text-gray-700 whitespace-pre-wrap">{selectedResponseDetail.data.objectifs_personnels}</p>
-                      </div>
-                    )}
-
-                    {selectedResponseDetail.data?.cycle_phase && selectedResponseDetail.data.cycle_phase !== '' && (
-                      <div className="bg-pink-50 border-2 border-pink-200 rounded-lg p-4">
-                        <p className="text-sm font-semibold text-pink-800 mb-3">🌸 Cycle menstruel</p>
-                        <div className="space-y-2">
-                          <div className="flex items-center justify-between">
-                            <span className="text-gray-700">Règles actuellement :</span>
-                            <span className="font-bold text-pink-700">
-                              {selectedResponseDetail.data.cycle_phase === 'oui' ? 'Oui' : 'Non'}
-                            </span>
-                          </div>
-                          {selectedResponseDetail.data.cycle_impact && (
-                            <div className="flex items-center justify-between">
-                              <span className="text-gray-700">Impact perçu :</span>
-                              <span className="font-bold text-pink-700">{selectedResponseDetail.data.cycle_impact}/20</span>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    )}
-
-                    {selectedResponseDetail.data?.injuries && selectedResponseDetail.data.injuries.length > 0 && (
-                      <div className="bg-red-50 border-2 border-red-300 rounded-lg p-4">
-                        <p className="text-sm font-semibold text-red-800 mb-3">🚑 Blessures signalées</p>
-                        {selectedResponseDetail.data.injuries.map((injury, idx) => (
-                          <div key={idx} className="bg-white rounded-lg p-3 mb-2 border border-red-200">
-                            <div className="flex items-center justify-between mb-2">
-                              <span className="font-bold text-gray-900">
-                                {injury.location || injury.zone || 'Zone non spécifiée'}
-                              </span>
-                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                                (injury.status === 'active' || injury.active) 
-                                  ? 'bg-red-100 text-red-800' 
-                                  : 'bg-green-100 text-green-800'
-                              }`}>
-                                {(injury.status === 'active' || injury.active) ? '🔴 Active' : '✅ Guérie'}
-                              </span>
-                            </div>
-                            <div className="text-sm text-gray-700">
-                              <p>Douleur: <strong>{injury.intensity || injury.douleur || 0}/10</strong></p>
-                              {injury.description && (
-                                <p className="mt-1 italic text-gray-600">"{injury.description}"</p>
-                              )}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-
-                    {selectedResponseDetail.data?.commentaires_libres && (
-                      <div className="bg-gray-50 border-l-4 border-gray-400 rounded-lg p-4">
-                        <p className="text-sm font-semibold text-gray-800 mb-2">💭 Commentaires</p>
-                        <p className="text-gray-700 whitespace-pre-wrap">{selectedResponseDetail.data.commentaires_libres}</p>
-                      </div>
-                    )}
-                  </>
-                )}
-
-                {/* POST-SÉANCE */}
-                {selectedResponseDetail.type === 'post' && (
-                  <>
-                    <div className="grid grid-cols-2 gap-4">
-                      {selectedResponseDetail.data?.intensite_rpe && (
-                        <div className="bg-orange-50 border-2 border-orange-200 rounded-lg p-4">
-                          <p className="text-sm text-orange-600 font-medium mb-1">💪 Intensité RPE</p>
-                          <p className="text-3xl font-bold text-orange-700">{selectedResponseDetail.data.intensite_rpe}/20</p>
-                        </div>
-                      )}
-                      {selectedResponseDetail.data?.plaisir_seance && (
-                        <div className="bg-green-50 border-2 border-green-200 rounded-lg p-4">
-                          <p className="text-sm text-green-600 font-medium mb-1">😊 Plaisir séance</p>
-                          <p className="text-3xl font-bold text-green-700">{selectedResponseDetail.data.plaisir_seance}/20</p>
-                        </div>
-                      )}
-                      {selectedResponseDetail.data?.confiance && (
-                        <div className="bg-purple-50 border-2 border-purple-200 rounded-lg p-4">
-                          <p className="text-sm text-purple-600 font-medium mb-1">💪 Confiance</p>
-                          <p className="text-3xl font-bold text-purple-700">{selectedResponseDetail.data.confiance}/20</p>
-                        </div>
-                      )}
-                      {selectedResponseDetail.data?.technique && (
-                        <div className="bg-blue-50 border-2 border-blue-200 rounded-lg p-4">
-                          <p className="text-sm text-blue-600 font-medium mb-1">⚽ Technique</p>
-                          <p className="text-3xl font-bold text-blue-700">{selectedResponseDetail.data.technique}/20</p>
-                        </div>
-                      )}
-                      {selectedResponseDetail.data?.tactique && (
-                        <div className="bg-indigo-50 border-2 border-indigo-200 rounded-lg p-4">
-                          <p className="text-sm text-indigo-600 font-medium mb-1">🎯 Tactique</p>
-                          <p className="text-3xl font-bold text-indigo-700">{selectedResponseDetail.data.tactique}/20</p>
-                        </div>
-                      )}
-                      {selectedResponseDetail.data?.atteinte_objectifs && (
-                        <div className="bg-yellow-50 border-2 border-yellow-200 rounded-lg p-4">
-                          <p className="text-sm text-yellow-600 font-medium mb-1">✅ Atteinte objectifs</p>
-                          <p className="text-3xl font-bold text-yellow-700">{selectedResponseDetail.data.atteinte_objectifs}/20</p>
-                        </div>
-                      )}
-                      {selectedResponseDetail.data?.influence_groupe && (
-                        <div className="bg-teal-50 border-2 border-teal-200 rounded-lg p-4">
-                          <p className="text-sm text-teal-600 font-medium mb-1">👥 Influence groupe</p>
-                          <p className="text-3xl font-bold text-teal-700">{selectedResponseDetail.data.influence_groupe}/20</p>
-                        </div>
-                      )}
-                    </div>
-
-                    {selectedResponseDetail.data?.objectifs_atteints && (
-                      <div className="bg-green-50 border-l-4 border-green-400 rounded-lg p-4">
-                        <p className="text-sm font-semibold text-green-800 mb-2">✅ Détail atteinte objectifs</p>
-                        <p className="text-gray-700 whitespace-pre-wrap">{selectedResponseDetail.data.objectifs_atteints}</p>
-                      </div>
-                    )}
-
-                    {selectedResponseDetail.data?.commentaires_libres && (
-                      <div className="bg-gray-50 border-l-4 border-gray-400 rounded-lg p-4">
-                        <p className="text-sm font-semibold text-gray-800 mb-2">💭 Commentaires</p>
-                        <p className="text-gray-700 whitespace-pre-wrap">{selectedResponseDetail.data.commentaires_libres}</p>
-                      </div>
-                    )}
-                  </>
-                )}
-
-                {/* MATCH */}
-                {selectedResponseDetail.type === 'match' && (
-                  <>
-                    <div className="grid grid-cols-2 gap-4">
-                      {selectedResponseDetail.data?.intensite_rpe && (
-                        <div className="bg-orange-50 border-2 border-orange-200 rounded-lg p-4">
-                          <p className="text-sm text-orange-600 font-medium mb-1">💪 Intensité RPE</p>
-                          <p className="text-3xl font-bold text-orange-700">{selectedResponseDetail.data.intensite_rpe}/20</p>
-                        </div>
-                      )}
-                      {selectedResponseDetail.data?.performance_percue && (
-                        <div className="bg-blue-50 border-2 border-blue-200 rounded-lg p-4">
-                          <p className="text-sm text-blue-600 font-medium mb-1">⭐ Performance perçue</p>
-                          <p className="text-3xl font-bold text-blue-700">{selectedResponseDetail.data.performance_percue}/20</p>
-                        </div>
-                      )}
-                    </div>
-
-                    {selectedResponseDetail.data?.commentaires && (
-                      <div className="bg-gray-50 border-l-4 border-gray-400 rounded-lg p-4">
-                        <p className="text-sm font-semibold text-gray-800 mb-2">💭 Commentaires</p>
-                        <p className="text-gray-700 whitespace-pre-wrap">{selectedResponseDetail.data.commentaires}</p>
-                      </div>
-                    )}
-                  </>
-                )}
-
-                {/* BLESSURE */}
-                {selectedResponseDetail.type === 'injury' && selectedResponseDetail.data?.injuries && (
-                  <div className="bg-red-50 border-2 border-red-300 rounded-lg p-4">
-                    <p className="text-sm font-semibold text-red-800 mb-3">🚑 Blessures suivies</p>
-                    {selectedResponseDetail.data.injuries.map((injury, idx) => (
-                      <div key={idx} className="bg-white rounded-lg p-3 mb-2 border border-red-200">
-                        <div className="flex items-center justify-between mb-2">
-                          <span className="font-bold text-gray-900">
-                            {injury.location || injury.zone || 'Zone non spécifiée'}
-                          </span>
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                            (injury.status === 'active' || injury.active) 
-                              ? 'bg-red-100 text-red-800' 
-                              : 'bg-green-100 text-green-800'
-                          }`}>
-                            {(injury.status === 'active' || injury.active) ? '🔴 Active' : '✅ Guérie'}
-                          </span>
-                        </div>
-                        <div className="text-sm text-gray-700">
-                          <p>Douleur: <strong>{injury.intensity || injury.douleur || 0}/10</strong></p>
-                          {injury.description && (
-                            <p className="mt-1 italic text-gray-600">"{injury.description}"</p>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              <div className="sticky bottom-0 bg-gray-50 p-4 rounded-b-2xl border-t-2 border-gray-200">
-                <button
-                  onClick={() => setSelectedResponseDetail(null)}
-                  className="w-full py-3 bg-gradient-to-r from-indigo-600 to-blue-600 text-white rounded-lg font-semibold hover:from-indigo-700 hover:to-blue-700 transition-all"
-                >
-                  Fermer
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-        {/* Fin de la modale */}
+        {/* Fin de <div className="space-y-6"> - Contenu des onglets */}
 
       </div>
       {/* Fin de <div className="max-w-7xl mx-auto"> */}
