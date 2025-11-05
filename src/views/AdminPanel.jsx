@@ -131,7 +131,7 @@ const AdminPanel = ({
   // États existants (gestion)
   const [editingObjectives, setEditingObjectives] = useState(false);
   const [selectedPlayers, setSelectedPlayers] = useState([]);
-  const [selectedMetrics, setSelectedMetrics] = useState(['motivation', 'intensite_rpe', 'fatigue', 'plaisir', 'plaisir_seance', 'confiance', 'technique', 'tactique']);
+  const [selectedMetrics, setSelectedMetrics] = useState(['plaisir', 'plaisir_seance']);
   const [selectedQuestionTypes, setSelectedQuestionTypes] = useState(['all']);
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
@@ -187,12 +187,22 @@ const AdminPanel = ({
     { value: 'fatigue', label: 'Fatigue', color: '#dc2626' },
     { value: 'intensite_rpe', label: 'RPE (Intensité)', color: '#f59e0b' },
     { value: 'plaisir', label: 'Plaisir', color: '#10b981' },
-    { value: 'plaisir_seance', label: 'Plaisir seance', color: '#111111' },
+    { value: 'plaisir_seance', label: 'Plaisir séance', color: '#06b6d4' },
     { value: 'confiance', label: 'Confiance', color: '#8b5cf6' },
     { value: 'technique', label: 'Technique', color: '#ec4899' },
     { value: 'tactique', label: 'Tactique', color: '#6366f1' },
     { value: 'atteinte_objectifs', label: 'Atteinte objectifs', color: '#f97316' },
-    { value: 'influence_groupe', label: 'Influence groupe', color: '#14b8a6' }
+    { value: 'influence_groupe', label: 'Influence groupe', color: '#14b8a6' },
+    { value: 'sommeil', label: 'Sommeil', color: '#64748b' },
+    { value: 'stress', label: 'Stress', color: '#e11d48' },
+    { value: 'nutrition', label: 'Nutrition', color: '#84cc16' },
+    { value: 'hydratation', label: 'Hydratation', color: '#0ea5e9' },
+    { value: 'douleurs', label: 'Douleurs', color: '#f43f5e' },
+    { value: 'moral', label: 'Moral', color: '#a855f7' },
+    { value: 'concentration', label: 'Concentration', color: '#3b82f6' },
+    { value: 'communication', label: 'Communication', color: '#10b981' },
+    { value: 'cohesion', label: 'Cohésion', color: '#f59e0b' },
+    { value: 'satisfaction', label: 'Satisfaction', color: '#06b6d4' }
   ];
 
   const questionTypeOptions = [
@@ -3473,19 +3483,51 @@ const AdminPanel = ({
 
       {/* MODAL DÉTAIL DES RÉPONSES */}
       {selectedResponseDetail && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            zIndex: 9999,
+            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '1rem'
+          }}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              setSelectedResponseDetail(null);
+            }
+          }}
+        >
+          <div 
+            className="bg-white rounded-xl shadow-2xl max-w-5xl w-full max-h-[90vh] overflow-hidden"
+            style={{
+              backgroundColor: 'white',
+              borderRadius: '1rem',
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+              maxWidth: '80rem',
+              width: '100%',
+              maxHeight: '90vh',
+              overflow: 'hidden',
+              position: 'relative'
+            }}
+          >
             {/* Header de la modal */}
             <div className="bg-gradient-to-r from-blue-500 to-indigo-600 p-6 text-white">
               <div className="flex items-center justify-between">
                 <div>
-                  <h3 className="text-2xl font-bold mb-2">Détail du Questionnaire</h3>
-                  <div className="flex items-center space-x-3">
+                  <h3 className="text-2xl font-bold mb-2">📋 Détail Complet du Questionnaire</h3>
+                  <div className="flex items-center space-x-3 flex-wrap">
                     <span className="px-3 py-1 bg-white/20 rounded-full text-sm">
-                      {selectedResponseDetail.playerName}
+                      👤 {selectedResponseDetail.playerName}
                     </span>
                     <span className="px-3 py-1 bg-white/20 rounded-full text-sm">
-                      {(() => {
+                      📝 {(() => {
                         const typeLabels = {
                           pre: 'Pré-séance',
                           post: 'Post-séance',
@@ -3496,94 +3538,140 @@ const AdminPanel = ({
                       })()}
                     </span>
                     <span className="px-3 py-1 bg-white/20 rounded-full text-sm">
-                      {new Date(selectedResponseDetail.created_at).toLocaleDateString('fr-FR')} à{' '}
+                      📅 {new Date(selectedResponseDetail.created_at).toLocaleDateString('fr-FR')} à{' '}
                       {new Date(selectedResponseDetail.created_at).toLocaleTimeString('fr-FR', {hour: '2-digit', minute: '2-digit'})}
                     </span>
                   </div>
                 </div>
                 <button 
                   onClick={() => setSelectedResponseDetail(null)}
-                  className="p-2 hover:bg-white/20 rounded-full transition-all"
+                  className="p-2 hover:bg-white/20 rounded-full transition-all text-white hover:scale-110"
+                  style={{cursor: 'pointer'}}
                 >
-                  <X size={24} />
+                  <X size={28} />
                 </button>
               </div>
             </div>
 
-            {/* Contenu de la modal */}
-            <div className="p-6 overflow-y-auto" style={{maxHeight: 'calc(90vh - 120px)'}}>
+            {/* Contenu scrollable de la modal */}
+            <div className="p-6 overflow-y-auto" style={{maxHeight: 'calc(90vh - 140px)', overflowY: 'auto'}}>
+              
               {/* Activité */}
               {selectedResponseDetail.data?.activite && (
-                <div className="mb-6">
-                  <h4 className="text-lg font-semibold text-gray-800 mb-3 border-b pb-2">🏃 Type d'activité</h4>
-                  <div className="bg-purple-50 border-l-4 border-purple-500 p-4">
-                    <p className="text-lg font-medium text-purple-800">
+                <div className="mb-6 animate-fadeIn">
+                  <h4 className="text-lg font-semibold text-gray-800 mb-3 border-b-2 border-purple-200 pb-2">
+                    🏃 Type d'activité
+                  </h4>
+                  <div className="bg-gradient-to-r from-purple-50 to-purple-100 border-l-4 border-purple-500 p-4 rounded-lg shadow-sm">
+                    <p className="text-xl font-bold text-purple-800">
                       {selectedResponseDetail.data.activite === 'futsal' && '⚽ Futsal'}
                       {selectedResponseDetail.data.activite === 'foot' && '⚽ Football'}
-                      {selectedResponseDetail.data.activite === 'autre' && '🏃 Autre'}
+                      {selectedResponseDetail.data.activite === 'autre' && '🏃 Autre activité'}
                     </p>
                   </div>
                 </div>
               )}
 
-              {/* Métriques principales */}
+              {/* Métriques PRÉ-SÉANCE complètes */}
               {selectedResponseDetail.type === 'pre' && (
                 <div className="mb-6">
-                  <h4 className="text-lg font-semibold text-gray-800 mb-3 border-b pb-2">📊 Métriques Pré-Séance</h4>
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                  <h4 className="text-lg font-semibold text-gray-800 mb-4 border-b-2 border-blue-200 pb-2">
+                    📊 Toutes les Métriques Pré-Séance
+                  </h4>
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                    {/* Métriques principales */}
                     {selectedResponseDetail.data?.motivation != null && (
-                      <div className="bg-blue-50 p-4 rounded-lg border-2 border-blue-200">
-                        <p className="text-sm text-gray-600">💪 Motivation</p>
-                        <p className="text-3xl font-bold text-blue-700 mt-1">{selectedResponseDetail.data.motivation}/20</p>
+                      <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-4 rounded-lg border-2 border-blue-200 shadow-sm hover:shadow-md transition-shadow">
+                        <p className="text-xs text-gray-600 mb-1">💪 Motivation</p>
+                        <p className="text-3xl font-bold text-blue-700">{selectedResponseDetail.data.motivation}/20</p>
+                        <div className="mt-2 bg-blue-200 rounded-full h-2">
+                          <div className="bg-blue-600 h-2 rounded-full" style={{width: `${(selectedResponseDetail.data.motivation/20)*100}%`}}></div>
+                        </div>
                       </div>
                     )}
                     {selectedResponseDetail.data?.fatigue != null && (
-                      <div className="bg-red-50 p-4 rounded-lg border-2 border-red-200">
-                        <p className="text-sm text-gray-600">😴 Fatigue</p>
-                        <p className="text-3xl font-bold text-red-700 mt-1">{selectedResponseDetail.data.fatigue}/20</p>
+                      <div className="bg-gradient-to-br from-red-50 to-red-100 p-4 rounded-lg border-2 border-red-200 shadow-sm hover:shadow-md transition-shadow">
+                        <p className="text-xs text-gray-600 mb-1">😴 Fatigue</p>
+                        <p className="text-3xl font-bold text-red-700">{selectedResponseDetail.data.fatigue}/20</p>
+                        <div className="mt-2 bg-red-200 rounded-full h-2">
+                          <div className="bg-red-600 h-2 rounded-full" style={{width: `${(selectedResponseDetail.data.fatigue/20)*100}%`}}></div>
+                        </div>
                       </div>
                     )}
                     {selectedResponseDetail.data?.plaisir != null && (
-                      <div className="bg-green-50 p-4 rounded-lg border-2 border-green-200">
-                        <p className="text-sm text-gray-600">😊 Plaisir</p>
-                        <p className="text-3xl font-bold text-green-700 mt-1">{selectedResponseDetail.data.plaisir}/20</p>
-                      </div>
-                    )}
-                    {selectedResponseDetail.data?.technique != null && (
-                      <div className="bg-purple-50 p-4 rounded-lg border-2 border-purple-200">
-                        <p className="text-sm text-gray-600">⚙️ Technique</p>
-                        <p className="text-3xl font-bold text-purple-700 mt-1">{selectedResponseDetail.data.technique}/20</p>
-                      </div>
-                    )}
-                    {selectedResponseDetail.data?.tactique != null && (
-                      <div className="bg-indigo-50 p-4 rounded-lg border-2 border-indigo-200">
-                        <p className="text-sm text-gray-600">🎯 Tactique</p>
-                        <p className="text-3xl font-bold text-indigo-700 mt-1">{selectedResponseDetail.data.tactique}/20</p>
+                      <div className="bg-gradient-to-br from-green-50 to-green-100 p-4 rounded-lg border-2 border-green-200 shadow-sm hover:shadow-md transition-shadow">
+                        <p className="text-xs text-gray-600 mb-1">😊 Plaisir</p>
+                        <p className="text-3xl font-bold text-green-700">{selectedResponseDetail.data.plaisir}/20</p>
+                        <div className="mt-2 bg-green-200 rounded-full h-2">
+                          <div className="bg-green-600 h-2 rounded-full" style={{width: `${(selectedResponseDetail.data.plaisir/20)*100}%`}}></div>
+                        </div>
                       </div>
                     )}
                     {selectedResponseDetail.data?.confiance != null && (
-                      <div className="bg-yellow-50 p-4 rounded-lg border-2 border-yellow-200">
-                        <p className="text-sm text-gray-600">✨ Confiance</p>
-                        <p className="text-3xl font-bold text-yellow-700 mt-1">{selectedResponseDetail.data.confiance}/20</p>
+                      <div className="bg-gradient-to-br from-purple-50 to-purple-100 p-4 rounded-lg border-2 border-purple-200 shadow-sm hover:shadow-md transition-shadow">
+                        <p className="text-xs text-gray-600 mb-1">✨ Confiance</p>
+                        <p className="text-3xl font-bold text-purple-700">{selectedResponseDetail.data.confiance}/20</p>
+                        <div className="mt-2 bg-purple-200 rounded-full h-2">
+                          <div className="bg-purple-600 h-2 rounded-full" style={{width: `${(selectedResponseDetail.data.confiance/20)*100}%`}}></div>
+                        </div>
+                      </div>
+                    )}
+                    {selectedResponseDetail.data?.technique != null && (
+                      <div className="bg-gradient-to-br from-pink-50 to-pink-100 p-4 rounded-lg border-2 border-pink-200 shadow-sm hover:shadow-md transition-shadow">
+                        <p className="text-xs text-gray-600 mb-1">⚙️ Technique</p>
+                        <p className="text-3xl font-bold text-pink-700">{selectedResponseDetail.data.technique}/20</p>
+                        <div className="mt-2 bg-pink-200 rounded-full h-2">
+                          <div className="bg-pink-600 h-2 rounded-full" style={{width: `${(selectedResponseDetail.data.technique/20)*100}%`}}></div>
+                        </div>
+                      </div>
+                    )}
+                    {selectedResponseDetail.data?.tactique != null && (
+                      <div className="bg-gradient-to-br from-indigo-50 to-indigo-100 p-4 rounded-lg border-2 border-indigo-200 shadow-sm hover:shadow-md transition-shadow">
+                        <p className="text-xs text-gray-600 mb-1">🎯 Tactique</p>
+                        <p className="text-3xl font-bold text-indigo-700">{selectedResponseDetail.data.tactique}/20</p>
+                        <div className="mt-2 bg-indigo-200 rounded-full h-2">
+                          <div className="bg-indigo-600 h-2 rounded-full" style={{width: `${(selectedResponseDetail.data.tactique/20)*100}%`}}></div>
+                        </div>
+                      </div>
+                    )}
+                    {selectedResponseDetail.data?.sommeil != null && (
+                      <div className="bg-gradient-to-br from-slate-50 to-slate-100 p-4 rounded-lg border-2 border-slate-200 shadow-sm hover:shadow-md transition-shadow">
+                        <p className="text-xs text-gray-600 mb-1">😴 Sommeil</p>
+                        <p className="text-3xl font-bold text-slate-700">{selectedResponseDetail.data.sommeil}/20</p>
+                        <div className="mt-2 bg-slate-200 rounded-full h-2">
+                          <div className="bg-slate-600 h-2 rounded-full" style={{width: `${(selectedResponseDetail.data.sommeil/20)*100}%`}}></div>
+                        </div>
+                      </div>
+                    )}
+                    {selectedResponseDetail.data?.stress != null && (
+                      <div className="bg-gradient-to-br from-amber-50 to-amber-100 p-4 rounded-lg border-2 border-amber-200 shadow-sm hover:shadow-md transition-shadow">
+                        <p className="text-xs text-gray-600 mb-1">😰 Stress</p>
+                        <p className="text-3xl font-bold text-amber-700">{selectedResponseDetail.data.stress}/20</p>
+                        <div className="mt-2 bg-amber-200 rounded-full h-2">
+                          <div className="bg-amber-600 h-2 rounded-full" style={{width: `${(selectedResponseDetail.data.stress/20)*100}%`}}></div>
+                        </div>
                       </div>
                     )}
                   </div>
                   
                   {/* Cycle menstruel */}
                   {selectedResponseDetail.data?.cycle_phase && selectedResponseDetail.data.cycle_phase !== '' && (
-                    <div className="mt-4 p-4 bg-pink-50 rounded-lg border-2 border-pink-200">
-                      <h5 className="text-sm font-semibold text-pink-800 mb-2">🌸 Cycle Menstruel</h5>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <p className="text-xs text-gray-600">Règles</p>
-                          <p className="text-lg font-bold text-pink-700">
-                            {selectedResponseDetail.data.cycle_phase === 'oui' ? 'Oui' : 'Non'}
+                    <div className="mt-6 p-5 bg-gradient-to-r from-pink-50 via-pink-100 to-pink-50 rounded-lg border-2 border-pink-300 shadow-sm">
+                      <h5 className="text-md font-bold text-pink-800 mb-3 flex items-center">
+                        🌸 Cycle Menstruel
+                      </h5>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="bg-white p-4 rounded-lg shadow-sm">
+                          <p className="text-sm text-gray-600 mb-1">État actuel</p>
+                          <p className="text-xl font-bold text-pink-700">
+                            {selectedResponseDetail.data.cycle_phase === 'oui' ? '🔴 Règles en cours' : '✅ Pas de règles'}
                           </p>
                         </div>
                         {selectedResponseDetail.data.cycle_impact != null && (
-                          <div>
-                            <p className="text-xs text-gray-600">Impact perçu</p>
-                            <p className="text-lg font-bold text-pink-700">{selectedResponseDetail.data.cycle_impact}/20</p>
+                          <div className="bg-white p-4 rounded-lg shadow-sm">
+                            <p className="text-sm text-gray-600 mb-1">Impact perçu sur la performance</p>
+                            <p className="text-2xl font-bold text-pink-700">{selectedResponseDetail.data.cycle_impact}/20</p>
+                            <p className="text-xs text-gray-500 mt-1">(10 = impact neutre)</p>
                           </div>
                         )}
                       </div>
@@ -3592,52 +3680,130 @@ const AdminPanel = ({
                 </div>
               )}
 
+              {/* Métriques POST-SÉANCE complètes */}
               {selectedResponseDetail.type === 'post' && (
                 <div className="mb-6">
-                  <h4 className="text-lg font-semibold text-gray-800 mb-3 border-b pb-2">📊 Métriques Post-Séance</h4>
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                  <h4 className="text-lg font-semibold text-gray-800 mb-4 border-b-2 border-green-200 pb-2">
+                    📊 Toutes les Métriques Post-Séance
+                  </h4>
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                     {selectedResponseDetail.data?.intensite_rpe != null && (
-                      <div className="bg-orange-50 p-4 rounded-lg border-2 border-orange-200">
-                        <p className="text-sm text-gray-600">💥 RPE</p>
-                        <p className="text-3xl font-bold text-orange-700 mt-1">{selectedResponseDetail.data.intensite_rpe}/20</p>
+                      <div className="bg-gradient-to-br from-orange-50 to-orange-100 p-4 rounded-lg border-2 border-orange-200 shadow-sm hover:shadow-md transition-shadow">
+                        <p className="text-xs text-gray-600 mb-1">💥 RPE (Intensité)</p>
+                        <p className="text-3xl font-bold text-orange-700">{selectedResponseDetail.data.intensite_rpe}/20</p>
+                        <div className="mt-2 bg-orange-200 rounded-full h-2">
+                          <div className="bg-orange-600 h-2 rounded-full" style={{width: `${(selectedResponseDetail.data.intensite_rpe/20)*100}%`}}></div>
+                        </div>
                       </div>
                     )}
                     {selectedResponseDetail.data?.plaisir_seance != null && (
-                      <div className="bg-green-50 p-4 rounded-lg border-2 border-green-200">
-                        <p className="text-sm text-gray-600">😊 Plaisir séance</p>
-                        <p className="text-3xl font-bold text-green-700 mt-1">{selectedResponseDetail.data.plaisir_seance}/20</p>
+                      <div className="bg-gradient-to-br from-cyan-50 to-cyan-100 p-4 rounded-lg border-2 border-cyan-200 shadow-sm hover:shadow-md transition-shadow">
+                        <p className="text-xs text-gray-600 mb-1">😊 Plaisir séance</p>
+                        <p className="text-3xl font-bold text-cyan-700">{selectedResponseDetail.data.plaisir_seance}/20</p>
+                        <div className="mt-2 bg-cyan-200 rounded-full h-2">
+                          <div className="bg-cyan-600 h-2 rounded-full" style={{width: `${(selectedResponseDetail.data.plaisir_seance/20)*100}%`}}></div>
+                        </div>
                       </div>
                     )}
                     {selectedResponseDetail.data?.atteinte_objectifs != null && (
-                      <div className="bg-blue-50 p-4 rounded-lg border-2 border-blue-200">
-                        <p className="text-sm text-gray-600">🎯 Objectifs atteints</p>
-                        <p className="text-3xl font-bold text-blue-700 mt-1">{selectedResponseDetail.data.atteinte_objectifs}/20</p>
+                      <div className="bg-gradient-to-br from-emerald-50 to-emerald-100 p-4 rounded-lg border-2 border-emerald-200 shadow-sm hover:shadow-md transition-shadow">
+                        <p className="text-xs text-gray-600 mb-1">🎯 Objectifs atteints</p>
+                        <p className="text-3xl font-bold text-emerald-700">{selectedResponseDetail.data.atteinte_objectifs}/20</p>
+                        <div className="mt-2 bg-emerald-200 rounded-full h-2">
+                          <div className="bg-emerald-600 h-2 rounded-full" style={{width: `${(selectedResponseDetail.data.atteinte_objectifs/20)*100}%`}}></div>
+                        </div>
                       </div>
                     )}
                     {selectedResponseDetail.data?.influence_groupe != null && (
-                      <div className="bg-purple-50 p-4 rounded-lg border-2 border-purple-200">
-                        <p className="text-sm text-gray-600">👥 Influence groupe</p>
-                        <p className="text-3xl font-bold text-purple-700 mt-1">{selectedResponseDetail.data.influence_groupe}/20</p>
+                      <div className="bg-gradient-to-br from-teal-50 to-teal-100 p-4 rounded-lg border-2 border-teal-200 shadow-sm hover:shadow-md transition-shadow">
+                        <p className="text-xs text-gray-600 mb-1">👥 Influence groupe</p>
+                        <p className="text-3xl font-bold text-teal-700">{selectedResponseDetail.data.influence_groupe}/20</p>
+                        <div className="mt-2 bg-teal-200 rounded-full h-2">
+                          <div className="bg-teal-600 h-2 rounded-full" style={{width: `${(selectedResponseDetail.data.influence_groupe/20)*100}%`}}></div>
+                        </div>
+                      </div>
+                    )}
+                    {selectedResponseDetail.data?.satisfaction != null && (
+                      <div className="bg-gradient-to-br from-violet-50 to-violet-100 p-4 rounded-lg border-2 border-violet-200 shadow-sm hover:shadow-md transition-shadow">
+                        <p className="text-xs text-gray-600 mb-1">⭐ Satisfaction</p>
+                        <p className="text-3xl font-bold text-violet-700">{selectedResponseDetail.data.satisfaction}/20</p>
+                        <div className="mt-2 bg-violet-200 rounded-full h-2">
+                          <div className="bg-violet-600 h-2 rounded-full" style={{width: `${(selectedResponseDetail.data.satisfaction/20)*100}%`}}></div>
+                        </div>
+                      </div>
+                    )}
+                    {selectedResponseDetail.data?.cohesion != null && (
+                      <div className="bg-gradient-to-br from-lime-50 to-lime-100 p-4 rounded-lg border-2 border-lime-200 shadow-sm hover:shadow-md transition-shadow">
+                        <p className="text-xs text-gray-600 mb-1">🤝 Cohésion</p>
+                        <p className="text-3xl font-bold text-lime-700">{selectedResponseDetail.data.cohesion}/20</p>
+                        <div className="mt-2 bg-lime-200 rounded-full h-2">
+                          <div className="bg-lime-600 h-2 rounded-full" style={{width: `${(selectedResponseDetail.data.cohesion/20)*100}%`}}></div>
+                        </div>
+                      </div>
+                    )}
+                    {selectedResponseDetail.data?.communication != null && (
+                      <div className="bg-gradient-to-br from-sky-50 to-sky-100 p-4 rounded-lg border-2 border-sky-200 shadow-sm hover:shadow-md transition-shadow">
+                        <p className="text-xs text-gray-600 mb-1">💬 Communication</p>
+                        <p className="text-3xl font-bold text-sky-700">{selectedResponseDetail.data.communication}/20</p>
+                        <div className="mt-2 bg-sky-200 rounded-full h-2">
+                          <div className="bg-sky-600 h-2 rounded-full" style={{width: `${(selectedResponseDetail.data.communication/20)*100}%`}}></div>
+                        </div>
+                      </div>
+                    )}
+                    {selectedResponseDetail.data?.concentration != null && (
+                      <div className="bg-gradient-to-br from-rose-50 to-rose-100 p-4 rounded-lg border-2 border-rose-200 shadow-sm hover:shadow-md transition-shadow">
+                        <p className="text-xs text-gray-600 mb-1">🎯 Concentration</p>
+                        <p className="text-3xl font-bold text-rose-700">{selectedResponseDetail.data.concentration}/20</p>
+                        <div className="mt-2 bg-rose-200 rounded-full h-2">
+                          <div className="bg-rose-600 h-2 rounded-full" style={{width: `${(selectedResponseDetail.data.concentration/20)*100}%`}}></div>
+                        </div>
                       </div>
                     )}
                   </div>
                 </div>
               )}
 
+              {/* Métriques MATCH complètes */}
               {selectedResponseDetail.type === 'match' && (
                 <div className="mb-6">
-                  <h4 className="text-lg font-semibold text-gray-800 mb-3 border-b pb-2">🏆 Métriques Match</h4>
-                  <div className="grid grid-cols-2 gap-4">
+                  <h4 className="text-lg font-semibold text-gray-800 mb-4 border-b-2 border-purple-200 pb-2">
+                    🏆 Données du Match
+                  </h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {selectedResponseDetail.data?.resultat && (
-                      <div className="bg-purple-50 p-4 rounded-lg border-2 border-purple-200">
-                        <p className="text-sm text-gray-600">📊 Résultat</p>
-                        <p className="text-lg font-bold text-purple-700 mt-1">{selectedResponseDetail.data.resultat}</p>
+                      <div className="bg-gradient-to-br from-purple-50 to-purple-100 p-4 rounded-lg border-2 border-purple-200 shadow-sm">
+                        <p className="text-sm text-gray-600 mb-2">📊 Résultat du match</p>
+                        <p className="text-2xl font-bold text-purple-700 capitalize">{selectedResponseDetail.data.resultat}</p>
                       </div>
                     )}
                     {selectedResponseDetail.data?.intensite_rpe != null && (
-                      <div className="bg-orange-50 p-4 rounded-lg border-2 border-orange-200">
-                        <p className="text-sm text-gray-600">💥 RPE</p>
-                        <p className="text-3xl font-bold text-orange-700 mt-1">{selectedResponseDetail.data.intensite_rpe}/20</p>
+                      <div className="bg-gradient-to-br from-orange-50 to-orange-100 p-4 rounded-lg border-2 border-orange-200 shadow-sm">
+                        <p className="text-sm text-gray-600 mb-2">💥 RPE Match</p>
+                        <p className="text-3xl font-bold text-orange-700">{selectedResponseDetail.data.intensite_rpe}/20</p>
+                      </div>
+                    )}
+                    {selectedResponseDetail.data?.score && (
+                      <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-4 rounded-lg border-2 border-blue-200 shadow-sm">
+                        <p className="text-sm text-gray-600 mb-2">⚽ Score</p>
+                        <p className="text-2xl font-bold text-blue-700">{selectedResponseDetail.data.score}</p>
+                      </div>
+                    )}
+                    {selectedResponseDetail.data?.adversaire && (
+                      <div className="bg-gradient-to-br from-red-50 to-red-100 p-4 rounded-lg border-2 border-red-200 shadow-sm">
+                        <p className="text-sm text-gray-600 mb-2">🆚 Adversaire</p>
+                        <p className="text-xl font-bold text-red-700">{selectedResponseDetail.data.adversaire}</p>
+                      </div>
+                    )}
+                    {selectedResponseDetail.data?.temps_jeu != null && (
+                      <div className="bg-gradient-to-br from-green-50 to-green-100 p-4 rounded-lg border-2 border-green-200 shadow-sm">
+                        <p className="text-sm text-gray-600 mb-2">⏱️ Temps de jeu</p>
+                        <p className="text-2xl font-bold text-green-700">{selectedResponseDetail.data.temps_jeu} min</p>
+                      </div>
+                    )}
+                    {selectedResponseDetail.data?.poste && (
+                      <div className="bg-gradient-to-br from-indigo-50 to-indigo-100 p-4 rounded-lg border-2 border-indigo-200 shadow-sm">
+                        <p className="text-sm text-gray-600 mb-2">📍 Poste</p>
+                        <p className="text-xl font-bold text-indigo-700">{selectedResponseDetail.data.poste}</p>
                       </div>
                     )}
                   </div>
@@ -3647,29 +3813,37 @@ const AdminPanel = ({
               {/* Blessures */}
               {selectedResponseDetail.data?.injuries && selectedResponseDetail.data.injuries.length > 0 && (
                 <div className="mb-6">
-                  <h4 className="text-lg font-semibold text-red-600 mb-3 border-b pb-2">🚑 Blessures Signalées</h4>
-                  <div className="space-y-3">
+                  <h4 className="text-lg font-semibold text-red-600 mb-4 border-b-2 border-red-200 pb-2">
+                    🚑 Blessures Signalées ({selectedResponseDetail.data.injuries.length})
+                  </h4>
+                  <div className="space-y-4">
                     {selectedResponseDetail.data.injuries.map((injury, index) => (
-                      <div key={index} className="bg-red-50 p-4 rounded-lg border-2 border-red-200">
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                          <div>
-                            <p className="text-xs text-gray-600">Zone</p>
-                            <p className="font-semibold text-gray-800">{injury.zone || injury.location || 'Non spécifiée'}</p>
+                      <div key={index} className="bg-gradient-to-r from-red-50 to-red-100 p-5 rounded-lg border-2 border-red-300 shadow-sm hover:shadow-md transition-shadow">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                          <div className="bg-white p-3 rounded-lg">
+                            <p className="text-xs text-gray-600 mb-1">📍 Zone touchée</p>
+                            <p className="font-bold text-gray-800 text-lg">{injury.zone || injury.location || 'Non spécifiée'}</p>
                           </div>
-                          <div>
-                            <p className="text-xs text-gray-600">Douleur</p>
-                            <p className="font-semibold text-red-700">{injury.douleur || injury.intensity || 0}/10</p>
+                          <div className="bg-white p-3 rounded-lg">
+                            <p className="text-xs text-gray-600 mb-1">💔 Niveau de douleur</p>
+                            <p className="font-bold text-red-700 text-2xl">{injury.douleur || injury.intensity || 0}/10</p>
+                            <div className="mt-2 bg-red-200 rounded-full h-2">
+                              <div className="bg-red-600 h-2 rounded-full" style={{width: `${((injury.douleur || injury.intensity || 0)/10)*100}%`}}></div>
+                            </div>
                           </div>
-                          <div>
-                            <p className="text-xs text-gray-600">Statut</p>
-                            <p className="font-semibold">
-                              {injury.active ? <span className="text-red-600">🔴 Active</span> : <span className="text-green-600">✅ Guérie</span>}
+                          <div className="bg-white p-3 rounded-lg">
+                            <p className="text-xs text-gray-600 mb-1">📊 Statut actuel</p>
+                            <p className="font-bold text-lg">
+                              {(injury.active === true || injury.active === 'oui') ? 
+                                <span className="text-red-600 flex items-center"><span className="inline-block w-3 h-3 bg-red-500 rounded-full mr-2 animate-pulse"></span> Active</span> : 
+                                <span className="text-green-600 flex items-center"><span className="inline-block w-3 h-3 bg-green-500 rounded-full mr-2"></span> Guérie</span>
+                              }
                             </p>
                           </div>
                           {injury.description && (
-                            <div className="md:col-span-4">
-                              <p className="text-xs text-gray-600">Description</p>
-                              <p className="text-sm text-gray-700 italic">"{injury.description}"</p>
+                            <div className="bg-white p-3 rounded-lg md:col-span-2 lg:col-span-4">
+                              <p className="text-xs text-gray-600 mb-1">📝 Description</p>
+                              <p className="text-gray-700 italic">"{injury.description}"</p>
                             </div>
                           )}
                         </div>
@@ -3682,9 +3856,11 @@ const AdminPanel = ({
               {/* Objectifs mentaux */}
               {selectedResponseDetail.data?.objectifs_mentaux && (
                 <div className="mb-6">
-                  <h4 className="text-lg font-semibold text-gray-800 mb-3 border-b pb-2">🧠 Objectifs Mentaux</h4>
-                  <div className="bg-blue-50 p-4 rounded-lg border-l-4 border-blue-500">
-                    <p className="text-gray-700 whitespace-pre-line">{selectedResponseDetail.data.objectifs_mentaux}</p>
+                  <h4 className="text-lg font-semibold text-gray-800 mb-4 border-b-2 border-indigo-200 pb-2">
+                    🧠 Objectifs Mentaux
+                  </h4>
+                  <div className="bg-gradient-to-r from-indigo-50 to-blue-50 p-5 rounded-lg border-l-4 border-indigo-500 shadow-sm">
+                    <p className="text-gray-700 whitespace-pre-line leading-relaxed">{selectedResponseDetail.data.objectifs_mentaux}</p>
                   </div>
                 </div>
               )}
@@ -3692,36 +3868,55 @@ const AdminPanel = ({
               {/* Commentaires libres */}
               {selectedResponseDetail.data?.commentaires_libres && (
                 <div className="mb-6">
-                  <h4 className="text-lg font-semibold text-gray-800 mb-3 border-b pb-2">💬 Commentaires</h4>
-                  <div className="bg-gray-50 p-4 rounded-lg border-l-4 border-gray-500">
-                    <p className="text-gray-700 whitespace-pre-line">{selectedResponseDetail.data.commentaires_libres}</p>
+                  <h4 className="text-lg font-semibold text-gray-800 mb-4 border-b-2 border-gray-200 pb-2">
+                    💬 Commentaires Libres
+                  </h4>
+                  <div className="bg-gradient-to-r from-gray-50 to-gray-100 p-5 rounded-lg border-l-4 border-gray-500 shadow-sm">
+                    <p className="text-gray-700 whitespace-pre-line leading-relaxed italic">"{selectedResponseDetail.data.commentaires_libres}"</p>
                   </div>
                 </div>
               )}
 
-              {/* Autres données */}
+              {/* Toutes les autres données non traitées */}
               {(() => {
                 const excludedKeys = ['motivation', 'fatigue', 'plaisir', 'plaisir_seance', 'technique', 'tactique', 'confiance', 
                   'intensite_rpe', 'atteinte_objectifs', 'influence_groupe', 'injuries', 'cycle_phase', 'cycle_impact',
-                  'objectifs_mentaux', 'commentaires_libres', 'activite', 'resultat'];
+                  'objectifs_mentaux', 'commentaires_libres', 'activite', 'resultat', 'score', 'adversaire', 'temps_jeu',
+                  'poste', 'sommeil', 'stress', 'nutrition', 'hydratation', 'douleurs', 'moral', 'concentration',
+                  'communication', 'cohesion', 'satisfaction'];
                 
                 const otherData = Object.entries(selectedResponseDetail.data || {})
                   .filter(([key]) => !excludedKeys.includes(key) && selectedResponseDetail.data[key] != null && selectedResponseDetail.data[key] !== '');
                 
                 return otherData.length > 0 && (
                   <div>
-                    <h4 className="text-lg font-semibold text-gray-800 mb-3 border-b pb-2">📋 Autres informations</h4>
-                    <div className="grid grid-cols-2 gap-3">
+                    <h4 className="text-lg font-semibold text-gray-800 mb-4 border-b-2 border-gray-200 pb-2">
+                      📋 Autres Informations
+                    </h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                       {otherData.map(([key, value]) => (
-                        <div key={key} className="bg-gray-50 p-3 rounded">
-                          <p className="text-xs text-gray-600">{key}</p>
-                          <p className="font-semibold text-gray-800">{value.toString()}</p>
+                        <div key={key} className="bg-gradient-to-br from-gray-50 to-gray-100 p-4 rounded-lg border border-gray-300 shadow-sm">
+                          <p className="text-sm text-gray-600 mb-1 font-medium capitalize">{key.replace(/_/g, ' ')}</p>
+                          <p className="font-bold text-gray-800 text-lg">
+                            {typeof value === 'boolean' ? (value ? '✅ Oui' : '❌ Non') : value.toString()}
+                          </p>
                         </div>
                       ))}
                     </div>
                   </div>
                 );
               })()}
+
+              {/* Résumé en bas */}
+              <div className="mt-8 pt-6 border-t-2 border-gray-200">
+                <div className="bg-gradient-to-r from-gray-100 to-gray-50 p-4 rounded-lg">
+                  <p className="text-sm text-gray-600 text-center">
+                    📊 Questionnaire {selectedResponseDetail.type} • 
+                    👤 {selectedResponseDetail.playerName} • 
+                    📅 {new Date(selectedResponseDetail.created_at).toLocaleDateString('fr-FR')} à {new Date(selectedResponseDetail.created_at).toLocaleTimeString('fr-FR')}
+                  </p>
+                </div>
+              </div>
             </div>
           </div>
         </div>
