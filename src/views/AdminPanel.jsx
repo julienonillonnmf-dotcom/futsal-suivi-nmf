@@ -193,16 +193,7 @@ const AdminPanel = ({
     { value: 'tactique', label: 'Tactique', color: '#6366f1' },
     { value: 'atteinte_objectifs', label: 'Atteinte objectifs', color: '#f97316' },
     { value: 'influence_groupe', label: 'Influence groupe', color: '#14b8a6' },
-    { value: 'sommeil', label: 'Sommeil', color: '#64748b' },
-    { value: 'stress', label: 'Stress', color: '#e11d48' },
-    { value: 'nutrition', label: 'Nutrition', color: '#84cc16' },
-    { value: 'hydratation', label: 'Hydratation', color: '#0ea5e9' },
-    { value: 'douleurs', label: 'Douleurs', color: '#f43f5e' },
-    { value: 'moral', label: 'Moral', color: '#a855f7' },
-    { value: 'concentration', label: 'Concentration', color: '#3b82f6' },
-    { value: 'communication', label: 'Communication', color: '#10b981' },
-    { value: 'cohesion', label: 'Cohésion', color: '#f59e0b' },
-    { value: 'satisfaction', label: 'Satisfaction', color: '#06b6d4' }
+    { value: 'objectif_difficulte', label: 'Difficulté objectif', color: '#64748b' },
   ];
 
   const questionTypeOptions = [
