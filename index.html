@@ -2,47 +2,30 @@
 <html lang="fr">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     
-    <!-- PWA Meta Tags -->
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <meta name="description" content="Application de suivi de performance pour futsal féminin" />
-    <meta name="theme-color" content="#1D2945" />
-    <meta name="mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <meta name="apple-mobile-web-app-title" content="Futsal NMF" />
-    <link rel="apple-touch-icon" href="/Logo NMF Rose.png" />
-    <link rel="manifest" href="/manifest.json" />
+    <!-- Favicon avec le logo du club -->
+    <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type="image/png" sizes="96x96" href="/favicon-96x96.png" />
     
-    <title>Futsal NMF - Suivi de Performance</title>
+    <!-- Icônes pour mobiles et PWA -->
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/web-app-manifest-192x192.png" />
+    <link rel="icon" type="image/png" sizes="512x512" href="/web-app-manifest-512x512.png" />
+    
+    <!-- Métadonnées -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Application de suivi pour l'équipe féminine de futsal - Nantes Métropole Futsal" />
+    <meta name="theme-color" content="#DC2626" />
+    
+    <!-- Titre avec nom du club -->
+    <title>NMF - Suivi Équipe Futsal Féminine</title>
+    
+    <!-- Manifest pour PWA -->
+    <link rel="manifest" href="/site.webmanifest" />
   </head>
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
-    
-    <!-- Service Worker Registration -->
-    <script>
-      if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-          navigator.serviceWorker.register('/sw.js')
-            .then((registration) => {
-              console.log('✅ Service Worker enregistré avec succès');
-              
-              registration.addEventListener('updatefound', () => {
-                const newWorker = registration.installing;
-                newWorker.addEventListener('statechange', () => {
-                  if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                    console.log('📱 Nouvelle version disponible!');
-                  }
-                });
-              });
-            })
-            .catch((error) => {
-              console.warn('⚠️ Erreur enregistrement Service Worker:', error);
-            });
-        });
-      }
-    </script>
   </body>
 </html>
