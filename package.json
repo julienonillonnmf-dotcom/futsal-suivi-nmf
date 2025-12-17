@@ -7,24 +7,9 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
-    "preview": "vite preview",
-    "cap:add": "cap add",
-    "cap:ios": "cap sync ios && cap open ios",
-    "cap:android": "cap sync android && cap open android",
-    "cap:build": "npm run build && cap sync",
-    "cap:sync": "cap sync",
-    "cap:update": "cap update"
+    "preview": "vite preview"
   },
   "dependencies": {
-    "@capacitor/core": "^5.7.0",
-    "@capacitor/ios": "^5.7.0",
-    "@capacitor/android": "^5.7.0",
-    "@capacitor/push-notifications": "^5.7.0",
-    "@capacitor/local-notifications": "^5.7.0",
-    "@capacitor/app": "^5.7.0",
-    "@capacitor/splash-screen": "^5.7.0",
-    "@capacitor/keyboard": "^5.7.0",
-    "@capacitor/status-bar": "^5.7.0",
     "@supabase/supabase-js": "^2.57.4",
     "lucide-react": "^0.544.0",
     "react": "^19.1.1",
@@ -44,18 +29,5 @@
     "postcss": "^8.5.6",
     "tailwindcss": "^4.1.13",
     "vite": "^7.1.7"
-  },
-  "capacitor": {
-    "appId": "fr.nmf.futsal.suivi",
-    "appName": "Futsal NMF",
-    "webDir": "dist",
-    "server": {
-      "androidScheme": "https"
-    },
-    "plugins": {
-      "PushNotifications": {
-        "presentationOptions": ["badge", "sound", "alert"]
-      }
-    }
   }
 }
