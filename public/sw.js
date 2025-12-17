@@ -1,10 +1,9 @@
-// Service Worker pour Futsal NMF PWA
-// Ce fichier permet à l'app de fonctionner offline
+// public/sw.js - Service Worker avec Push Notifications
+// Pour Futsal NMF PWA avec Firebase Cloud Messaging
 
 const CACHE_NAME = 'futsal-nmf-v1';
 const STATIC_CACHE = 'futsal-nmf-static-v1';
 
-// URLs à mettre en cache au démarrage
 const urlsToCache = [
   '/',
   '/index.html',
@@ -13,7 +12,7 @@ const urlsToCache = [
   '/vite.svg'
 ];
 
-// Installation du Service Worker
+// Installation
 self.addEventListener('install', (event) => {
   console.log('🔧 Service Worker installing...');
   event.waitUntil(
@@ -21,7 +20,6 @@ self.addEventListener('install', (event) => {
       console.log('📦 Caching static assets');
       return cache.addAll(urlsToCache).catch((error) => {
         console.warn('⚠️ Some assets could not be cached:', error);
-        // Ne pas bloquer si certains assets ne peuvent pas être cachés
         return cache.addAll(urlsToCache.filter(url => url !== '/Logo NMF Rose.png'));
       });
     })
@@ -29,7 +27,7 @@ self.addEventListener('install', (event) => {
   self.skipWaiting();
 });
 
-// Activation du Service Worker
+// Activation
 self.addEventListener('activate', (event) => {
   console.log('✅ Service Worker activating...');
   event.waitUntil(
@@ -47,22 +45,19 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
-// Interception des requêtes
+// Fetch events (offline support)
 self.addEventListener('fetch', (event) => {
   const { request } = event;
   const { destination, method } = request;
 
-  // Ignorer les POST, PUT, DELETE
   if (method !== 'GET') {
     return;
   }
 
-  // Pour les documents HTML, essayer le réseau d'abord
   if (destination === 'document') {
     event.respondWith(
       fetch(request)
         .then((response) => {
-          // Mettre en cache les réponses réussies
           if (response && response.status === 200) {
             const responseToCache = response.clone();
             caches.open(CACHE_NAME).then((cache) => {
@@ -72,7 +67,6 @@ self.addEventListener('fetch', (event) => {
           return response;
         })
         .catch(() => {
-          // Fallback au cache si offline
           return caches.match(request).then((response) => {
             return response || caches.match('/index.html');
           });
@@ -81,7 +75,6 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Pour les autres fichiers (JS, CSS, images), cache d'abord
   event.respondWith(
     caches.match(request).then((response) => {
       if (response) {
@@ -89,7 +82,6 @@ self.addEventListener('fetch', (event) => {
       }
 
       return fetch(request).then((response) => {
-        // Mettre en cache les réponses réussies
         if (response && response.status === 200) {
           const responseToCache = response.clone();
           caches.open(CACHE_NAME).then((cache) => {
@@ -98,7 +90,6 @@ self.addEventListener('fetch', (event) => {
         }
         return response;
       }).catch(() => {
-        // Pas d'image de fallback pour les images
         if (destination === 'image') {
           return new Response('<svg role="img" aria-label="Image non disponible" viewBox="0 0 100 100"></svg>', {
             headers: { 'Content-Type': 'image/svg+xml' }
@@ -114,11 +105,90 @@ self.addEventListener('fetch', (event) => {
   );
 });
 
-// Message depuis le client (optionnel)
+// 🔔 PUSH NOTIFICATION EVENTS
+// Réception d'une notification push de Firebase
+self.addEventListener('push', (event) => {
+  console.log('🔔 Push notification received');
+
+  if (!event.data) {
+    console.warn('⚠️ No push data');
+    return;
+  }
+
+  let notificationData = {};
+
+  try {
+    notificationData = event.data.json();
+  } catch (e) {
+    console.warn('Could not parse push data as JSON, using text:', e);
+    notificationData = {
+      title: 'Futsal NMF',
+      body: event.data.text(),
+    };
+  }
+
+  const title = notificationData.title || 'Futsal NMF';
+  const options = {
+    body: notificationData.body || 'Nouvelle notification',
+    icon: '/Logo NMF Rose.png',
+    badge: '/Logo NMF Rose.png',
+    tag: notificationData.tag || 'futsal-notification',
+    requireInteraction: false,
+    data: notificationData.data || {},
+    actions: [
+      {
+        action: 'open',
+        title: 'Ouvrir'
+      },
+      {
+        action: 'close',
+        title: 'Fermer'
+      }
+    ]
+  };
+
+  event.waitUntil(
+    self.registration.showNotification(title, options)
+  );
+});
+
+// Clic sur la notification
+self.addEventListener('notificationclick', (event) => {
+  console.log('✅ Notification clicked', event.notification.tag);
+  event.notification.close();
+
+  const urlToOpen = '/';
+
+  event.waitUntil(
+    clients.matchAll({
+      type: 'window',
+      includeUncontrolled: true
+    }).then((clientList) => {
+      // Voir si l'app est déjà ouverte
+      for (let i = 0; i < clientList.length; i++) {
+        const client = clientList[i];
+        if (client.url === urlToOpen && 'focus' in client) {
+          return client.focus();
+        }
+      }
+      // Sinon ouvrir l'app
+      if (clients.openWindow) {
+        return clients.openWindow(urlToOpen);
+      }
+    })
+  );
+});
+
+// Fermer la notification
+self.addEventListener('notificationclose', (event) => {
+  console.log('Notification closed', event.notification.tag);
+});
+
+// Message depuis le client
 self.addEventListener('message', (event) => {
   if (event.data && event.data.type === 'SKIP_WAITING') {
     self.skipWaiting();
   }
 });
 
-console.log('✅ Service Worker loaded');
+console.log('✅ Service Worker with Push Notifications loaded');
