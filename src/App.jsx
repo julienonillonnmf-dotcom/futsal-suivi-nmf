@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Lock, EyeOff, Eye, Settings, LogOut } from 'lucide-react';
+import { Lock, EyeOff, Eye, Settings, LogOut, Bell } from 'lucide-react';
 import { supabase } from './supabaseClient';
 
 // ✅ IMPORT NOTIFICATIONS
-import { initializePushNotifications, saveDeviceToken } from './services/pushNotificationService';
+import { initializePushNotifications, saveDeviceToken, getNotificationPermissionStatus } from './services/pushNotificationService';
 
 // Imports composants (adapter selon tes fichiers)
 import PlayerGrid from './components/PlayerGrid';
@@ -44,9 +44,6 @@ const App = () => {
   const trainingDays = [1, 2, 4]; // Lundi, Mardi, Jeudi
   const SITE_PASSWORD = 'NMF2026';
   const ADMIN_PASSWORD = 'coachNmf_2026';
-  
-  // ✅ FIREBASE SENDER ID (À partir de ton Firebase)
-  const FIREBASE_SENDER_ID = '994765829782';
 
   // ============================================================
   // ✅ USEEFFECT: INITIALISER LES NOTIFICATIONS AU DÉMARRAGE
@@ -57,17 +54,16 @@ const App = () => {
       setNotificationStatus('initializing');
 
       try {
-        const result = await initializePushNotifications(FIREBASE_SENDER_ID);
+        const result = await initializePushNotifications();
 
         if (result.success) {
           setNotificationsEnabled(true);
           setNotificationStatus('enabled');
           console.log('✅ Push notifications initialized successfully');
-          console.log('📱 Device token:', result.token);
         } else {
           setNotificationsEnabled(false);
-          setNotificationStatus('failed');
-          console.warn('⚠️ Could not initialize notifications:', result.error);
+          setNotificationStatus('ready'); // Prêt pour la demande de permission
+          console.warn('⚠️ Notifications status:', result.error);
         }
       } catch (error) {
         setNotificationsEnabled(false);
@@ -80,28 +76,26 @@ const App = () => {
   }, []);
 
   // ============================================================
-  // ✅ USEEFFECT: SAUVEGARDER LE TOKEN APRÈS CONNEXION
+  // ✅ USEEFFECT: SAUVEGARDER LE STATUT APRÈS CONNEXION
   // ============================================================
   useEffect(() => {
-    if (isAuthenticated && notificationsEnabled && selectedPlayer) {
-      const saveToken = async () => {
+    if (isAuthenticated && selectedPlayer) {
+      const saveStatus = async () => {
         try {
-          const registration = await navigator.serviceWorker.ready;
-          const subscription = await registration.pushManager.getSubscription();
-
-          if (subscription) {
-            const token = subscription.endpoint.split('/').pop();
-            console.log('💾 Saving token for player:', selectedPlayer.id);
-            await saveDeviceToken(supabase, selectedPlayer.id, token);
+          const status = getNotificationPermissionStatus();
+          console.log('📊 Notification permission status:', status);
+          
+          if (status === 'granted') {
+            await saveDeviceToken(supabase, selectedPlayer.id, 'enabled');
           }
         } catch (error) {
-          console.warn('⚠️ Could not save device token:', error);
+          console.warn('⚠️ Could not save notification status:', error);
         }
       };
 
-      saveToken();
+      saveStatus();
     }
-  }, [isAuthenticated, notificationsEnabled, selectedPlayer]);
+  }, [isAuthenticated, selectedPlayer]);
 
   // ============================================================
   // FONCTIONS EXISTANTES
@@ -391,11 +385,13 @@ const App = () => {
             {/* ✅ AFFICHER LE STATUT DES NOTIFICATIONS */}
             <div className="mt-4 text-xs">
               {notificationsEnabled ? (
-                <p className="text-green-600">✅ Notifications activées</p>
+                <p className="text-green-600 flex items-center justify-center gap-1">
+                  <Bell size={14} /> ✅ Notifications activées
+                </p>
               ) : notificationStatus === 'initializing' ? (
                 <p className="text-blue-600">⏳ Initialisation des notifications...</p>
               ) : (
-                <p className="text-amber-600">⚠️ Notifications: {notificationStatus}</p>
+                <p className="text-amber-600">ℹ️ Notifications: {notificationStatus}</p>
               )}
             </div>
           </div>
