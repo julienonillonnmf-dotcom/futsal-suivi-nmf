@@ -1,11 +1,7 @@
 // src/services/pushNotificationService.js
-// Service pour gérer les notifications push Firebase dans la PWA
+// Service simplifié pour gérer les notifications push sans VAPID
 
-/**
- * Initialiser les notifications push
- * À appeler une fois au démarrage de l'app
- */
-export const initializePushNotifications = async (firebaseSenderId) => {
+export const initializePushNotifications = async () => {
   console.log('🔔 Initializing push notifications...');
 
   try {
@@ -13,45 +9,51 @@ export const initializePushNotifications = async (firebaseSenderId) => {
     const registration = await navigator.serviceWorker.ready;
     console.log('✅ Service Worker ready');
 
-    // Demander les permissions
-    const permission = await Notification.requestPermission();
-    console.log('📋 Notification permission:', permission);
-
-    if (permission !== 'granted') {
-      console.warn('⚠️ Notification permission not granted');
-      return false;
-    }
-
-    // Créer la clé publique Firebase (à fournir)
-    const publicKey = firebaseSenderId; // À remplacer par ta vraie clé
-
-    // Subscribe aux push notifications
-    try {
-      const subscription = await registration.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(publicKey)
-      });
-
-      console.log('✅ Push subscription successful');
-      console.log('Subscription:', subscription);
-
-      // Récupérer le token
-      const token = subscription.endpoint.split('/').pop();
-      console.log('📱 Device token:', token);
-
-      return {
-        success: true,
-        token: token,
-        subscription: subscription
-      };
-    } catch (subscriptionError) {
-      console.error('❌ Push subscription failed:', subscriptionError);
-      // Continue même si subscription échoue
+    // Demander les permissions de notifications
+    if (!('Notification' in window)) {
+      console.warn('⚠️ This browser does not support notifications');
       return {
         success: false,
-        error: subscriptionError.message
+        error: 'Browser does not support notifications'
       };
     }
+
+    // Si les permissions sont déjà accordées
+    if (Notification.permission === 'granted') {
+      console.log('✅ Notification permission already granted');
+      return {
+        success: true,
+        permission: 'granted',
+        message: 'Notifications already enabled'
+      };
+    }
+
+    // Si pas encore demandées
+    if (Notification.permission !== 'denied') {
+      console.log('📋 Requesting notification permission...');
+      const permission = await Notification.requestPermission();
+      console.log('Permission result:', permission);
+
+      if (permission === 'granted') {
+        console.log('✅ Notification permission granted!');
+        return {
+          success: true,
+          permission: 'granted'
+        };
+      } else {
+        console.warn('⚠️ Notification permission denied by user');
+        return {
+          success: false,
+          error: 'User denied notification permission'
+        };
+      }
+    }
+
+    console.warn('⚠️ Notification permission previously denied');
+    return {
+      success: false,
+      error: 'Notification permission denied'
+    };
   } catch (error) {
     console.error('❌ Error initializing push notifications:', error);
     return {
@@ -62,81 +64,89 @@ export const initializePushNotifications = async (firebaseSenderId) => {
 };
 
 /**
- * Sauvegarder le token en base de données
+ * Sauvegarder le token/permission status en base de données
  */
-export const saveDeviceToken = async (supabase, playerId, token) => {
+export const saveDeviceToken = async (supabase, playerId, status = 'enabled') => {
   try {
-    if (!token) {
-      console.warn('⚠️ No token to save');
+    if (!playerId) {
+      console.warn('⚠️ No player ID provided');
       return false;
     }
 
-    console.log('💾 Saving device token for player:', playerId);
+    console.log('💾 Saving notification status for player:', playerId);
 
     const { error } = await supabase
       .from('players')
       .update({
-        device_token: token,
-        device_platform: 'web-pwa',
-        device_updated_at: new Date().toISOString()
+        notifications_enabled: status === 'enabled',
+        notification_updated_at: new Date().toISOString()
       })
       .eq('id', playerId);
 
     if (error) {
-      console.error('Error saving device token:', error);
+      console.error('Error saving notification status:', error);
       return false;
     }
 
-    console.log('✅ Device token saved successfully');
+    console.log('✅ Notification status saved successfully');
     return true;
   } catch (error) {
-    console.error('❌ Error saving device token:', error);
+    console.error('❌ Error saving notification status:', error);
     return false;
   }
 };
 
 /**
- * Demander la permission des notifications
+ * Demander explicitement la permission des notifications
  */
 export const requestNotificationPermission = async () => {
-  if (!('Notification' in window)) {
-    console.warn('⚠️ This browser does not support notifications');
+  try {
+    if (!('Notification' in window)) {
+      console.warn('⚠️ This browser does not support notifications');
+      return false;
+    }
+
+    if (Notification.permission === 'granted') {
+      console.log('✅ Notification permission already granted');
+      return true;
+    }
+
+    if (Notification.permission !== 'denied') {
+      console.log('📋 Requesting notification permission...');
+      const permission = await Notification.requestPermission();
+      return permission === 'granted';
+    }
+
+    console.warn('⚠️ Notification permission denied');
+    return false;
+  } catch (error) {
+    console.error('Error requesting notification permission:', error);
     return false;
   }
-
-  if (Notification.permission === 'granted') {
-    console.log('✅ Notification permission already granted');
-    return true;
-  }
-
-  if (Notification.permission !== 'denied') {
-    const permission = await Notification.requestPermission();
-    return permission === 'granted';
-  }
-
-  console.warn('⚠️ Notification permission denied');
-  return false;
 };
 
 /**
- * Envoyer une notification de test (pour dev)
+ * Tester les notifications (envoyer une notification de test)
  */
-export const sendTestNotification = async (supabase, title = 'Test', body = 'Ceci est une notification de test') => {
+export const sendTestNotification = async () => {
   try {
-    console.log('🧪 Sending test notification...');
+    const registration = await navigator.serviceWorker.ready;
 
-    const response = await supabase.functions.invoke('send-push-notification', {
-      body: {
-        title,
-        body,
-        type: 'test'
-      }
-    });
-
-    if (response.error) {
-      console.error('Error:', response.error);
+    if (!registration) {
+      console.warn('⚠️ Service Worker not ready');
       return false;
     }
+
+    console.log('🧪 Sending test notification...');
+
+    // Envoyer une notification depuis le Service Worker
+    registration.showNotification('Test Futsal NMF', {
+      body: 'Ceci est une notification de test!',
+      icon: '/Logo NMF Rose.png',
+      badge: '/Logo NMF Rose.png',
+      tag: 'test-notification',
+      requireInteraction: false
+    });
 
     console.log('✅ Test notification sent');
     return true;
@@ -147,58 +157,20 @@ export const sendTestNotification = async (supabase, title = 'Test', body = 'Cec
 };
 
 /**
- * Convertir base64 string en Uint8Array
- * Nécessaire pour Firebase Cloud Messaging
- */
-function urlBase64ToUint8Array(base64String) {
-  const padding = '='.repeat((4 - base64String.length % 4) % 4);
-  const base64 = (base64String + padding)
-    .replace(/\-/g, '+')
-    .replace(/_/g, '/');
-
-  const rawData = window.atob(base64);
-  const outputArray = new Uint8Array(rawData.length);
-
-  for (let i = 0; i < rawData.length; ++i) {
-    outputArray[i] = rawData.charCodeAt(i);
-  }
-  return outputArray;
-}
-
-/**
- * Vérifier le statut de la permission
+ * Obtenir le statut des permissions
  */
 export const getNotificationPermissionStatus = () => {
   if (!('Notification' in window)) {
     return 'not-supported';
   }
-  return Notification.permission;
+  return Notification.permission; // 'granted', 'denied', or 'default'
 };
 
 /**
- * Nettoyer les notifications (optionnel)
+ * Vérifier si les notifications sont activées
  */
-export const unsubscribePushNotifications = async () => {
-  try {
-    if (!('serviceWorker' in navigator)) {
-      console.warn('⚠️ Service Workers not supported');
-      return false;
-    }
-
-    const registration = await navigator.serviceWorker.ready;
-    const subscription = await registration.pushManager.getSubscription();
-
-    if (subscription) {
-      await subscription.unsubscribe();
-      console.log('✅ Unsubscribed from push notifications');
-      return true;
-    }
-
-    return false;
-  } catch (error) {
-    console.error('Error unsubscribing:', error);
-    return false;
-  }
+export const areNotificationsEnabled = () => {
+  return 'Notification' in window && Notification.permission === 'granted';
 };
 
 console.log('✅ Push Notification Service loaded');
