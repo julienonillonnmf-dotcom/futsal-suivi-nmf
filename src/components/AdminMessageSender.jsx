@@ -1,320 +1,306 @@
-// src/components/AdminMessageSender.jsx
-// Composant pour envoyer des messages de retour (pour AdminPanel)
-
+// components/AdminMessageSender.jsx
 import React, { useState } from 'react';
-import { Send, AlertCircle, CheckCircle } from 'lucide-react';
-import { sendMessageToPlayer, sendCollectiveMessage } from '../services/messageService';
+import { Send, AlertCircle, CheckCircle, X } from 'lucide-react';
 
-/**
- * Composant AdminMessageSender
- * À ajouter dans AdminPanel
- */
-export const AdminMessageSender = ({ supabase, players }) => {
-  const [activeTab, setActiveTab] = useState('collective'); // 'collective' ou 'individual'
-  const [title, setTitle] = useState('');
-  const [body, setBody] = useState('');
+const AdminMessageSender = ({ supabase, players }) => {
+  const [activeTab, setActiveTab] = useState('collectif');
+  const [selectedPlayer, setSelectedPlayer] = useState('');
   const [messageType, setMessageType] = useState('retour_séance');
-  const [selectedPlayerId, setSelectedPlayerId] = useState('');
+  const [title, setTitle] = useState('');
+  const [content, setContent] = useState('');
   const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState(null); // { type: 'success' | 'error', text: string }
+  const [message, setMessage] = useState({ type: '', text: '' });
 
-  // ============================================================
-  // ENVOYER MESSAGE COLLECTIF
-  // ============================================================
-  const handleSendCollective = async (e) => {
-    e.preventDefault();
-    
-    if (!title.trim() || !body.trim()) {
-      setMessage({ type: 'error', text: 'Titre et message sont requis' });
+  const messageTypes = [
+    { value: 'retour_séance', label: '⚽ Retour de séance' },
+    { value: 'retour_objectif', label: '🎯 Retour d\'objectif' },
+    { value: 'autre', label: '💬 Autre' }
+  ];
+
+  const clearForm = () => {
+    setTitle('');
+    setContent('');
+    setSelectedPlayer('');
+    setMessageType('retour_séance');
+  };
+
+  const handleSendMessage = async () => {
+    // Validations
+    if (!title.trim()) {
+      setMessage({ type: 'error', text: '⚠️ Veuillez entrer un titre' });
+      return;
+    }
+
+    if (!content.trim()) {
+      setMessage({ type: 'error', text: '⚠️ Veuillez entrer le contenu du retour' });
+      return;
+    }
+
+    if (activeTab === 'individuel' && !selectedPlayer) {
+      setMessage({ type: 'error', text: '⚠️ Veuillez sélectionner une joueuse' });
       return;
     }
 
     setLoading(true);
-    setMessage(null);
+    setMessage({ type: '', text: '' });
 
     try {
-      console.log('📢 Sending collective message...');
-      
-      const result = await sendCollectiveMessage(supabase, title, body, messageType);
+      if (activeTab === 'collectif') {
+        // Envoyer à TOUTES les joueuses actives
+        console.log('📤 Envoi message collectif à toutes les joueuses...');
+        
+        const activePlayers = players.filter(p => p.is_active !== false);
+        
+        // Créer un message pour chaque joueuse
+        const messagesToInsert = activePlayers.map(player => ({
+          player_id: player.id,
+          coach_id: 'coach', // À adapter selon ton système
+          title: title,
+          body: content,
+          type: messageType,
+          is_read: false
+        }));
 
-      if (result.success) {
-        setMessage({
-          type: 'success',
-          text: `✅ Message envoyé à ${result.count} joueuses!`
+        console.log(`📝 ${messagesToInsert.length} message(s) à insérer`);
+        console.log('Exemple:', messagesToInsert[0]);
+
+        const { error: insertError } = await supabase
+          .from('messages')
+          .insert(messagesToInsert);
+
+        if (insertError) {
+          console.error('❌ Erreur insertion:', insertError);
+          setMessage({ 
+            type: 'error', 
+            text: `❌ Erreur: ${insertError.message}` 
+          });
+          return;
+        }
+
+        console.log('✅ Messages collectifs envoyés!');
+        setMessage({ 
+          type: 'success', 
+          text: `✅ Retour envoyé à ${activePlayers.length} joueuse(s)!` 
         });
         
-        // Réinitialiser le formulaire
-        setTitle('');
-        setBody('');
-        setMessageType('retour_séance');
-        
-        // Masquer le message après 3 secondes
-        setTimeout(() => setMessage(null), 3000);
       } else {
-        setMessage({
-          type: 'error',
-          text: `❌ Erreur: ${result.error}`
+        // Envoyer à une joueuse spécifique
+        console.log(`📤 Envoi message individuel à ${selectedPlayer}...`);
+        
+        const playerObj = players.find(p => p.id === selectedPlayer);
+        
+        if (!playerObj) {
+          setMessage({ type: 'error', text: '❌ Joueuse non trouvée' });
+          return;
+        }
+
+        const messageData = {
+          player_id: selectedPlayer,
+          coach_id: 'coach', // À adapter selon ton système
+          title: title,
+          body: content,
+          type: messageType,
+          is_read: false
+        };
+
+        console.log('📝 Envoi:', messageData);
+
+        const { error: insertError } = await supabase
+          .from('messages')
+          .insert([messageData]);
+
+        if (insertError) {
+          console.error('❌ Erreur insertion:', insertError);
+          setMessage({ 
+            type: 'error', 
+            text: `❌ Erreur: ${insertError.message}` 
+          });
+          return;
+        }
+
+        console.log('✅ Message envoyé!');
+        setMessage({ 
+          type: 'success', 
+          text: `✅ Retour envoyé à ${playerObj.name}!` 
         });
       }
+
+      // Vider le formulaire après succès
+      setTimeout(() => {
+        clearForm();
+        setMessage({ type: '', text: '' });
+      }, 2000);
+
     } catch (error) {
-      console.error('Error sending message:', error);
-      setMessage({
-        type: 'error',
-        text: `❌ Erreur: ${error.message}`
+      console.error('❌ Erreur:', error);
+      setMessage({ 
+        type: 'error', 
+        text: `❌ Erreur inattendue: ${error.message}` 
       });
     } finally {
       setLoading(false);
     }
   };
 
-  // ============================================================
-  // ENVOYER MESSAGE INDIVIDUEL
-  // ============================================================
-  const handleSendIndividual = async (e) => {
-    e.preventDefault();
-    
-    if (!title.trim() || !body.trim()) {
-      setMessage({ type: 'error', text: 'Titre et message sont requis' });
-      return;
-    }
-
-    if (!selectedPlayerId) {
-      setMessage({ type: 'error', text: 'Veuillez sélectionner une joueuse' });
-      return;
-    }
-
-    setLoading(true);
-    setMessage(null);
-
-    try {
-      console.log('💬 Sending individual message to:', selectedPlayerId);
-      
-      const selectedPlayer = players.find(p => p.id === selectedPlayerId);
-      
-      const result = await sendMessageToPlayer(supabase, selectedPlayerId, title, body, messageType);
-
-      if (result.success) {
-        setMessage({
-          type: 'success',
-          text: `✅ Message envoyé à ${selectedPlayer?.name}!`
-        });
-        
-        // Réinitialiser le formulaire
-        setTitle('');
-        setBody('');
-        setMessageType('retour_séance');
-        setSelectedPlayerId('');
-        
-        // Masquer le message après 3 secondes
-        setTimeout(() => setMessage(null), 3000);
-      } else {
-        setMessage({
-          type: 'error',
-          text: `❌ Erreur: ${result.error}`
-        });
-      }
-    } catch (error) {
-      console.error('Error sending message:', error);
-      setMessage({
-        type: 'error',
-        text: `❌ Erreur: ${error.message}`
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // ============================================================
-  // RENDER
-  // ============================================================
   return (
-    <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-      <h2 className="text-xl font-bold mb-4" style={{color: '#1D2945'}}>
-        💬 Envoyer un Retour
+    <div className="bg-white rounded-xl shadow-lg p-6">
+      <h2 className="text-2xl font-bold mb-6" style={{color: '#1D2945'}}>
+        <Send className="inline mr-2" size={24} />
+        Envoyer un Retour
       </h2>
 
-      {/* Message de statut */}
-      {message && (
-        <div className={`mb-4 p-3 rounded-lg flex items-center gap-2 ${
-          message.type === 'success' 
-            ? 'bg-green-100 text-green-800' 
-            : 'bg-red-100 text-red-800'
-        }`}>
-          {message.type === 'success' ? (
-            <CheckCircle size={20} />
-          ) : (
-            <AlertCircle size={20} />
-          )}
-          <span>{message.text}</span>
-        </div>
-      )}
-
-      {/* Tabs */}
-      <div className="flex gap-2 mb-4 border-b">
+      {/* Sous-onglets: Collectif vs Individuel */}
+      <div className="flex gap-2 mb-6 border-b">
         <button
-          onClick={() => setActiveTab('collective')}
-          className={`px-4 py-2 font-semibold transition-colors ${
-            activeTab === 'collective'
-              ? 'border-b-2'
+          onClick={() => {
+            setActiveTab('collectif');
+            clearForm();
+          }}
+          className={`px-6 py-3 font-semibold transition-all ${
+            activeTab === 'collectif'
+              ? 'text-blue-600 border-b-2 border-blue-600'
               : 'text-gray-600 hover:text-gray-800'
           }`}
-          style={activeTab === 'collective' ? { borderBottomColor: '#1D2945', color: '#1D2945' } : {}}
         >
-          📢 Collectif
+          👥 Collectif (Toutes les joueuses)
         </button>
         <button
-          onClick={() => setActiveTab('individual')}
-          className={`px-4 py-2 font-semibold transition-colors ${
-            activeTab === 'individual'
-              ? 'border-b-2'
+          onClick={() => {
+            setActiveTab('individuel');
+            clearForm();
+          }}
+          className={`px-6 py-3 font-semibold transition-all ${
+            activeTab === 'individuel'
+              ? 'text-blue-600 border-b-2 border-blue-600'
               : 'text-gray-600 hover:text-gray-800'
           }`}
-          style={activeTab === 'individual' ? { borderBottomColor: '#1D2945', color: '#1D2945' } : {}}
         >
-          💬 Individuel
+          👤 Individuel (Une joueuse)
         </button>
       </div>
 
-      {/* Formulaire Collectif */}
-      {activeTab === 'collective' && (
-        <form onSubmit={handleSendCollective} className="space-y-4">
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">
-              Type de retour
-            </label>
-            <select
-              value={messageType}
-              onChange={(e) => setMessageType(e.target.value)}
-              className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:border-transparent"
-              disabled={loading}
-            >
-              <option value="retour_séance">Retour de séance</option>
-              <option value="retour_objectif">Retour sur l'objectif</option>
-              <option value="autre">Autre</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">
-              Titre du message
-            </label>
-            <input
-              type="text"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="Ex: Objectifs du groupe mis à jour"
-              className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:border-transparent"
-              disabled={loading}
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">
-              Message
-            </label>
-            <textarea
-              value={body}
-              onChange={(e) => setBody(e.target.value)}
-              placeholder="Écrivez votre message..."
-              rows={4}
-              className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:border-transparent"
-              disabled={loading}
-            />
-          </div>
-
-          <button
-            type="submit"
-            disabled={loading || !title.trim() || !body.trim()}
-            className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-            style={{background: loading ? '#999' : '#1D2945'}}
-          >
-            <Send size={18} />
-            {loading ? 'Envoi en cours...' : 'Envoyer à toutes'}
-          </button>
-        </form>
+      {/* Message de feedback */}
+      {message.text && (
+        <div className={`mb-6 p-4 rounded-lg flex items-center gap-3 ${
+          message.type === 'success' 
+            ? 'bg-green-50 border-l-4 border-green-500' 
+            : 'bg-red-50 border-l-4 border-red-500'
+        }`}>
+          {message.type === 'success' ? (
+            <CheckCircle className="text-green-600 flex-shrink-0" size={20} />
+          ) : (
+            <AlertCircle className="text-red-600 flex-shrink-0" size={20} />
+          )}
+          <span className={message.type === 'success' ? 'text-green-700' : 'text-red-700'}>
+            {message.text}
+          </span>
+        </div>
       )}
 
-      {/* Formulaire Individuel */}
-      {activeTab === 'individual' && (
-        <form onSubmit={handleSendIndividual} className="space-y-4">
+      {/* Contenu de l'onglet */}
+      <div className="space-y-4">
+        
+        {/* Sélection de joueuse (uniquement pour individuel) */}
+        {activeTab === 'individuel' && (
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-2">
-              Sélectionner une joueuse
+              👤 Sélectionner une joueuse *
             </label>
             <select
-              value={selectedPlayerId}
-              onChange={(e) => setSelectedPlayerId(e.target.value)}
-              className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:border-transparent"
-              disabled={loading}
+              value={selectedPlayer}
+              onChange={(e) => setSelectedPlayer(e.target.value)}
+              className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
             >
               <option value="">-- Choisir une joueuse --</option>
-              {players && players.map(player => (
+              {players.map(player => (
                 <option key={player.id} value={player.id}>
                   {player.name}
                 </option>
               ))}
             </select>
           </div>
+        )}
 
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">
-              Type de retour
-            </label>
-            <select
-              value={messageType}
-              onChange={(e) => setMessageType(e.target.value)}
-              className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:border-transparent"
-              disabled={loading}
-            >
-              <option value="retour_séance">Retour de séance</option>
-              <option value="retour_objectif">Retour sur l'objectif</option>
-              <option value="autre">Autre</option>
-            </select>
+        {/* Type de retour */}
+        <div>
+          <label className="block text-sm font-semibold text-gray-700 mb-2">
+            Type de retour *
+          </label>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            {messageTypes.map(type => (
+              <button
+                key={type.value}
+                onClick={() => setMessageType(type.value)}
+                className={`px-4 py-3 rounded-lg font-medium transition-all ${
+                  messageType === type.value
+                    ? 'bg-blue-500 text-white ring-2 ring-blue-300'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                {type.label}
+              </button>
+            ))}
           </div>
+        </div>
 
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">
-              Titre du message
-            </label>
-            <input
-              type="text"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="Ex: Retour personnel"
-              className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:border-transparent"
-              disabled={loading}
-            />
-          </div>
+        {/* Titre */}
+        <div>
+          <label className="block text-sm font-semibold text-gray-700 mb-2">
+            Titre du retour *
+          </label>
+          <input
+            type="text"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="Ex: Bon match! ou Amélioration défense"
+            className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            disabled={loading}
+          />
+        </div>
 
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">
-              Message
-            </label>
-            <textarea
-              value={body}
-              onChange={(e) => setBody(e.target.value)}
-              placeholder="Écrivez votre message personnalisé..."
-              rows={4}
-              className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:border-transparent"
-              disabled={loading}
-            />
-          </div>
+        {/* Contenu */}
+        <div>
+          <label className="block text-sm font-semibold text-gray-700 mb-2">
+            Contenu du retour *
+          </label>
+          <textarea
+            value={content}
+            onChange={(e) => setContent(e.target.value)}
+            placeholder="Écris ici ton retour, ton feedback, tes observations..."
+            rows={6}
+            className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+            disabled={loading}
+          />
+          <p className="text-xs text-gray-500 mt-1">
+            {content.length} caractères
+          </p>
+        </div>
 
+        {/* Bouton d'envoi */}
+        <div className="flex gap-3 pt-4">
           <button
-            type="submit"
-            disabled={loading || !title.trim() || !body.trim() || !selectedPlayerId}
-            className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-            style={{background: loading ? '#999' : '#1D2945'}}
+            onClick={handleSendMessage}
+            disabled={loading}
+            className="flex-1 flex items-center justify-center space-x-2 px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed font-semibold"
           >
             <Send size={18} />
-            {loading ? 'Envoi en cours...' : 'Envoyer'}
+            <span>{loading ? 'Envoi...' : '📤 Envoyer le retour'}</span>
           </button>
-        </form>
-      )}
+          <button
+            onClick={clearForm}
+            disabled={loading}
+            className="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-all disabled:opacity-50 font-semibold"
+          >
+            <X size={18} />
+          </button>
+        </div>
+      </div>
 
-      {/* Info */}
-      <div className="mt-4 p-3 bg-blue-50 rounded-lg text-sm text-blue-800">
-        <strong>ℹ️ Info:</strong> Les messages seront affichés dans la section "Mes retours" de chaque joueuse.
+      {/* Info sur la base de données */}
+      <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+        <p className="text-xs text-blue-700">
+          <strong>ℹ️ Info:</strong> Les retours sont stockés dans la table 'messages' avec les colonnes: player_id, coach_id, title, body, type, created_at, is_read
+        </p>
       </div>
     </div>
   );
