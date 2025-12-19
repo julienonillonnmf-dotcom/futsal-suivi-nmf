@@ -201,9 +201,19 @@ const PlayerFeedback = ({
                   className="border-l-4 border-blue-500 bg-blue-50 rounded-lg p-4 hover:shadow-md transition-all"
                 >
                   <div className="flex items-start justify-between mb-3">
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {/* Badge Type */}
                       <span className={`px-3 py-1 rounded-full text-xs font-semibold ${badgeStyle.bg} ${badgeStyle.text}`}>
                         {badgeStyle.label}
+                      </span>
+                      
+                      {/* Badge Collectif/Individuel */}
+                      <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                        message.is_collective 
+                          ? 'bg-yellow-100 text-yellow-800' 
+                          : 'bg-purple-100 text-purple-800'
+                      }`}>
+                        {message.is_collective ? '👥 Collectif' : '👤 Individuel'}
                       </span>
                     </div>
                     <span className="text-xs text-gray-500">
@@ -221,9 +231,30 @@ const PlayerFeedback = ({
                     </h4>
                   )}
 
-                  <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">
+                  <p className="text-gray-700 leading-relaxed whitespace-pre-wrap mb-3">
                     {message.body}
                   </p>
+
+                  {/* Affichage des objectifs associés */}
+                  <div className="bg-white rounded p-3 border border-gray-200 text-sm">
+                    <p className="font-semibold text-gray-700 mb-2">📋 Objectifs associés à cette date:</p>
+                    <div className="space-y-2 text-xs text-gray-600">
+                      {objectifsIndividuels && objectifsIndividuels.trim() && (
+                        <div className="pl-2 border-l-2 border-blue-300">
+                          <span className="font-medium">Objectif Individuel:</span> {objectifsIndividuels}
+                        </div>
+                      )}
+                      {objectifsMentaux && objectifsMentaux.trim() && (
+                        <div className="pl-2 border-l-2 border-purple-300">
+                          <span className="font-medium">Objectif Mental:</span> {objectifsMentaux}
+                        </div>
+                      )}
+                      {(!objectifsIndividuels || !objectifsIndividuels.trim()) && 
+                       (!objectifsMentaux || !objectifsMentaux.trim()) && (
+                        <p className="italic text-gray-500">Aucun objectif défini à cette date</p>
+                      )}
+                    </div>
+                  </div>
                 </div>
               );
             })}
