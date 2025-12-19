@@ -8,6 +8,7 @@ import React, { useState, useMemo } from 'react';
 import { ChevronLeft, Edit3, UserPlus, Download, Trash2, Filter, TrendingUp, BarChart3, Users, Calendar, AlertTriangle, Search, Bell, AlertCircle, History, Send, Target, MessageSquare, X } from 'lucide-react';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { getAlertHistory, testDiscordWebhook } from '../services/alertService';
+import AdminMessageSender from '../components/AdminMessageSender';
 
 // ============================================
 // FONCTION: Traitement longitudinal des blessures
@@ -948,6 +949,7 @@ const AdminPanel = ({
     { id: 'statistiques', label: 'Statistiques', icon: TrendingUp },
     { id: 'sante', label: 'Suivi Santé', icon: Calendar },
     { id: 'objectifs', label: 'Objectifs & Activité', icon: Target }
+    { id: 'messages', label: '💬 Messages & Retours', icon: MessageSquare },
   ];
 
   return (
@@ -3467,7 +3469,12 @@ const AdminPanel = ({
               </div>
             </>
           )}
-
+        {/* ONGLET 5: MESSAGES & RETOURS */}
+{activeTab === 'messages' && (
+  <>
+    <AdminMessageSender supabase={supabase} players={players} />
+  </>
+)}
         </div>
 
       </div>
