@@ -94,7 +94,8 @@ const AdminMessageSender = ({ supabase, players }) => {
           title: title,
           body: content,
           type: messageType,
-          is_read: false
+          is_read: false,
+          is_collective: true  // ← MARQUÉ COMME COLLECTIF
         }));
 
         console.log(`📝 ${messagesToInsert.length} message(s) à insérer`);
@@ -115,7 +116,7 @@ const AdminMessageSender = ({ supabase, players }) => {
         console.log('✅ Messages collectifs envoyés!');
         setMessage({ 
           type: 'success', 
-          text: `✅ Retour envoyé à ${activePlayers.length} joueuse(s)!` 
+          text: `✅ Retour COLLECTIF envoyé à ${activePlayers.length} joueuse(s)!` 
         });
         
       } else {
@@ -135,7 +136,8 @@ const AdminMessageSender = ({ supabase, players }) => {
           title: title,
           body: content,
           type: messageType,
-          is_read: false
+          is_read: false,
+          is_collective: false  // ← MARQUÉ COMME INDIVIDUEL
         };
 
         console.log('📝 Envoi:', messageData);
@@ -156,7 +158,7 @@ const AdminMessageSender = ({ supabase, players }) => {
         console.log('✅ Message envoyé!');
         setMessage({ 
           type: 'success', 
-          text: `✅ Retour envoyé à ${playerObj.name}!` 
+          text: `✅ Retour INDIVIDUEL envoyé à ${playerObj.name}!` 
         });
       }
 
@@ -419,10 +421,19 @@ const AdminMessageSender = ({ supabase, players }) => {
                 >
                   <div className="flex items-start justify-between mb-2">
                     <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
+                      <div className="flex items-center gap-2 mb-1 flex-wrap">
                         <span className="font-bold text-gray-900">
                           {getPlayerName(msg.player_id)}
                         </span>
+                        {/* Badge pour Collectif/Individuel */}
+                        <span className={`px-2 py-1 text-xs font-semibold rounded ${
+                          msg.is_collective 
+                            ? 'bg-yellow-100 text-yellow-800'
+                            : 'bg-purple-100 text-purple-800'
+                        }`}>
+                          {msg.is_collective ? '👥 Collectif' : '👤 Individuel'}
+                        </span>
+                        {/* Badge du type */}
                         <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs font-semibold rounded">
                           {msg.type === 'retour_séance' ? '⚽ Séance' :
                            msg.type === 'retour_objectif' ? '🎯 Objectif' :
@@ -469,7 +480,7 @@ const AdminMessageSender = ({ supabase, players }) => {
       {/* Info sur la base de données */}
       <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
         <p className="text-xs text-blue-700">
-          <strong>ℹ️ Info:</strong> Les retours sont stockés dans la table 'messages' avec les colonnes: player_id, coach_id, title, body, type, created_at, is_read
+          <strong>ℹ️ Info:</strong> Les retours sont stockés dans la table 'messages' avec les colonnes: player_id, coach_id, title, body, type, created_at, is_read, is_collective
         </p>
       </div>
     </div>
