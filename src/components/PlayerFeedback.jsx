@@ -1,36 +1,28 @@
-// src/components/PlayerFeedback.jsx
-// Composant pour afficher objectifs + retours du coach (onglet Mes Retours)
-
+// components/PlayerFeedback.jsx
 import React, { useState, useEffect } from 'react';
-import { Mail, Target, Brain, AlertCircle } from 'lucide-react';
-import { getPlayerMessages, markMessageAsRead, deleteMessage } from '../services/messageService';
+import { MessageCircle, Target, AlertCircle, RefreshCw } from 'lucide-react';
 
-/**
- * Composant PlayerFeedback
- * Affiche:
- * 1. L'objectif individuel de la joueuse
- * 2. L'objectif mental
- * 3. Tous les retours du coach
- * 
- * À ajouter comme onglet dans PlayerDetail
- */
-export const PlayerFeedback = ({ supabase, player, objectifIndividuel, objectifMental }) => {
+const PlayerFeedback = ({ 
+  supabase, 
+  playerId, 
+  playerName,
+  objectifsIndividuels = '',
+  objectifsMentaux = ''
+}) => {
+  
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [selectedMessage, setSelectedMessage] = useState(null);
-  const [filterType, setFilterType] = useState('all');
+  const [selectedFilter, setSelectedFilter] = useState('all');
 
-  // ============================================================
-  // CHARGER LES MESSAGES
-  // ============================================================
+  // Charger les messages au montage
   useEffect(() => {
     loadMessages();
-  }, [player?.id]);
+  }, [playerId]);
 
   const loadMessages = async () => {
-    if (!player?.id) {
-      setError('Aucune joueuse sélectionnée');
+    if (!playerId) {
+      setMessages([]);
       setLoading(false);
       return;
     }
@@ -39,304 +31,204 @@ export const PlayerFeedback = ({ supabase, player, objectifIndividuel, objectifM
     setError(null);
 
     try {
-      console.log('📬 Loading messages for player:', player.id);
-      const data = await getPlayerMessages(supabase, player.id);
-      setMessages(data);
-      console.log(`✅ Loaded ${data.length} messages`);
+      // Récupérer les messages pour cette joueuse
+      const { data, error: fetchError } = await supabase
+        .from('messages')
+        .select('*')
+        .or(`recipient_id.eq.${playerId},is_collective.eq.true`)
+        .order('created_at', { ascending: false });
+
+      if (fetchError) {
+        console.error('Erreur chargement messages:', fetchError);
+        setError('Impossible de charger les retours');
+        setMessages([]);
+      } else {
+        console.log(`✅ ${data?.length || 0} message(s) chargé(s) pour ${playerName}`);
+        setMessages(data || []);
+      }
     } catch (err) {
-      console.error('Error loading messages:', err);
-      setError('Erreur lors du chargement des messages');
+      console.error('Erreur:', err);
+      setError('Erreur lors du chargement des retours');
+      setMessages([]);
     } finally {
       setLoading(false);
     }
   };
 
-  // ============================================================
-  // MARQUER COMME LU
-  // ============================================================
-  const handleMarkAsRead = async (messageId) => {
-    try {
-      const success = await markMessageAsRead(supabase, messageId);
-      if (success) {
-        setMessages(messages.map(msg =>
-          msg.id === messageId ? { ...msg, is_read: true } : msg
-        ));
-      }
-    } catch (err) {
-      console.error('Error marking message as read:', err);
-    }
+  // Filtrer les messages
+  const filteredMessages = messages.filter(msg => {
+    if (selectedFilter === 'all') return true;
+    if (selectedFilter === 'seances') return msg.message_type === 'Retour de séance';
+    if (selectedFilter === 'objectifs') return msg.message_type === 'Retour d\'objectif';
+    return true;
+  });
+
+  // Déterminer le badge de type
+  const getMessageTypeBadge = (messageType) => {
+    const types = {
+      'Retour de séance': { bg: 'bg-blue-100', text: 'text-blue-800', label: '⚽ Séance' },
+      'Retour d\'objectif': { bg: 'bg-purple-100', text: 'text-purple-800', label: '🎯 Objectif' },
+      'Autre': { bg: 'bg-gray-100', text: 'text-gray-800', label: '💬 Retour' }
+    };
+    return types[messageType] || types['Autre'];
   };
 
-  // ============================================================
-  // SUPPRIMER UN MESSAGE
-  // ============================================================
-  const handleDeleteMessage = async (messageId) => {
-    if (!window.confirm('Êtes-vous sûr de vouloir supprimer ce message?')) {
-      return;
-    }
-
-    try {
-      const success = await deleteMessage(supabase, messageId);
-      if (success) {
-        setMessages(messages.filter(msg => msg.id !== messageId));
-        setSelectedMessage(null);
-      }
-    } catch (err) {
-      console.error('Error deleting message:', err);
-    }
-  };
-
-  // ============================================================
-  // FILTRER LES MESSAGES
-  // ============================================================
-  const getFilteredMessages = () => {
-    let filtered = messages;
-
-    if (filterType === 'unread') {
-      filtered = filtered.filter(msg => !msg.is_read);
-    } else if (filterType !== 'all') {
-      filtered = filtered.filter(msg => msg.type === filterType);
-    }
-
-    return filtered;
-  };
-
-  const filteredMessages = getFilteredMessages();
-  const unreadCount = messages.filter(msg => !msg.is_read).length;
-
-  // ============================================================
-  // RENDER
-  // ============================================================
   return (
-    <div className="space-y-6 pb-8">
-      {/* SECTION 1: OBJECTIFS */}
-      <div className="bg-white rounded-lg shadow-md p-6">
-        <h2 className="text-xl font-bold mb-6" style={{color: '#1D2945'}}>
-          🎯 Mes Objectifs
+    <div className="space-y-6">
+      
+      {/* Section: Mes Objectifs */}
+      <div className="bg-white rounded-xl shadow-lg p-6">
+        <h2 className="text-2xl font-bold mb-6 flex items-center" style={{color: '#1D2945'}}>
+          <Target className="mr-2" size={28} />
+          Mes Objectifs
         </h2>
 
-        {/* Objectif Individuel */}
-        <div className="mb-6 p-4 rounded-lg bg-blue-50 border-l-4" style={{borderColor: '#1D2945'}}>
-          <div className="flex items-start gap-3">
-            <Target size={24} style={{color: '#1D2945'}} className="flex-shrink-0 mt-1" />
-            <div className="flex-1">
-              <h3 className="font-semibold text-gray-900 mb-2">Objectif Individuel</h3>
-              {objectifIndividuel && objectifIndividuel.trim() ? (
-                <p className="text-gray-700 whitespace-pre-wrap">{objectifIndividuel}</p>
-              ) : (
-                <p className="text-gray-500 italic">Pas encore d'objectif défini</p>
-              )}
-            </div>
+        <div className="space-y-4">
+          {/* Objectif Individuel */}
+          <div className="border-l-4 border-blue-500 pl-4 py-3 bg-blue-50 rounded">
+            <h3 className="font-semibold text-gray-800 flex items-center mb-2">
+              <Target size={18} className="mr-2" />
+              Objectif Individuel
+            </h3>
+            {objectifsIndividuels && objectifsIndividuels.trim() ? (
+              <p className="text-gray-700 leading-relaxed">{objectifsIndividuels}</p>
+            ) : (
+              <p className="text-gray-500 italic">Pas encore d'objectif défini</p>
+            )}
           </div>
-        </div>
 
-        {/* Objectif Mental */}
-        <div className="p-4 rounded-lg bg-purple-50 border-l-4 border-purple-500">
-          <div className="flex items-start gap-3">
-            <Brain size={24} className="text-purple-600 flex-shrink-0 mt-1" />
-            <div className="flex-1">
-              <h3 className="font-semibold text-gray-900 mb-2">Objectif Mental</h3>
-              {objectifMental && objectifMental.trim() ? (
-                <p className="text-gray-700 whitespace-pre-wrap">{objectifMental}</p>
-              ) : (
-                <p className="text-gray-500 italic">Pas encore d'objectif mental défini</p>
-              )}
-            </div>
+          {/* Objectif Mental */}
+          <div className="border-l-4 border-purple-500 pl-4 py-3 bg-purple-50 rounded">
+            <h3 className="font-semibold text-gray-800 flex items-center mb-2">
+              <AlertCircle size={18} className="mr-2" />
+              Objectif Mental
+            </h3>
+            {objectifsMentaux && objectifsMentaux.trim() ? (
+              <p className="text-gray-700 leading-relaxed">{objectifsMentaux}</p>
+            ) : (
+              <p className="text-gray-500 italic">Pas encore d'objectif mental défini</p>
+            )}
           </div>
         </div>
       </div>
 
-      {/* SECTION 2: RETOURS DU COACH */}
-      <div className="bg-white rounded-lg shadow-md p-6">
+      {/* Section: Retours du Coach */}
+      <div className="bg-white rounded-xl shadow-lg p-6">
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-xl font-bold" style={{color: '#1D2945'}}>
-            💬 Retours du Coach
+          <h2 className="text-2xl font-bold flex items-center" style={{color: '#1D2945'}}>
+            <MessageCircle className="mr-2" size={28} />
+            Retours du Coach
           </h2>
-          {unreadCount > 0 && (
-            <span className="inline-block px-3 py-1 rounded-full text-sm font-semibold text-white" style={{backgroundColor: '#E74C3C'}}>
-              {unreadCount} nouveau{unreadCount > 1 ? 'x' : ''}
-            </span>
-          )}
+          <button
+            onClick={loadMessages}
+            disabled={loading}
+            className="flex items-center space-x-2 px-3 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-all disabled:opacity-50"
+            title="Rafraîchir les retours"
+          >
+            <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
+            <span className="text-sm">Actualiser</span>
+          </button>
         </div>
 
         {/* Filtres */}
         <div className="flex gap-2 mb-6 flex-wrap">
           <button
-            onClick={() => setFilterType('all')}
-            className={`px-3 py-1 rounded-full text-sm font-medium transition-all ${
-              filterType === 'all'
-                ? 'text-white'
+            onClick={() => setSelectedFilter('all')}
+            className={`px-4 py-2 rounded-full font-medium transition-all ${
+              selectedFilter === 'all'
+                ? 'bg-gray-900 text-white'
                 : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
             }`}
-            style={filterType === 'all' ? {backgroundColor: '#1D2945'} : {}}
           >
-            Tous ({messages.length})
+            Tous ({filteredMessages.length})
           </button>
-          {unreadCount > 0 && (
-            <button
-              onClick={() => setFilterType('unread')}
-              className={`px-3 py-1 rounded-full text-sm font-medium transition-all ${
-                filterType === 'unread'
-                  ? 'bg-red-600 text-white'
-                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-              }`}
-            >
-              Non lus ({unreadCount})
-            </button>
-          )}
           <button
-            onClick={() => setFilterType('retour_séance')}
-            className={`px-3 py-1 rounded-full text-sm font-medium transition-all ${
-              filterType === 'retour_séance'
-                ? 'bg-green-600 text-white'
-                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+            onClick={() => setSelectedFilter('seances')}
+            className={`px-4 py-2 rounded-full font-medium transition-all ${
+              selectedFilter === 'seances'
+                ? 'bg-blue-500 text-white'
+                : 'bg-blue-100 text-blue-700 hover:bg-blue-200'
             }`}
           >
             Séances
           </button>
           <button
-            onClick={() => setFilterType('retour_objectif')}
-            className={`px-3 py-1 rounded-full text-sm font-medium transition-all ${
-              filterType === 'retour_objectif'
-                ? 'bg-purple-600 text-white'
-                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+            onClick={() => setSelectedFilter('objectifs')}
+            className={`px-4 py-2 rounded-full font-medium transition-all ${
+              selectedFilter === 'objectifs'
+                ? 'bg-purple-500 text-white'
+                : 'bg-purple-100 text-purple-700 hover:bg-purple-200'
             }`}
           >
             Objectifs
           </button>
         </div>
 
-        {/* Messages ou message vide */}
+        {/* Affichage des messages */}
         {loading ? (
-          <div className="flex items-center justify-center p-8">
-            <div className="text-center">
-              <div className="animate-spin inline-block w-8 h-8 border-4 border-gray-300 border-t-blue-600 rounded-full mb-4"></div>
-              <p className="text-gray-600">Chargement des retours...</p>
+          <div className="text-center py-12">
+            <div className="inline-block animate-spin">
+              <RefreshCw size={32} className="text-blue-500" />
             </div>
+            <p className="text-gray-600 mt-4">Chargement des retours...</p>
           </div>
         ) : error ? (
-          <div className="p-4 bg-red-100 text-red-800 rounded-lg flex items-center gap-2">
-            <AlertCircle size={20} />
-            {error}
+          <div className="bg-red-50 border-2 border-red-300 rounded-lg p-4 text-center">
+            <AlertCircle className="inline mr-2 text-red-600" size={20} />
+            <p className="text-red-700">{error}</p>
           </div>
         ) : filteredMessages.length === 0 ? (
-          <div className="text-center py-12">
-            <Mail size={48} className="mx-auto text-gray-300 mb-4" />
-            <p className="text-gray-500 text-lg">Aucun retour pour le moment</p>
-            <p className="text-gray-400 text-sm">Les retours du coach s'afficheront ici</p>
+          <div className="bg-gray-50 border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
+            <MessageCircle className="inline mb-4 text-gray-400" size={48} />
+            <p className="text-gray-600 font-medium">Aucun retour pour le moment</p>
+            <p className="text-gray-500 text-sm">Les retours du coach apparaîtront ici</p>
           </div>
         ) : (
-          <div className="space-y-3">
-            {filteredMessages.map((msg) => (
-              <div
-                key={msg.id}
-                onClick={() => {
-                  setSelectedMessage(msg);
-                  if (!msg.is_read) {
-                    handleMarkAsRead(msg.id);
-                  }
-                }}
-                className={`p-4 rounded-lg border-2 cursor-pointer transition-all hover:shadow-md ${
-                  msg.is_read
-                    ? 'border-gray-200 bg-gray-50'
-                    : 'border-blue-300 bg-blue-50'
-                } ${selectedMessage?.id === msg.id ? 'ring-2' : ''}`}
-                style={{
-                  borderColor: !msg.is_read ? '#1D2945' : '#E5E7EB',
-                  backgroundColor: !msg.is_read ? '#F0F9FF' : '#F9FAFB',
-                  ...(selectedMessage?.id === msg.id ? {ringColor: '#1D2945'} : {})
-                }}
-              >
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2">
-                      {!msg.is_read && (
-                        <div className="w-3 h-3 rounded-full" style={{backgroundColor: '#1D2945'}}></div>
-                      )}
-                      <h3 className="font-semibold text-gray-900">{msg.title}</h3>
-                    </div>
-                    <p className="text-gray-600 text-sm mt-1 line-clamp-2">{msg.body}</p>
-                    <div className="flex items-center gap-3 mt-2">
-                      <span className="text-xs text-gray-500">
-                        {new Date(msg.created_at).toLocaleDateString('fr-FR', {
-                          year: 'numeric',
-                          month: 'short',
-                          day: 'numeric'
-                        })}
+          <div className="space-y-4">
+            {filteredMessages.map((message) => {
+              const badgeStyle = getMessageTypeBadge(message.message_type);
+              const isCollective = message.is_collective;
+              
+              return (
+                <div
+                  key={message.id}
+                  className="border-l-4 border-blue-500 bg-blue-50 rounded-lg p-4 hover:shadow-md transition-all"
+                >
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex items-center gap-3">
+                      <span className={`px-3 py-1 rounded-full text-xs font-semibold ${badgeStyle.bg} ${badgeStyle.text}`}>
+                        {badgeStyle.label}
                       </span>
-                      {msg.type && (
-                        <span className={`text-xs px-2 py-1 rounded-full font-medium ${
-                          msg.type === 'retour_séance' ? 'bg-green-100 text-green-800' :
-                          msg.type === 'retour_objectif' ? 'bg-purple-100 text-purple-800' :
-                          'bg-gray-100 text-gray-800'
-                        }`}>
-                          {msg.type === 'retour_séance' ? '🎯 Séance' :
-                           msg.type === 'retour_objectif' ? '🏆 Objectif' :
-                           '📌 Autre'}
+                      {isCollective && (
+                        <span className="px-3 py-1 rounded-full text-xs font-semibold bg-yellow-100 text-yellow-800">
+                          👥 Collectif
                         </span>
                       )}
-                      {msg.is_read && (
-                        <span className="text-xs text-green-600">✓ Lu</span>
-                      )}
                     </div>
+                    <span className="text-xs text-gray-500">
+                      {new Date(message.created_at).toLocaleDateString('fr-FR')} à{' '}
+                      {new Date(message.created_at).toLocaleTimeString('fr-FR', {
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })}
+                    </span>
                   </div>
+
+                  {message.title && (
+                    <h4 className="font-bold text-gray-800 mb-2" style={{color: '#1D2945'}}>
+                      {message.title}
+                    </h4>
+                  )}
+
+                  <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">
+                    {message.content}
+                  </p>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
-
-      {/* Modal message détaillé */}
-      {selectedMessage && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg shadow-lg max-w-md w-full p-6 max-h-96 overflow-y-auto">
-            <div className="flex items-start justify-between mb-4">
-              <h3 className="text-xl font-bold" style={{color: '#1D2945'}}>
-                {selectedMessage.title}
-              </h3>
-              <button
-                onClick={() => setSelectedMessage(null)}
-                className="text-gray-400 hover:text-gray-600"
-              >
-                ✕
-              </button>
-            </div>
-
-            <div className="mb-4">
-              {selectedMessage.type && (
-                <span className={`inline-block text-xs px-2 py-1 rounded-full font-medium mb-3 ${
-                  selectedMessage.type === 'retour_séance' ? 'bg-green-100 text-green-800' :
-                  selectedMessage.type === 'retour_objectif' ? 'bg-purple-100 text-purple-800' :
-                  'bg-gray-100 text-gray-800'
-                }`}>
-                  {selectedMessage.type === 'retour_séance' ? '🎯 Retour de séance' :
-                   selectedMessage.type === 'retour_objectif' ? '🏆 Retour d\'objectif' :
-                   '📌 Autre'}
-                </span>
-              )}
-              <p className="text-gray-700 whitespace-pre-wrap">{selectedMessage.body}</p>
-            </div>
-
-            <div className="text-xs text-gray-500 pt-4 border-t">
-              {new Date(selectedMessage.created_at).toLocaleDateString('fr-FR', {
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit'
-              })}
-            </div>
-
-            <button
-              onClick={() => setSelectedMessage(null)}
-              className="w-full mt-4 px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-all font-medium"
-            >
-              Fermer
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
