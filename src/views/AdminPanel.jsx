@@ -948,7 +948,7 @@ const AdminPanel = ({
     { id: 'gestion', label: 'Gestion', icon: Users },
     { id: 'statistiques', label: 'Statistiques', icon: TrendingUp },
     { id: 'sante', label: 'Suivi Santé', icon: Calendar },
-    { id: 'objectifs', label: 'Objectifs & Activité', icon: Target }
+    { id: 'objectifs', label: 'Objectifs & Activité', icon: Target },
     { id: 'messages', label: '💬 Messages & Retours', icon: MessageSquare },
   ];
 
