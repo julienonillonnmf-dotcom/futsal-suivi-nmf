@@ -15,14 +15,12 @@ const PlayerFeedback = ({
   const [error, setError] = useState(null);
   const [selectedFilter, setSelectedFilter] = useState('all');
 
-  // Charger les messages au montage
   useEffect(() => {
     loadMessages();
   }, [playerId]);
 
   const loadMessages = async () => {
     if (!playerId) {
-      console.log('⚠️ Pas de playerId!');
       setMessages([]);
       setLoading(false);
       return;
@@ -32,29 +30,19 @@ const PlayerFeedback = ({
     setError(null);
 
     try {
-      console.log('🔍 Recherche messages pour playerId:', playerId);
-      
-      // Récupérer les messages pour cette joueuse
       const { data, error: fetchError } = await supabase
         .from('messages')
         .select('*')
         .eq('player_id', playerId)
         .order('created_at', { ascending: false });
 
-      console.log('✅ Requête réussie');
-      console.log('Messages reçus:', data?.length);
-      console.log('Données complètes:', data);
-
       if (fetchError) {
-        console.error('❌ Erreur Supabase:', fetchError);
         setError('Impossible de charger les retours');
         setMessages([]);
       } else {
-        console.log(`✅ ${data?.length || 0} message(s) chargé(s) pour ${playerName}`);
         setMessages(data || []);
       }
     } catch (err) {
-      console.error('❌ Erreur catch:', err);
       setError('Erreur lors du chargement des retours');
       setMessages([]);
     } finally {
@@ -62,7 +50,6 @@ const PlayerFeedback = ({
     }
   };
 
-  // Filtrer les messages
   const filteredMessages = messages.filter(msg => {
     if (selectedFilter === 'all') return true;
     if (selectedFilter === 'seances') return msg.type === 'retour_séance';
@@ -70,102 +57,203 @@ const PlayerFeedback = ({
     return true;
   });
 
-  // Déterminer le badge de type
   const getMessageTypeBadge = (messageType) => {
     const types = {
-      'retour_séance': { bg: 'bg-blue-100', text: 'text-blue-800', label: '⚽ Séance' },
-      'retour_objectif': { bg: 'bg-purple-100', text: 'text-purple-800', label: '🎯 Objectif' },
-      'autre': { bg: 'bg-gray-100', text: 'text-gray-800', label: '💬 Retour' }
+      'retour_séance': { bg: '#dbeafe', text: '#1e40af', label: '⚽ Séance' },
+      'retour_objectif': { bg: '#f3e8ff', text: '#6b21a8', label: '🎯 Objectif' },
+      'autre': { bg: '#f3f4f6', text: '#374151', label: '💬 Retour' }
     };
     return types[messageType] || types['autre'];
   };
 
   return (
-    <div className="space-y-6">
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
       
       {/* Section: Mes Objectifs */}
-      <div className="bg-white rounded-xl shadow-lg p-6">
-        <h2 className="text-2xl font-bold mb-6 flex items-center" style={{color: '#1D2945'}}>
-          <Target className="mr-2" size={28} />
+      <div style={{
+        backgroundColor: '#ffffff',
+        borderRadius: '0.75rem',
+        boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
+        padding: '1.5rem'
+      }}>
+        <h2 style={{
+          fontSize: '1.875rem',
+          fontWeight: 'bold',
+          marginBottom: '1.5rem',
+          color: '#1D2945',
+          display: 'flex',
+          alignItems: 'center'
+        }}>
+          <Target style={{ marginRight: '0.5rem', width: 28, height: 28 }} />
           Mes Objectifs
         </h2>
 
-        <div className="space-y-4">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           {/* Objectif Individuel */}
-          <div className="border-l-4 border-blue-500 pl-4 py-3 bg-blue-50 rounded">
-            <h3 className="font-semibold text-gray-800 flex items-center mb-2">
-              <Target size={18} className="mr-2" />
+          <div style={{
+            borderLeft: '4px solid #3b82f6',
+            paddingLeft: '1rem',
+            paddingTop: '0.75rem',
+            paddingBottom: '0.75rem',
+            backgroundColor: '#eff6ff',
+            borderRadius: '0.25rem'
+          }}>
+            <h3 style={{
+              fontWeight: '600',
+              color: '#1f2937',
+              display: 'flex',
+              alignItems: 'center',
+              marginBottom: '0.5rem'
+            }}>
+              <Target style={{ marginRight: '0.5rem', width: 18, height: 18 }} />
               Objectif Individuel
             </h3>
             {objectifsIndividuels && objectifsIndividuels.trim() ? (
-              <p className="text-gray-700 leading-relaxed">{objectifsIndividuels}</p>
+              <p style={{ color: '#374151', lineHeight: 1.5 }}>{objectifsIndividuels}</p>
             ) : (
-              <p className="text-gray-500 italic">Pas encore d'objectif défini</p>
+              <p style={{ color: '#9ca3af', fontStyle: 'italic' }}>Pas encore d'objectif défini</p>
             )}
           </div>
 
           {/* Objectif Mental */}
-          <div className="border-l-4 border-purple-500 pl-4 py-3 bg-purple-50 rounded">
-            <h3 className="font-semibold text-gray-800 flex items-center mb-2">
-              <AlertCircle size={18} className="mr-2" />
+          <div style={{
+            borderLeft: '4px solid #a855f7',
+            paddingLeft: '1rem',
+            paddingTop: '0.75rem',
+            paddingBottom: '0.75rem',
+            backgroundColor: '#faf5ff',
+            borderRadius: '0.25rem'
+          }}>
+            <h3 style={{
+              fontWeight: '600',
+              color: '#1f2937',
+              display: 'flex',
+              alignItems: 'center',
+              marginBottom: '0.5rem'
+            }}>
+              <AlertCircle style={{ marginRight: '0.5rem', width: 18, height: 18 }} />
               Objectif Mental
             </h3>
             {objectifsMentaux && objectifsMentaux.trim() ? (
-              <p className="text-gray-700 leading-relaxed">{objectifsMentaux}</p>
+              <p style={{ color: '#374151', lineHeight: 1.5 }}>{objectifsMentaux}</p>
             ) : (
-              <p className="text-gray-500 italic">Pas encore d'objectif mental défini</p>
+              <p style={{ color: '#9ca3af', fontStyle: 'italic' }}>Pas encore d'objectif mental défini</p>
             )}
           </div>
         </div>
       </div>
 
       {/* Section: Retours du Coach */}
-      <div className="bg-white rounded-xl shadow-lg p-6">
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl font-bold flex items-center" style={{color: '#1D2945'}}>
-            <MessageCircle className="mr-2" size={28} />
+      <div style={{
+        backgroundColor: '#ffffff',
+        borderRadius: '0.75rem',
+        boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
+        padding: '1.5rem'
+      }}>
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          marginBottom: '1.5rem'
+        }}>
+          <h2 style={{
+            fontSize: '1.875rem',
+            fontWeight: 'bold',
+            color: '#1D2945',
+            display: 'flex',
+            alignItems: 'center',
+            margin: 0
+          }}>
+            <MessageCircle style={{ marginRight: '0.5rem', width: 28, height: 28 }} />
             Retours du Coach
           </h2>
           <button
             onClick={loadMessages}
             disabled={loading}
-            className="flex items-center space-x-2 px-3 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-all disabled:opacity-50"
-            title="Rafraîchir les retours"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              paddingLeft: '0.75rem',
+              paddingRight: '0.75rem',
+              paddingTop: '0.5rem',
+              paddingBottom: '0.5rem',
+              backgroundColor: '#dbeafe',
+              color: '#1e40af',
+              borderRadius: '0.5rem',
+              border: 'none',
+              cursor: loading ? 'not-allowed' : 'pointer',
+              opacity: loading ? 0.5 : 1,
+              fontSize: '0.875rem',
+              fontWeight: '500',
+              transition: 'background-color 0.2s'
+            }}
+            onMouseEnter={(e) => !loading && (e.target.style.backgroundColor = '#bfdbfe')}
+            onMouseLeave={(e) => (e.target.style.backgroundColor = '#dbeafe')}
           >
-            <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
-            <span className="text-sm">Actualiser</span>
+            <RefreshCw size={16} style={{ animation: loading ? 'spin 1s linear infinite' : 'none' }} />
+            <span>Actualiser</span>
           </button>
         </div>
 
         {/* Filtres */}
-        <div className="flex gap-2 mb-6 flex-wrap">
+        <div style={{
+          display: 'flex',
+          gap: '0.5rem',
+          marginBottom: '1.5rem',
+          flexWrap: 'wrap'
+        }}>
           <button
             onClick={() => setSelectedFilter('all')}
-            className={`px-4 py-2 rounded-full font-medium transition-all ${
-              selectedFilter === 'all'
-                ? 'bg-gray-900 text-white'
-                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-            }`}
+            style={{
+              paddingLeft: '1rem',
+              paddingRight: '1rem',
+              paddingTop: '0.5rem',
+              paddingBottom: '0.5rem',
+              borderRadius: '9999px',
+              fontWeight: '500',
+              border: 'none',
+              cursor: 'pointer',
+              transition: 'all 0.2s',
+              backgroundColor: selectedFilter === 'all' ? '#1f2937' : '#e5e7eb',
+              color: selectedFilter === 'all' ? '#ffffff' : '#374151'
+            }}
           >
             Tous ({filteredMessages.length})
           </button>
           <button
             onClick={() => setSelectedFilter('seances')}
-            className={`px-4 py-2 rounded-full font-medium transition-all ${
-              selectedFilter === 'seances'
-                ? 'bg-blue-500 text-white'
-                : 'bg-blue-100 text-blue-700 hover:bg-blue-200'
-            }`}
+            style={{
+              paddingLeft: '1rem',
+              paddingRight: '1rem',
+              paddingTop: '0.5rem',
+              paddingBottom: '0.5rem',
+              borderRadius: '9999px',
+              fontWeight: '500',
+              border: 'none',
+              cursor: 'pointer',
+              transition: 'all 0.2s',
+              backgroundColor: selectedFilter === 'seances' ? '#3b82f6' : '#dbeafe',
+              color: selectedFilter === 'seances' ? '#ffffff' : '#1e40af'
+            }}
           >
             Séances
           </button>
           <button
             onClick={() => setSelectedFilter('objectifs')}
-            className={`px-4 py-2 rounded-full font-medium transition-all ${
-              selectedFilter === 'objectifs'
-                ? 'bg-purple-500 text-white'
-                : 'bg-purple-100 text-purple-700 hover:bg-purple-200'
-            }`}
+            style={{
+              paddingLeft: '1rem',
+              paddingRight: '1rem',
+              paddingTop: '0.5rem',
+              paddingBottom: '0.5rem',
+              borderRadius: '9999px',
+              fontWeight: '500',
+              border: 'none',
+              cursor: 'pointer',
+              transition: 'all 0.2s',
+              backgroundColor: selectedFilter === 'objectifs' ? '#a855f7' : '#f3e8ff',
+              color: selectedFilter === 'objectifs' ? '#ffffff' : '#6b21a8'
+            }}
           >
             Objectifs
           </button>
@@ -173,50 +261,132 @@ const PlayerFeedback = ({
 
         {/* Affichage des messages */}
         {loading ? (
-          <div className="text-center py-12">
-            <div className="inline-block animate-spin">
-              <RefreshCw size={32} className="text-blue-500" />
+          <div style={{
+            textAlign: 'center',
+            paddingTop: '3rem',
+            paddingBottom: '3rem'
+          }}>
+            <div style={{
+              display: 'inline-block',
+              animation: 'spin 1s linear infinite'
+            }}>
+              <RefreshCw size={32} style={{ color: '#3b82f6' }} />
             </div>
-            <p className="text-gray-600 mt-4">Chargement des retours...</p>
+            <p style={{
+              color: '#4b5563',
+              marginTop: '1rem'
+            }}>Chargement des retours...</p>
           </div>
         ) : error ? (
-          <div className="bg-red-50 border-2 border-red-300 rounded-lg p-4 text-center">
-            <AlertCircle className="inline mr-2 text-red-600" size={20} />
-            <p className="text-red-700">{error}</p>
+          <div style={{
+            backgroundColor: '#fee2e2',
+            border: '2px solid #fca5a5',
+            borderRadius: '0.5rem',
+            padding: '1rem',
+            textAlign: 'center'
+          }}>
+            <AlertCircle style={{
+              display: 'inline',
+              marginRight: '0.5rem',
+              color: '#dc2626'
+            }} size={20} />
+            <p style={{
+              color: '#b91c1c',
+              display: 'inline'
+            }}>{error}</p>
           </div>
         ) : filteredMessages.length === 0 ? (
-          <div className="bg-gray-50 border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
-            <MessageCircle className="inline mb-4 text-gray-400" size={48} />
-            <p className="text-gray-600 font-medium">Aucun retour pour le moment</p>
-            <p className="text-gray-500 text-sm">Les retours du coach apparaîtront ici</p>
+          <div style={{
+            backgroundColor: '#f9fafb',
+            border: '2px dashed #d1d5db',
+            borderRadius: '0.5rem',
+            padding: '2rem',
+            textAlign: 'center'
+          }}>
+            <MessageCircle style={{
+              display: 'block',
+              marginLeft: 'auto',
+              marginRight: 'auto',
+              marginBottom: '1rem',
+              color: '#9ca3af'
+            }} size={48} />
+            <p style={{
+              color: '#4b5563',
+              fontWeight: '500'
+            }}>Aucun retour pour le moment</p>
+            <p style={{
+              color: '#6b7280',
+              fontSize: '0.875rem'
+            }}>Les retours du coach apparaîtront ici</p>
           </div>
         ) : (
-          <div className="space-y-4">
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '1rem'
+          }}>
             {filteredMessages.map((message) => {
               const badgeStyle = getMessageTypeBadge(message.type);
               
               return (
                 <div
                   key={message.id}
-                  className="border-l-4 border-blue-500 bg-blue-50 rounded-lg p-4 hover:shadow-md transition-all"
+                  style={{
+                    borderLeft: '4px solid #3b82f6',
+                    backgroundColor: '#eff6ff',
+                    borderRadius: '0.5rem',
+                    padding: '1rem',
+                    boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
+                    transition: 'box-shadow 0.2s'
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.1)'}
+                  onMouseLeave={(e) => e.currentTarget.style.boxShadow = '0 1px 2px 0 rgba(0, 0, 0, 0.05)'}
                 >
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="flex items-center gap-2 flex-wrap">
+                  {/* Badges Type + Collectif/Individuel */}
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem',
+                    marginBottom: '0.75rem',
+                    flexWrap: 'wrap',
+                    justifyContent: 'space-between'
+                  }}>
+                    <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                       {/* Badge Type */}
-                      <span className={`px-3 py-1 rounded-full text-xs font-semibold ${badgeStyle.bg} ${badgeStyle.text}`}>
+                      <span style={{
+                        paddingLeft: '0.75rem',
+                        paddingRight: '0.75rem',
+                        paddingTop: '0.25rem',
+                        paddingBottom: '0.25rem',
+                        borderRadius: '9999px',
+                        fontSize: '0.75rem',
+                        fontWeight: '600',
+                        backgroundColor: badgeStyle.bg,
+                        color: badgeStyle.text
+                      }}>
                         {badgeStyle.label}
                       </span>
                       
                       {/* Badge Collectif/Individuel */}
-                      <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                        message.is_collective 
-                          ? 'bg-yellow-100 text-yellow-800' 
-                          : 'bg-purple-100 text-purple-800'
-                      }`}>
+                      <span style={{
+                        paddingLeft: '0.75rem',
+                        paddingRight: '0.75rem',
+                        paddingTop: '0.25rem',
+                        paddingBottom: '0.25rem',
+                        borderRadius: '9999px',
+                        fontSize: '0.75rem',
+                        fontWeight: '600',
+                        backgroundColor: message.is_collective ? '#fef3c7' : '#f3e8ff',
+                        color: message.is_collective ? '#92400e' : '#6b21a8'
+                      }}>
                         {message.is_collective ? '👥 Collectif' : '👤 Individuel'}
                       </span>
                     </div>
-                    <span className="text-xs text-gray-500">
+                    
+                    <span style={{
+                      fontSize: '0.75rem',
+                      color: '#6b7280'
+                    }}>
                       {new Date(message.created_at).toLocaleDateString('fr-FR')} à{' '}
                       {new Date(message.created_at).toLocaleTimeString('fr-FR', {
                         hour: '2-digit',
@@ -225,33 +395,68 @@ const PlayerFeedback = ({
                     </span>
                   </div>
 
+                  {/* Titre */}
                   {message.title && (
-                    <h4 className="font-bold text-gray-800 mb-2" style={{color: '#1D2945'}}>
+                    <h4 style={{
+                      fontWeight: 'bold',
+                      color: '#1D2945',
+                      marginBottom: '0.5rem'
+                    }}>
                       {message.title}
                     </h4>
                   )}
 
-                  <p className="text-gray-700 leading-relaxed whitespace-pre-wrap mb-3">
+                  {/* Contenu */}
+                  <p style={{
+                    color: '#374151',
+                    lineHeight: 1.5,
+                    whiteSpace: 'pre-wrap',
+                    marginBottom: '0.75rem'
+                  }}>
                     {message.body}
                   </p>
 
-                  {/* Affichage des objectifs associés */}
-                  <div className="bg-white rounded p-3 border border-gray-200 text-sm">
-                    <p className="font-semibold text-gray-700 mb-2">📋 Objectifs associés à cette date:</p>
-                    <div className="space-y-2 text-xs text-gray-600">
+                  {/* Objectifs associés */}
+                  <div style={{
+                    backgroundColor: '#ffffff',
+                    borderRadius: '0.25rem',
+                    padding: '0.75rem',
+                    border: '1px solid #e5e7eb',
+                    fontSize: '0.875rem'
+                  }}>
+                    <p style={{
+                      fontWeight: '600',
+                      color: '#374151',
+                      marginBottom: '0.5rem',
+                      margin: 0
+                    }}>📋 Objectifs associés à cette date:</p>
+                    <div style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '0.5rem',
+                      fontSize: '0.75rem',
+                      color: '#4b5563',
+                      marginTop: '0.5rem'
+                    }}>
                       {objectifsIndividuels && objectifsIndividuels.trim() && (
-                        <div className="pl-2 border-l-2 border-blue-300">
-                          <span className="font-medium">Objectif Individuel:</span> {objectifsIndividuels}
+                        <div style={{
+                          paddingLeft: '0.5rem',
+                          borderLeft: '2px solid #3b82f6'
+                        }}>
+                          <span style={{ fontWeight: '500' }}>Objectif Individuel:</span> {objectifsIndividuels}
                         </div>
                       )}
                       {objectifsMentaux && objectifsMentaux.trim() && (
-                        <div className="pl-2 border-l-2 border-purple-300">
-                          <span className="font-medium">Objectif Mental:</span> {objectifsMentaux}
+                        <div style={{
+                          paddingLeft: '0.5rem',
+                          borderLeft: '2px solid #a855f7'
+                        }}>
+                          <span style={{ fontWeight: '500' }}>Objectif Mental:</span> {objectifsMentaux}
                         </div>
                       )}
                       {(!objectifsIndividuels || !objectifsIndividuels.trim()) && 
                        (!objectifsMentaux || !objectifsMentaux.trim()) && (
-                        <p className="italic text-gray-500">Aucun objectif défini à cette date</p>
+                        <p style={{ fontStyle: 'italic', color: '#9ca3af' }}>Aucun objectif défini à cette date</p>
                       )}
                     </div>
                   </div>
@@ -261,6 +466,13 @@ const PlayerFeedback = ({
           </div>
         )}
       </div>
+
+      <style>{`
+        @keyframes spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+      `}</style>
     </div>
   );
 };
