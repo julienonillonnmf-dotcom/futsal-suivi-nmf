@@ -22,6 +22,7 @@ const PlayerFeedback = ({
 
   const loadMessages = async () => {
     if (!playerId) {
+      console.log('⚠️ Pas de playerId!');
       setMessages([]);
       setLoading(false);
       return;
@@ -31,15 +32,21 @@ const PlayerFeedback = ({
     setError(null);
 
     try {
+      console.log('🔍 Recherche messages pour playerId:', playerId);
+      
       // Récupérer les messages pour cette joueuse
       const { data, error: fetchError } = await supabase
         .from('messages')
         .select('*')
-        .or(`recipient_id.eq.${playerId},is_collective.eq.true`)
+        .eq('player_id', playerId)
         .order('created_at', { ascending: false });
 
+      console.log('✅ Requête réussie');
+      console.log('Messages reçus:', data?.length);
+      console.log('Données complètes:', data);
+
       if (fetchError) {
-        console.error('Erreur chargement messages:', fetchError);
+        console.error('❌ Erreur Supabase:', fetchError);
         setError('Impossible de charger les retours');
         setMessages([]);
       } else {
@@ -47,7 +54,7 @@ const PlayerFeedback = ({
         setMessages(data || []);
       }
     } catch (err) {
-      console.error('Erreur:', err);
+      console.error('❌ Erreur catch:', err);
       setError('Erreur lors du chargement des retours');
       setMessages([]);
     } finally {
@@ -58,19 +65,19 @@ const PlayerFeedback = ({
   // Filtrer les messages
   const filteredMessages = messages.filter(msg => {
     if (selectedFilter === 'all') return true;
-    if (selectedFilter === 'seances') return msg.message_type === 'Retour de séance';
-    if (selectedFilter === 'objectifs') return msg.message_type === 'Retour d\'objectif';
+    if (selectedFilter === 'seances') return msg.type === 'retour_séance';
+    if (selectedFilter === 'objectifs') return msg.type === 'retour_objectif';
     return true;
   });
 
   // Déterminer le badge de type
   const getMessageTypeBadge = (messageType) => {
     const types = {
-      'Retour de séance': { bg: 'bg-blue-100', text: 'text-blue-800', label: '⚽ Séance' },
-      'Retour d\'objectif': { bg: 'bg-purple-100', text: 'text-purple-800', label: '🎯 Objectif' },
-      'Autre': { bg: 'bg-gray-100', text: 'text-gray-800', label: '💬 Retour' }
+      'retour_séance': { bg: 'bg-blue-100', text: 'text-blue-800', label: '⚽ Séance' },
+      'retour_objectif': { bg: 'bg-purple-100', text: 'text-purple-800', label: '🎯 Objectif' },
+      'autre': { bg: 'bg-gray-100', text: 'text-gray-800', label: '💬 Retour' }
     };
-    return types[messageType] || types['Autre'];
+    return types[messageType] || types['autre'];
   };
 
   return (
@@ -186,8 +193,7 @@ const PlayerFeedback = ({
         ) : (
           <div className="space-y-4">
             {filteredMessages.map((message) => {
-              const badgeStyle = getMessageTypeBadge(message.message_type);
-              const isCollective = message.is_collective;
+              const badgeStyle = getMessageTypeBadge(message.type);
               
               return (
                 <div
@@ -199,11 +205,6 @@ const PlayerFeedback = ({
                       <span className={`px-3 py-1 rounded-full text-xs font-semibold ${badgeStyle.bg} ${badgeStyle.text}`}>
                         {badgeStyle.label}
                       </span>
-                      {isCollective && (
-                        <span className="px-3 py-1 rounded-full text-xs font-semibold bg-yellow-100 text-yellow-800">
-                          👥 Collectif
-                        </span>
-                      )}
                     </div>
                     <span className="text-xs text-gray-500">
                       {new Date(message.created_at).toLocaleDateString('fr-FR')} à{' '}
@@ -221,7 +222,7 @@ const PlayerFeedback = ({
                   )}
 
                   <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">
-                    {message.content}
+                    {message.body}
                   </p>
                 </div>
               );
