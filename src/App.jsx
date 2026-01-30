@@ -204,11 +204,12 @@ const App = () => {
     setError(null);
 
     try {
-      // Charger les joueurs
+      // Charger les joueurs (exclure le staff)
       const { data, error } = await supabase
         .from('players')
         .select('*')
         .eq('is_active', true)
+        .eq('is_staff', false)
         .order('name');
       
       if (error) {
@@ -227,62 +228,65 @@ const App = () => {
               .select('*')
               .eq('player_id', player.id)
               .order('created_at', { ascending: false });
-            
+
             if (respError) {
-              console.warn(`Réponses échouées pour ${player.name}:`, respError);
+              console.error(`Erreur réponses pour ${player.name}:`, respError);
               return { ...player, responses: [] };
             }
-            
+
             return { ...player, responses: responses || [] };
-          } catch (playerError) {
-            console.warn(`Erreur joueur ${player.name}:`, playerError);
+          } catch (error) {
+            console.error(`Erreur réponses pour ${player.name}:`, error);
             return { ...player, responses: [] };
           }
         })
       );
-      
-      console.log('✅ Réponses chargées pour tous les joueurs');
-      
-      // Mettre à jour les états
+
       setPlayers(playersWithResponses);
       loadPlayerStatistics(playersWithResponses);
       
-      // Charger les objectifs - SANS ATTENDRE (async)
-      loadObjectifs().catch(error => {
-        console.log('Objectifs échoués (non-bloquant):', error);
-      });
+      console.log('✅ loadPlayers terminé avec succès');
       
     } catch (error) {
-      console.error('❌ Erreur critique loadPlayers:', error);
+      console.error('❌ Erreur fatale loadPlayers:', error);
       setError(error);
       setPlayers([]);
-      setPlayerStats({});
     } finally {
       setLoading(false);
       setIsLoadingPlayers(false);
-      console.log('🏁 Fin loadPlayers à:', new Date().toLocaleTimeString());
     }
   };
 
-  // useEffect SIMPLIFIÉ - chargement unique
-  useEffect(() => {
-    console.log('⚡ useEffect déclenché - isAuthenticated:', isAuthenticated);
-    if (isAuthenticated && !isLoadingPlayers && players.length === 0) {
-      loadPlayers();
+  // Connexion SANS useCallback
+  const handleSiteLogin = async () => {
+    if (password !== SITE_PASSWORD && password !== ADMIN_PASSWORD) {
+      alert('Mot de passe incorrect');
+      return;
     }
-  }, [isAuthenticated]); // UNIQUEMENT isAuthenticated comme dépendance
 
-  // Authentification
-  const handleSiteLogin = () => {
-    if (loading) return; // Empêcher les soumissions multiples
-    
-    if (password === SITE_PASSWORD) {
+    setLoading(true);
+    setError(null);
+
+    try {
+      if (password === ADMIN_PASSWORD) {
+        setIsAdmin(true);
+      }
+      
       setIsAuthenticated(true);
       setCurrentView('players');
-      setPassword('');
-      setError(null);
-    } else {
-      alert('Mot de passe incorrect');
+      
+      // Charger les données
+      await Promise.all([
+        loadPlayers(),
+        loadObjectifs()
+      ]);
+      
+    } catch (error) {
+      console.error('Erreur connexion:', error);
+      setError(error);
+      setIsAuthenticated(false);
+    } finally {
+      setLoading(false);
     }
   };
 
