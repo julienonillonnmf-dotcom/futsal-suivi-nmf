@@ -65,11 +65,12 @@ export const sendCollectiveMessage = async (supabase, title, body, type = 'autre
 
     console.log('📢 Sending collective message');
 
-    // D'abord, récupérer tous les IDs des joueuses actives
+    // D'abord, récupérer tous les IDs des joueuses actives (hors staff)
     const { data: players, error: playersError } = await supabase
       .from('players')
       .select('id')
-      .eq('is_active', true);
+      .eq('is_active', true)
+      .eq('is_staff', false);
 
     if (playersError) {
       console.error('Error fetching players:', playersError);
