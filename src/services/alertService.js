@@ -226,3 +226,58 @@ export const testDiscordWebhook = async (webhookUrl) => {
     '**Webhook Discord configuré correctement !**\n\nVous recevrez désormais les alertes en temps réel.'
   );
 };
+
+/**
+ * Envoyer une demande de retour coach
+ */
+export const sendFeedbackRequest = async (playerId, playerName) => {
+  try {
+    // 1. Récupérer les paramètres d'alertes pour le webhook Discord
+    const { data: settings, error: settingsError } = await supabase
+      .from('alert_settings')
+      .select('discord_webhook')
+      .eq('is_active', true)
+      .single();
+
+    if (settingsError || !settings || !settings.discord_webhook) {
+      console.log('Webhook Discord non configuré');
+      return { success: false, error: 'Webhook non configuré' };
+    }
+
+    // 2. Envoyer la notification Discord
+    const response = await fetch(settings.discord_webhook, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        embeds: [{
+          title: '💬 DEMANDE DE RETOUR COACH',
+          description: `**${playerName}** souhaite un retour personnalisé sur sa dernière séance.\n\n📩 _Pensez à lui envoyer un message depuis l'application._`,
+          color: 8421631, // Violet
+          timestamp: new Date().toISOString(),
+          footer: {
+            text: 'NMF Futsal - Suivi joueuses'
+          }
+        }]
+      })
+    });
+
+    if (response.ok || response.status === 204) {
+      console.log('✅ Demande de retour envoyée à Discord');
+      
+      // 3. Enregistrer dans l'historique des alertes
+      await supabase.from('alert_history').insert({
+        player_id: playerId,
+        alert_type: 'feedback_request',
+        message: `💬 DEMANDE DE RETOUR COACH\n${playerName} souhaite un retour personnalisé`,
+        status: 'sent'
+      });
+      
+      return { success: true };
+    } else {
+      throw new Error(`Discord error: ${response.status}`);
+    }
+  } catch (error) {
+    console.error('❌ Erreur envoi demande de retour:', error);
+    return { success: false, error: error.message };
+  }
+};
