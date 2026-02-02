@@ -103,10 +103,22 @@ const PostSessionQuestionnaire = ({
       // Si demande de retour, envoyer la notification au coach
       if (wantsFeedback) {
         try {
-          await sendFeedbackRequest(selectedPlayer.id, selectedPlayer.name);
-          console.log('✅ Notification de demande de retour envoyée');
+          const result = await sendFeedbackRequest(selectedPlayer.id, selectedPlayer.name);
+          console.log('✅ Résultat demande de retour:', result);
+          
+          // Afficher les logs pour debug
+          if (result.logs) {
+            console.log('=== LOGS DEBUG ===');
+            result.logs.forEach(log => console.log(log));
+            console.log('==================');
+          }
+          
+          if (!result.success) {
+            alert(`⚠️ Problème notification: ${result.error}\n\nVoir console pour détails (F12)`);
+          }
         } catch (notifError) {
-          console.log('⚠️ Erreur notification (non bloquante):', notifError.message);
+          console.log('⚠️ Erreur notification:', notifError);
+          alert(`Erreur: ${notifError.message}`);
         }
       }
       
