@@ -1,6 +1,6 @@
 // src/views/PostSessionQuestionnaire.jsx
 import React, { useState, useEffect } from 'react';
-import { ChevronLeft, MessageCircle, Info } from 'lucide-react';
+import { ChevronLeft, MessageCircle } from 'lucide-react';
 import ScaleQuestion from '../components/ScaleQuestion';
 import { checkAndSendAlerts, sendFeedbackRequest } from '../services/alertService';
 
@@ -104,21 +104,13 @@ const PostSessionQuestionnaire = ({
       if (wantsFeedback) {
         try {
           const result = await sendFeedbackRequest(selectedPlayer.id, selectedPlayer.name);
-          console.log('✅ Résultat demande de retour:', result);
-          
-          // Afficher les logs pour debug
-          if (result.logs) {
-            console.log('=== LOGS DEBUG ===');
-            result.logs.forEach(log => console.log(log));
-            console.log('==================');
-          }
-          
-          if (!result.success) {
-            alert(`⚠️ Problème notification: ${result.error}\n\nVoir console pour détails (F12)`);
+          if (result.success) {
+            console.log(`✅ Notification envoyée à ${result.sent} admin(s)`);
+          } else {
+            console.log('⚠️ Erreur notification:', result.error);
           }
         } catch (notifError) {
-          console.log('⚠️ Erreur notification:', notifError);
-          alert(`Erreur: ${notifError.message}`);
+          console.log('⚠️ Erreur notification (non bloquante):', notifError.message);
         }
       }
       
@@ -353,43 +345,82 @@ const PostSessionQuestionnaire = ({
               />
             </div>
 
-            {/* Demande de retour du coach */}
-            <div className="bg-purple-50 border border-purple-200 rounded-lg p-4 mb-6">
-              <div className="flex items-center mb-2">
-                <MessageCircle className="text-purple-600" size={24} />
-                <h3 className="text-lg font-semibold text-purple-700 ml-2">Demander un retour</h3>
-              </div>
-              <p className="text-gray-600 text-sm mb-4">
-                Tu souhaites un retour personnalisé du coach sur cette séance ? Active cette option et il sera notifié.
-              </p>
-              
-              <div className="flex items-center justify-between bg-white rounded-lg p-4 border border-gray-200">
-                <span className="font-medium text-gray-700">
-                  {wantsFeedback ? '✅ Oui, je veux un retour' : 'Non, pas cette fois'}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setWantsFeedback(!wantsFeedback)}
-                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 ${
-                    wantsFeedback ? 'bg-purple-600' : 'bg-gray-300'
-                  }`}
-                >
-                  <span
-                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                      wantsFeedback ? 'translate-x-6' : 'translate-x-1'
-                    }`}
-                  />
-                </button>
-              </div>
-              
-              {wantsFeedback && (
-                <div className="flex items-start mt-3 p-3 bg-purple-100 rounded-lg">
-                  <Info className="text-purple-600 flex-shrink-0 mt-0.5" size={16} />
-                  <span className="text-sm text-purple-700 ml-2">
-                    Le coach recevra une notification et pourra te faire un retour personnalisé.
-                  </span>
+            {/* Demande de retour du coach - Design amélioré */}
+            <div 
+              onClick={() => setWantsFeedback(!wantsFeedback)}
+              className={`relative overflow-hidden rounded-xl cursor-pointer transition-all duration-300 transform hover:scale-[1.02] ${
+                wantsFeedback 
+                  ? 'bg-gradient-to-r from-purple-500 to-indigo-600 shadow-lg shadow-purple-200' 
+                  : 'bg-gradient-to-r from-gray-50 to-gray-100 border-2 border-dashed border-gray-300 hover:border-purple-400 hover:from-purple-50 hover:to-indigo-50'
+              }`}
+            >
+              <div className="p-5">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-4">
+                    {/* Icône animée */}
+                    <div className={`p-3 rounded-full transition-all duration-300 ${
+                      wantsFeedback 
+                        ? 'bg-white/20' 
+                        : 'bg-purple-100'
+                    }`}>
+                      <MessageCircle 
+                        className={`transition-all duration-300 ${
+                          wantsFeedback ? 'text-white' : 'text-purple-500'
+                        }`} 
+                        size={28} 
+                        fill={wantsFeedback ? 'currentColor' : 'none'}
+                      />
+                    </div>
+                    
+                    <div>
+                      <h3 className={`text-lg font-bold transition-colors duration-300 ${
+                        wantsFeedback ? 'text-white' : 'text-gray-700'
+                      }`}>
+                        {wantsFeedback ? '✨ Demande activée !' : '💬 Demander un retour coach'}
+                      </h3>
+                      <p className={`text-sm transition-colors duration-300 ${
+                        wantsFeedback ? 'text-purple-100' : 'text-gray-500'
+                      }`}>
+                        {wantsFeedback 
+                          ? 'Le coach sera notifié de ta demande' 
+                          : 'Clique ici pour recevoir un feedback personnalisé'}
+                      </p>
+                    </div>
+                  </div>
+                  
+                  {/* Indicateur visuel */}
+                  <div className={`flex items-center justify-center w-12 h-12 rounded-full transition-all duration-300 ${
+                    wantsFeedback 
+                      ? 'bg-white text-purple-600' 
+                      : 'bg-gray-200 text-gray-400'
+                  }`}>
+                    {wantsFeedback ? (
+                      <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                      </svg>
+                    ) : (
+                      <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                      </svg>
+                    )}
+                  </div>
                 </div>
-              )}
+                
+                {/* Message de confirmation animé */}
+                {wantsFeedback && (
+                  <div className="mt-4 flex items-center bg-white/10 rounded-lg p-3 animate-pulse">
+                    <span className="text-2xl mr-3">🔔</span>
+                    <span className="text-white text-sm font-medium">
+                      Super ! N'oublie pas de détailler tes questions dans les commentaires ci-dessus
+                    </span>
+                  </div>
+                )}
+              </div>
+              
+              {/* Effet de brillance au survol */}
+              <div className={`absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent transform -skew-x-12 -translate-x-full transition-transform duration-700 ${
+                wantsFeedback ? '' : 'group-hover:translate-x-full'
+              }`} />
             </div>
           </div>
 
