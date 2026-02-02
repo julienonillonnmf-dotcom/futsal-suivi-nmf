@@ -228,121 +228,46 @@ export const testDiscordWebhook = async (webhookUrl) => {
 };
 
 /**
- * Envoyer une demande de retour coach via notification push Expo
+ * Envoyer une demande de retour coach via le backend (qui envoie la notification push)
  */
 export const sendFeedbackRequest = async (playerId, playerName) => {
-  const logs = [];
-  const log = (msg) => {
-    console.log(msg);
-    logs.push(msg);
-  };
-  
   try {
-    log(`📩 Envoi demande de retour de ${playerName} aux admins...`);
+    console.log(`📩 Envoi demande de retour de ${playerName} via backend...`);
     
-    // 1. Récupérer les IDs des staff (admins)
-    const { data: staffData, error: staffError } = await supabase
-      .from('players')
-      .select('id, name, is_staff')
-      .eq('is_staff', true);
+    // URL du backend
+    const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'https://app-nmf-backend-production.up.railway.app';
     
-    log(`   Staff query result: ${JSON.stringify(staffData)}`);
-    log(`   Staff error: ${JSON.stringify(staffError)}`);
-    
-    if (staffError || !staffData || staffData.length === 0) {
-      log('⚠️ Aucun staff trouvé');
-      return { success: false, error: 'Aucun staff trouvé', logs };
-    }
-    
-    const staffIds = staffData.map(s => s.id);
-    log(`   ${staffIds.length} admin(s) trouvé(s): ${staffIds.join(', ')}`);
-    
-    // 2. Récupérer les tokens push des admins
-    const { data: tokensData, error: tokensError } = await supabase
-      .from('push_tokens')
-      .select('token, player_id')
-      .in('player_id', staffIds)
-      .eq('is_active', true);
-    
-    log(`   Tokens query result: ${JSON.stringify(tokensData)}`);
-    log(`   Tokens error: ${JSON.stringify(tokensError)}`);
-    
-    if (tokensError || !tokensData || tokensData.length === 0) {
-      log('⚠️ Aucun token push trouvé pour les admins');
-      return { success: false, error: 'Aucun token push admin', logs };
-    }
-    
-    const tokens = tokensData
-      .map(t => t.token)
-      .filter(token => token && token.startsWith('ExponentPushToken['));
-    
-    log(`   ${tokens.length} token(s) Expo valide(s)`);
-    log(`   Tokens: ${tokens.map(t => t.substring(0, 40) + '...').join(', ')}`);
-    
-    if (tokens.length === 0) {
-      log('⚠️ Aucun token Expo valide');
-      return { success: false, error: 'Aucun token Expo valide', logs };
-    }
-    
-    // 3. Créer les messages pour Expo
-    const messages = tokens.map(token => ({
-      to: token,
-      sound: 'default',
-      title: '📝 Demande de retour',
-      body: `${playerName} souhaite un retour sur sa séance`,
-      data: {
-        type: 'feedback_request',
-        playerId,
-        playerName,
-        screen: 'AdminResponses'
-      },
-      priority: 'high',
-      channelId: 'default',
-    }));
-    
-    log(`   Messages à envoyer: ${messages.length}`);
-    
-    // 4. Envoyer via Expo Push API
-    const response = await fetch('https://exp.host/--/api/v2/push/send', {
+    // Utiliser la route publique (pas besoin de token)
+    const response = await fetch(`${BACKEND_URL}/api/public/request-feedback`, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-        'Accept-Encoding': 'gzip, deflate',
+        'Content-Type': 'application/json'
       },
-      body: JSON.stringify(messages),
+      body: JSON.stringify({ playerId, playerName })
     });
     
     const result = await response.json();
-    log(`   Réponse Expo: ${JSON.stringify(result)}`);
+    console.log('📩 Réponse backend:', result);
     
-    let sentCount = 0;
-    if (result.data) {
-      result.data.forEach((ticket, i) => {
-        if (ticket.status === 'ok') {
-          sentCount++;
-          log(`   ✅ Ticket ${i}: OK (id: ${ticket.id})`);
-        } else {
-          log(`   ❌ Ticket ${i}: ${ticket.status} - ${ticket.message || ticket.details?.error}`);
-        }
+    if (result.success) {
+      console.log(`✅ Notification envoyée à ${result.sent} admin(s)`);
+      
+      // Enregistrer dans l'historique des alertes
+      await supabase.from('alert_history').insert({
+        player_id: playerId,
+        alert_type: 'feedback_request',
+        message: `📝 DEMANDE DE RETOUR\n${playerName} souhaite un retour personnalisé`,
+        status: 'sent'
       });
+      
+      return { success: true, sent: result.sent };
+    } else {
+      console.log('❌ Erreur backend:', result.error);
+      return { success: false, error: result.error };
     }
     
-    log(`✅ Notification envoyée à ${sentCount}/${tokens.length} admin(s)`);
-    
-    // 5. Enregistrer dans l'historique des alertes
-    await supabase.from('alert_history').insert({
-      player_id: playerId,
-      alert_type: 'feedback_request',
-      message: `📝 DEMANDE DE RETOUR\n${playerName} souhaite un retour personnalisé`,
-      status: sentCount > 0 ? 'sent' : 'failed'
-    });
-    
-    return { success: sentCount > 0, sent: sentCount, logs };
-    
   } catch (error) {
-    log(`❌ Erreur: ${error.message}`);
     console.error('❌ Erreur envoi demande de retour:', error);
-    return { success: false, error: error.message, logs };
+    return { success: false, error: error.message };
   }
 };
