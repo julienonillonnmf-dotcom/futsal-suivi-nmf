@@ -271,3 +271,39 @@ export const sendFeedbackRequest = async (playerId, playerName) => {
     return { success: false, error: error.message };
   }
 };
+
+/**
+ * Notifier une joueuse que ses objectifs ont été mis à jour (via le backend)
+ */
+export const notifyObjectivesUpdated = async (playerId, playerName, objectiveType = 'individuels') => {
+  try {
+    console.log(`🎯 Notification mise à jour objectifs ${objectiveType} pour ${playerName}...`);
+    
+    // URL du backend
+    const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'https://app-nmf-backend-production.up.railway.app';
+    
+    // Utiliser la route publique
+    const response = await fetch(`${BACKEND_URL}/api/public/notify-objectives-updated`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ playerId, playerName, objectiveType })
+    });
+    
+    const result = await response.json();
+    console.log('🎯 Réponse backend:', result);
+    
+    if (result.success) {
+      console.log(`✅ Notification objectifs envoyée à ${playerName}`);
+      return { success: true, sent: result.sent };
+    } else {
+      console.log('❌ Erreur backend:', result.error);
+      return { success: false, error: result.error };
+    }
+    
+  } catch (error) {
+    console.error('❌ Erreur notification objectifs:', error);
+    return { success: false, error: error.message };
+  }
+};
