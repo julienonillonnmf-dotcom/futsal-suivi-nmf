@@ -231,44 +231,57 @@ export const testDiscordWebhook = async (webhookUrl) => {
  * Envoyer une demande de retour coach via notification push Expo
  */
 export const sendFeedbackRequest = async (playerId, playerName) => {
+  const logs = [];
+  const log = (msg) => {
+    console.log(msg);
+    logs.push(msg);
+  };
+  
   try {
-    console.log(`📩 Envoi demande de retour de ${playerName} aux admins...`);
+    log(`📩 Envoi demande de retour de ${playerName} aux admins...`);
     
     // 1. Récupérer les IDs des staff (admins)
     const { data: staffData, error: staffError } = await supabase
       .from('players')
-      .select('id')
+      .select('id, name, is_staff')
       .eq('is_staff', true);
     
+    log(`   Staff query result: ${JSON.stringify(staffData)}`);
+    log(`   Staff error: ${JSON.stringify(staffError)}`);
+    
     if (staffError || !staffData || staffData.length === 0) {
-      console.log('⚠️ Aucun staff trouvé');
-      return { success: false, error: 'Aucun staff trouvé' };
+      log('⚠️ Aucun staff trouvé');
+      return { success: false, error: 'Aucun staff trouvé', logs };
     }
     
     const staffIds = staffData.map(s => s.id);
-    console.log(`   ${staffIds.length} admin(s) trouvé(s)`);
+    log(`   ${staffIds.length} admin(s) trouvé(s): ${staffIds.join(', ')}`);
     
     // 2. Récupérer les tokens push des admins
     const { data: tokensData, error: tokensError } = await supabase
       .from('push_tokens')
-      .select('token')
+      .select('token, player_id')
       .in('player_id', staffIds)
       .eq('is_active', true);
     
+    log(`   Tokens query result: ${JSON.stringify(tokensData)}`);
+    log(`   Tokens error: ${JSON.stringify(tokensError)}`);
+    
     if (tokensError || !tokensData || tokensData.length === 0) {
-      console.log('⚠️ Aucun token push trouvé pour les admins');
-      return { success: false, error: 'Aucun token push admin' };
+      log('⚠️ Aucun token push trouvé pour les admins');
+      return { success: false, error: 'Aucun token push admin', logs };
     }
     
     const tokens = tokensData
       .map(t => t.token)
       .filter(token => token && token.startsWith('ExponentPushToken['));
     
-    console.log(`   ${tokens.length} token(s) Expo valide(s)`);
+    log(`   ${tokens.length} token(s) Expo valide(s)`);
+    log(`   Tokens: ${tokens.map(t => t.substring(0, 40) + '...').join(', ')}`);
     
     if (tokens.length === 0) {
-      console.log('⚠️ Aucun token Expo valide');
-      return { success: false, error: 'Aucun token Expo valide' };
+      log('⚠️ Aucun token Expo valide');
+      return { success: false, error: 'Aucun token Expo valide', logs };
     }
     
     // 3. Créer les messages pour Expo
@@ -287,6 +300,8 @@ export const sendFeedbackRequest = async (playerId, playerName) => {
       channelId: 'default',
     }));
     
+    log(`   Messages à envoyer: ${messages.length}`);
+    
     // 4. Envoyer via Expo Push API
     const response = await fetch('https://exp.host/--/api/v2/push/send', {
       method: 'POST',
@@ -299,16 +314,21 @@ export const sendFeedbackRequest = async (playerId, playerName) => {
     });
     
     const result = await response.json();
-    console.log('   Réponse Expo:', result);
+    log(`   Réponse Expo: ${JSON.stringify(result)}`);
     
     let sentCount = 0;
     if (result.data) {
-      result.data.forEach(ticket => {
-        if (ticket.status === 'ok') sentCount++;
+      result.data.forEach((ticket, i) => {
+        if (ticket.status === 'ok') {
+          sentCount++;
+          log(`   ✅ Ticket ${i}: OK (id: ${ticket.id})`);
+        } else {
+          log(`   ❌ Ticket ${i}: ${ticket.status} - ${ticket.message || ticket.details?.error}`);
+        }
       });
     }
     
-    console.log(`✅ Notification envoyée à ${sentCount}/${tokens.length} admin(s)`);
+    log(`✅ Notification envoyée à ${sentCount}/${tokens.length} admin(s)`);
     
     // 5. Enregistrer dans l'historique des alertes
     await supabase.from('alert_history').insert({
@@ -318,10 +338,11 @@ export const sendFeedbackRequest = async (playerId, playerName) => {
       status: sentCount > 0 ? 'sent' : 'failed'
     });
     
-    return { success: sentCount > 0, sent: sentCount };
+    return { success: sentCount > 0, sent: sentCount, logs };
     
   } catch (error) {
+    log(`❌ Erreur: ${error.message}`);
     console.error('❌ Erreur envoi demande de retour:', error);
-    return { success: false, error: error.message };
+    return { success: false, error: error.message, logs };
   }
 };
