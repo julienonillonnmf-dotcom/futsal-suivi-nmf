@@ -17,6 +17,7 @@ import {
   Filter
 } from 'lucide-react';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import { notifyObjectivesUpdated } from '../services/alertService';
 
 // ============================================
 // FONCTION 1: Traitement longitudinal des blessures
@@ -340,6 +341,17 @@ const AdminPlayerDetail = ({
         [selectedPlayer.id]: tempTechnicalObjectives
       }));
       setEditingTechnical(false);
+      
+      // Envoyer notification à la joueuse
+      try {
+        const result = await notifyObjectivesUpdated(selectedPlayer.id, selectedPlayer.name, 'techniques');
+        if (result.success) {
+          console.log(`🔔 Notification envoyée à ${selectedPlayer.name}`);
+        }
+      } catch (notifError) {
+        console.log('⚠️ Erreur notification (non bloquante):', notifError.message);
+      }
+      
       alert('Objectifs techniques sauvegardés !');
     } catch (error) {
       console.error('Erreur sauvegarde objectifs techniques:', error);
@@ -361,6 +373,17 @@ const AdminPlayerDetail = ({
         [selectedPlayer.id]: tempMentalObjectives
       }));
       setEditingMental(false);
+      
+      // Envoyer notification à la joueuse
+      try {
+        const result = await notifyObjectivesUpdated(selectedPlayer.id, selectedPlayer.name, 'mentaux');
+        if (result.success) {
+          console.log(`🔔 Notification envoyée à ${selectedPlayer.name}`);
+        }
+      } catch (notifError) {
+        console.log('⚠️ Erreur notification (non bloquante):', notifError.message);
+      }
+      
       alert('Objectifs mentaux sauvegardés !');
     } catch (error) {
       console.error('Erreur sauvegarde objectifs mentaux:', error);
