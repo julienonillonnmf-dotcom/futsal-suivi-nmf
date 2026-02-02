@@ -228,54 +228,98 @@ export const testDiscordWebhook = async (webhookUrl) => {
 };
 
 /**
- * Envoyer une demande de retour coach
+ * Envoyer une demande de retour coach via notification push Expo
  */
 export const sendFeedbackRequest = async (playerId, playerName) => {
   try {
-    // 1. Récupérer les paramètres d'alertes pour le webhook Discord
-    const { data: settings, error: settingsError } = await supabase
-      .from('alert_settings')
-      .select('discord_webhook')
-      .eq('is_active', true)
-      .single();
-
-    if (settingsError || !settings || !settings.discord_webhook) {
-      console.log('Webhook Discord non configuré');
-      return { success: false, error: 'Webhook non configuré' };
+    console.log(`📩 Envoi demande de retour de ${playerName} aux admins...`);
+    
+    // 1. Récupérer les IDs des staff (admins)
+    const { data: staffData, error: staffError } = await supabase
+      .from('players')
+      .select('id')
+      .eq('is_staff', true);
+    
+    if (staffError || !staffData || staffData.length === 0) {
+      console.log('⚠️ Aucun staff trouvé');
+      return { success: false, error: 'Aucun staff trouvé' };
     }
-
-    // 2. Envoyer la notification Discord
-    const response = await fetch(settings.discord_webhook, {
+    
+    const staffIds = staffData.map(s => s.id);
+    console.log(`   ${staffIds.length} admin(s) trouvé(s)`);
+    
+    // 2. Récupérer les tokens push des admins
+    const { data: tokensData, error: tokensError } = await supabase
+      .from('push_tokens')
+      .select('token')
+      .in('player_id', staffIds)
+      .eq('is_active', true);
+    
+    if (tokensError || !tokensData || tokensData.length === 0) {
+      console.log('⚠️ Aucun token push trouvé pour les admins');
+      return { success: false, error: 'Aucun token push admin' };
+    }
+    
+    const tokens = tokensData
+      .map(t => t.token)
+      .filter(token => token && token.startsWith('ExponentPushToken['));
+    
+    console.log(`   ${tokens.length} token(s) Expo valide(s)`);
+    
+    if (tokens.length === 0) {
+      console.log('⚠️ Aucun token Expo valide');
+      return { success: false, error: 'Aucun token Expo valide' };
+    }
+    
+    // 3. Créer les messages pour Expo
+    const messages = tokens.map(token => ({
+      to: token,
+      sound: 'default',
+      title: '📝 Demande de retour',
+      body: `${playerName} souhaite un retour sur sa séance`,
+      data: {
+        type: 'feedback_request',
+        playerId,
+        playerName,
+        screen: 'AdminResponses'
+      },
+      priority: 'high',
+      channelId: 'default',
+    }));
+    
+    // 4. Envoyer via Expo Push API
+    const response = await fetch('https://exp.host/--/api/v2/push/send', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        embeds: [{
-          title: '💬 DEMANDE DE RETOUR COACH',
-          description: `**${playerName}** souhaite un retour personnalisé sur sa dernière séance.\n\n📩 _Pensez à lui envoyer un message depuis l'application._`,
-          color: 8421631, // Violet
-          timestamp: new Date().toISOString(),
-          footer: {
-            text: 'NMF Futsal - Suivi joueuses'
-          }
-        }]
-      })
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'Accept-Encoding': 'gzip, deflate',
+      },
+      body: JSON.stringify(messages),
     });
-
-    if (response.ok || response.status === 204) {
-      console.log('✅ Demande de retour envoyée à Discord');
-      
-      // 3. Enregistrer dans l'historique des alertes
-      await supabase.from('alert_history').insert({
-        player_id: playerId,
-        alert_type: 'feedback_request',
-        message: `💬 DEMANDE DE RETOUR COACH\n${playerName} souhaite un retour personnalisé`,
-        status: 'sent'
+    
+    const result = await response.json();
+    console.log('   Réponse Expo:', result);
+    
+    let sentCount = 0;
+    if (result.data) {
+      result.data.forEach(ticket => {
+        if (ticket.status === 'ok') sentCount++;
       });
-      
-      return { success: true };
-    } else {
-      throw new Error(`Discord error: ${response.status}`);
     }
+    
+    console.log(`✅ Notification envoyée à ${sentCount}/${tokens.length} admin(s)`);
+    
+    // 5. Enregistrer dans l'historique des alertes
+    await supabase.from('alert_history').insert({
+      player_id: playerId,
+      alert_type: 'feedback_request',
+      message: `📝 DEMANDE DE RETOUR\n${playerName} souhaite un retour personnalisé`,
+      status: sentCount > 0 ? 'sent' : 'failed'
+    });
+    
+    return { success: sentCount > 0, sent: sentCount };
+    
   } catch (error) {
     console.error('❌ Erreur envoi demande de retour:', error);
     return { success: false, error: error.message };
