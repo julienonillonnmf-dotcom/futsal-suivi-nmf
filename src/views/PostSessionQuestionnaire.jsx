@@ -1,8 +1,8 @@
 // src/views/PostSessionQuestionnaire.jsx
 import React, { useState, useEffect } from 'react';
-import { ChevronLeft } from 'lucide-react';
+import { ChevronLeft, MessageCircle, Info } from 'lucide-react';
 import ScaleQuestion from '../components/ScaleQuestion';
-import { checkAndSendAlerts } from '../services/alertService'; // 🆕 AJOUT
+import { checkAndSendAlerts, sendFeedbackRequest } from '../services/alertService';
 
 const PostSessionQuestionnaire = ({ 
   selectedPlayer,
@@ -34,6 +34,9 @@ const PostSessionQuestionnaire = ({
     fatigue: null,
     objectifs_personnels: ''
   });
+
+  // État pour la demande de retour coach
+  const [wantsFeedback, setWantsFeedback] = useState(false);
 
   // Récupérer la dernière réponse pré-séance pour afficher les objectifs personnels
   useEffect(() => {
@@ -73,23 +76,39 @@ const PostSessionQuestionnaire = ({
     setLoading(true);
     
     try {
+      // Ajouter wants_feedback dans les données
+      const dataToSave = {
+        ...postSessionForm,
+        wants_feedback: wantsFeedback
+      };
+      
       const { error } = await supabase
         .from('responses')
         .insert({
           player_id: selectedPlayer.id,
           type: 'post',
-          data: postSessionForm
+          data: dataToSave
         });
       
       if (error) throw error;
       
-      // 🆕 AJOUT - Vérifier et envoyer les alertes Discord
+      // Vérifier et envoyer les alertes Discord
       await checkAndSendAlerts(
         selectedPlayer.id,
         selectedPlayer.name,
         'post',
         postSessionForm
       );
+      
+      // Si demande de retour, envoyer la notification au coach
+      if (wantsFeedback) {
+        try {
+          await sendFeedbackRequest(selectedPlayer.id, selectedPlayer.name);
+          console.log('✅ Notification de demande de retour envoyée');
+        } catch (notifError) {
+          console.log('⚠️ Erreur notification (non bloquante):', notifError.message);
+        }
+      }
       
       alert('Questionnaire sauvegardé !');
       
@@ -106,6 +125,7 @@ const PostSessionQuestionnaire = ({
         objectifs_atteints: '',
         commentaires_libres: ''
       });
+      setWantsFeedback(false);
       
       // Recharger les données
       await loadPlayers();
@@ -319,6 +339,45 @@ const PostSessionQuestionnaire = ({
                 rows="4"
                 placeholder="Partagez vos ressentis généraux, remarques ou questions sur cette séance..."
               />
+            </div>
+
+            {/* Demande de retour du coach */}
+            <div className="bg-purple-50 border border-purple-200 rounded-lg p-4 mb-6">
+              <div className="flex items-center mb-2">
+                <MessageCircle className="text-purple-600" size={24} />
+                <h3 className="text-lg font-semibold text-purple-700 ml-2">Demander un retour</h3>
+              </div>
+              <p className="text-gray-600 text-sm mb-4">
+                Tu souhaites un retour personnalisé du coach sur cette séance ? Active cette option et il sera notifié.
+              </p>
+              
+              <div className="flex items-center justify-between bg-white rounded-lg p-4 border border-gray-200">
+                <span className="font-medium text-gray-700">
+                  {wantsFeedback ? '✅ Oui, je veux un retour' : 'Non, pas cette fois'}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setWantsFeedback(!wantsFeedback)}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 ${
+                    wantsFeedback ? 'bg-purple-600' : 'bg-gray-300'
+                  }`}
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                      wantsFeedback ? 'translate-x-6' : 'translate-x-1'
+                    }`}
+                  />
+                </button>
+              </div>
+              
+              {wantsFeedback && (
+                <div className="flex items-start mt-3 p-3 bg-purple-100 rounded-lg">
+                  <Info className="text-purple-600 flex-shrink-0 mt-0.5" size={16} />
+                  <span className="text-sm text-purple-700 ml-2">
+                    Le coach recevra une notification et pourra te faire un retour personnalisé.
+                  </span>
+                </div>
+              )}
             </div>
           </div>
 
