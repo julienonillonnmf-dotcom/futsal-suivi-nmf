@@ -7,7 +7,7 @@
 import React, { useState, useMemo } from 'react';
 import { ChevronLeft, Edit3, UserPlus, Download, Trash2, Filter, TrendingUp, BarChart3, Users, Calendar, AlertTriangle, Search, Bell, AlertCircle, History, Send, Target, MessageSquare, X } from 'lucide-react';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
-import { getAlertHistory, testDiscordWebhook } from '../services/alertService';
+import { getAlertHistory, testDiscordWebhook, notifyObjectivesUpdated } from '../services/alertService';
 import AdminMessageSender from '../components/AdminMessageSender';
 
 // ============================================
@@ -458,6 +458,19 @@ const AdminPanel = ({
         [playerId]: objectifs
       }));
       
+      // Envoyer notification à la joueuse
+      const playerName = players.find(p => p.id === playerId)?.name;
+      if (playerName) {
+        try {
+          const result = await notifyObjectivesUpdated(playerId, playerName, 'techniques');
+          if (result.success) {
+            console.log(`🔔 Notification envoyée à ${playerName}`);
+          }
+        } catch (notifError) {
+          console.log('⚠️ Erreur notification (non bloquante):', notifError.message);
+        }
+      }
+      
       alert('Objectifs individuels sauvegardés !');
     } catch (error) {
       console.error('Erreur sauvegarde objectifs individuels:', error);
@@ -480,6 +493,19 @@ const AdminPanel = ({
         ...prev,
         [playerId]: objectifs
       }));
+      
+      // Envoyer notification à la joueuse
+      const playerName = players.find(p => p.id === playerId)?.name;
+      if (playerName) {
+        try {
+          const result = await notifyObjectivesUpdated(playerId, playerName, 'mentaux');
+          if (result.success) {
+            console.log(`🔔 Notification envoyée à ${playerName}`);
+          }
+        } catch (notifError) {
+          console.log('⚠️ Erreur notification (non bloquante):', notifError.message);
+        }
+      }
       
       alert('Objectifs mentaux sauvegardés !');
     } catch (error) {
