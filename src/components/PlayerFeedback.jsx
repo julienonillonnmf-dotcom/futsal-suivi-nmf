@@ -30,18 +30,67 @@ const PlayerFeedback = ({
     setError(null);
 
     try {
-      const { data, error: fetchError } = await supabase
+      // 1) Messages classiques (table messages)
+      const { data: msgData, error: msgError } = await supabase
         .from('messages')
         .select('*')
         .eq('player_id', playerId)
         .order('created_at', { ascending: false });
 
-      if (fetchError) {
+      // 2) Retours coach depuis les demandes de retour (table responses)
+      const { data: respData, error: respError } = await supabase
+        .from('responses')
+        .select('id, player_id, type, data, coach_response, coach_responded_at, created_at')
+        .eq('player_id', playerId)
+        .not('coach_response', 'is', null)
+        .order('coach_responded_at', { ascending: false });
+
+      if (msgError && respError) {
         setError('Impossible de charger les retours');
         setMessages([]);
-      } else {
-        setMessages(data || []);
+        return;
       }
+
+      const classicMessages = (msgData || []);
+      
+      // Transformer les retours de responses en format compatible
+      const feedbackMessages = (respData || []).map(r => {
+        let parsedData = r.data;
+        if (typeof parsedData === 'string') {
+          try { parsedData = JSON.parse(parsedData); } catch(e) { parsedData = {}; }
+        }
+        const sessionLabel = r.type === 'post' ? 'Post-séance' : r.type === 'pre' ? 'Pré-séance' : r.type || 'Séance';
+        const activityLabel = parsedData?.activite === 'futsal' ? 'Futsal' : parsedData?.activite === 'physique' ? 'Physique' : parsedData?.activite || '';
+        
+        return {
+          id: `resp-${r.id}`,
+          player_id: r.player_id,
+          title: `Retour Coach - ${sessionLabel}${activityLabel ? ' ' + activityLabel : ''}`,
+          body: r.coach_response,
+          type: 'retour_séance',
+          created_at: r.coach_responded_at || r.created_at,
+          is_read: true,
+          is_collective: false,
+          _source: 'responses'
+        };
+      });
+
+      // Fusionner et dédupliquer (les nouveaux retours seront dans les deux tables)
+      // On déduplique par contenu + player_id pour éviter les doublons
+      const allMessages = [...classicMessages];
+      for (const fb of feedbackMessages) {
+        const isDuplicate = classicMessages.some(m => 
+          m.body === fb.body && m.player_id === fb.player_id
+        );
+        if (!isDuplicate) {
+          allMessages.push(fb);
+        }
+      }
+
+      // Trier par date décroissante
+      allMessages.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+      
+      setMessages(allMessages);
     } catch (err) {
       setError('Erreur lors du chargement des retours');
       setMessages([]);
